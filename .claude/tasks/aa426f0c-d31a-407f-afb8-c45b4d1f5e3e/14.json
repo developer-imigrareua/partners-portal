@@ -1,0 +1,9 @@
+{
+  "id": "14",
+  "subject": "Rebuild link generator based on UTM xlsx structure",
+  "description": "Forms: HubSpot CONTACT/FB/EB2-EB3/EB-1A-O-1/WORK VISA + Typeform. Fixed UTMs. short.io integration placeholder.",
+  "activeForm": "Rebuilding link generator",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

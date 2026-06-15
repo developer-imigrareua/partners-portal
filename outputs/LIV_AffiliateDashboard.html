@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIV — Dashboard de Afiliada</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{color-scheme:light;--blue:#3b82f6;--indigo:#6366f1;--emerald:#10b981;--amber:#f59e0b;--red:#ef4444;--slate50:#f8fafc;--slate100:#f1f5f9;--slate200:#e2e8f0;--slate300:#cbd5e1;--slate400:#94a3b8;--slate500:#64748b;--slate600:#475569;--slate700:#334155;--slate800:#1e293b;--slate900:#0f172a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--slate50);color:var(--slate800);height:100vh;display:flex;overflow:hidden}
+/* Sidebar */
+#sidebar{width:220px;min-width:220px;background:#fff;border-right:1px solid var(--slate200);display:flex;flex-direction:column;height:100vh}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--slate100)}
+.logo-badge{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:#0f172a;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;letter-spacing:-1px}
+.logo-text{font-size:13px;font-weight:700;color:var(--slate800)}
+.logo-sub{font-size:11px;color:var(--slate400)}
+.sidebar-nav{padding:12px 10px;flex:1}
+.nav-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate400);padding:8px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--slate600);border:none;background:none;width:100%;text-align:left;transition:all .15s}
+.nav-item:hover{background:var(--slate50);color:var(--slate800)}
+.nav-item.active{background:#eff6ff;color:#1d4ed8;font-weight:600}
+.nav-icon{font-size:15px;width:18px;text-align:center}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--slate100);font-size:11px;color:var(--slate400)}
+/* Main */
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column;height:100vh}
+#topbar{background:#fff;border-bottom:1px solid var(--slate200);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:18px;font-weight:700;color:var(--slate800)}
+.topbar-sub{font-size:12px;color:var(--slate400);margin-top:1px}
+.sync-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--slate400);background:var(--slate50);border:1px solid var(--slate200);border-radius:20px;padding:4px 10px}
+.sync-dot{width:7px;height:7px;background:#10b981;border-radius:50%}
+/* Content sections */
+#content{padding:28px;flex:1}
+.section{display:none}
+.section.active{display:block}
+/* Cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:#fff;border:1px solid var(--slate200);border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .15s}
+.kpi-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.kpi-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.kpi-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--slate500)}
+.kpi-value{font-size:24px;font-weight:800;color:var(--slate800);margin-top:2px}
+.kpi-value.sm{font-size:16px}
+.kpi-note{font-size:10px;color:var(--slate400);margin-top:2px;font-style:italic}
+/* Banner */
+.banner{background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:12px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#fff;margin-bottom:20px}
+.banner-left{display:flex;align-items:center;gap:16px}
+.banner-icon{width:48px;height:48px;background:rgba(59,130,246,.2);border:1px solid rgba(59,130,246,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.banner-rate{font-size:40px;font-weight:900}
+.banner-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.banner-label{font-size:12px;color:#94a3b8;font-weight:500}
+.banner-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;min-width:240px}
+.banner-box-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:8px}
+.banner-row{display:flex;justify-content:space-between;align-items:center;gap:24px;font-size:13px;padding:2px 0}
+.banner-row-label{color:#94a3b8}
+.banner-row-val{font-weight:600;color:#d1fae5}
+.banner-row-val.nc{color:#cbd5e1}
+.banner-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:8px 0}
+.banner-total-label{font-size:13px;font-weight:700;color:#fff}
+.banner-total-val{font-size:20px;font-weight:900;color:#fbbf24}
+/* Panel */
+.panel{background:#fff;border:1px solid var(--slate200);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px}
+.panel-header{padding:16px 20px;border-bottom:1px solid var(--slate100)}
+.panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate400)}
+.panel-body{padding:20px}
+/* Commission table */
+.comm-table{width:100%;border-collapse:collapse;font-size:13px}
+.comm-table th{text-align:right;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate400);border-bottom:1px solid var(--slate100)}
+.comm-table th:first-child{text-align:left}
+.comm-table td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--slate50)}
+.comm-table td:first-child{text-align:left;font-weight:500;color:var(--slate700)}
+.comm-table tfoot td{font-size:12px;font-weight:700;background:var(--slate50);padding:10px 10px}
+.comm-table tfoot td:last-child{font-size:15px;font-weight:800;color:#059669}
+/* Date filter */
+.date-filter{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--slate200);border-radius:8px;padding:6px 12px;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.date-filter input[type=date]{font-size:11px;color:var(--slate700);border:none;outline:none;background:transparent;cursor:pointer;width:110px}
+.date-filter-arrow{color:var(--slate300);font-size:14px}
+.btn-clear{background:none;border:none;color:var(--slate400);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.btn-clear:hover{color:#ef4444}
+/* Pipeline */
+.pipeline-controls{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--slate200);border-radius:8px;padding:7px 12px;flex:1;min-width:200px}
+.search-box input{border:none;outline:none;font-size:13px;color:var(--slate700);background:transparent;width:100%}
+.search-box input::placeholder{color:var(--slate300)}
+.stage-filter select{border:1px solid var(--slate200);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--slate600);background:#fff;outline:none;cursor:pointer}
+.pipeline-table{width:100%;border-collapse:collapse}
+.pipeline-table th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate500);border-bottom:2px solid var(--slate100);background:#fff;cursor:pointer;white-space:nowrap;user-select:none}
+.pipeline-table th:hover{color:var(--slate700)}
+.pipeline-table td{padding:14px 14px;border-bottom:1px solid var(--slate100);font-size:13px}
+.pipeline-table tr.lead-row{cursor:pointer;transition:background .1s}
+.pipeline-table tr.lead-row:hover{background:var(--slate50)}
+.pipeline-table tr.lead-row.expanded{background:var(--slate50)}
+.pipeline-table tr.expand-row td{background:linear-gradient(to right,var(--slate50),#fff);border-bottom:1px solid var(--slate100)}
+.lead-avatar{width:36px;height:36px;border-radius:50%;background:var(--slate200);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--slate600);flex-shrink:0}
+.lead-name{font-weight:600;color:var(--slate800)}
+.lead-id{font-size:10px;color:var(--slate400);font-family:monospace}
+.sort-icon{font-size:10px;margin-left:4px;opacity:.5}
+/* Stage badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.stage-lr{background:#dbeafe;color:#1d4ed8}.stage-lr .badge-dot{background:#60a5fa}
+.stage-ea{background:#fef3c7;color:#b45309}.stage-ea .badge-dot{background:#fbbf24}
+.stage-ra{background:#ccfbf1;color:#0f766e}.stage-ra .badge-dot{background:#2dd4bf}
+.stage-op{background:#ede9fe;color:#6d28d9}.stage-op .badge-dot{background:#a78bfa}
+.stage-cv{background:#d1fae5;color:#065f46}.stage-cv .badge-dot{background:#34d399}
+.stage-nc{background:#fee2e2;color:#b91c1c}.stage-nc .badge-dot{background:#f87171}
+/* History */
+.history-wrap{padding:16px 20px}
+.history-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate400);margin-bottom:14px}
+.history-list{list-style:none;max-width:480px}
+.history-item{display:flex;gap:12px;align-items:flex-start}
+.history-spine{display:flex;flex-direction:column;align-items:center;padding-top:5px}
+.history-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.history-dot.last{background:var(--blue)}
+.history-dot.past{background:var(--slate200)}
+.history-line{width:1px;background:var(--slate200);flex:1;min-height:16px;margin:3px 0}
+.history-body{flex:1;padding-bottom:10px}
+.history-meta{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.history-date{font-size:11px;color:var(--slate400);font-weight:500}
+.history-comm{font-size:11px;font-weight:700;color:#059669}
+.history-event{font-size:13px;color:var(--slate700);margin-top:2px}
+/* Links section */
+.link-gen{max-width:560px}
+.link-input-wrap{display:flex;gap:8px;margin-bottom:14px}
+.link-input{flex:1;border:1px solid var(--slate200);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--slate700);outline:none}
+.link-input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.15)}
+.btn-primary{background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.btn-primary:hover{background:#1e40af}
+.generated-link{background:var(--slate50);border:1px solid var(--slate200);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;font-size:12px;font-family:monospace;color:var(--slate700);word-break:break-all}
+.btn-copy{background:#fff;border:1px solid var(--slate200);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;color:var(--slate600);transition:all .15s;white-space:nowrap}
+.btn-copy:hover{background:var(--slate50);border-color:var(--blue);color:var(--blue)}
+.quick-links{margin-top:20px}
+.quick-link-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--slate100);gap:12px}
+.quick-link-label{font-size:13px;font-weight:500;color:var(--slate700)}
+.quick-link-url{font-size:11px;font-family:monospace;color:var(--slate400);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Chart */
+#chart-wrap{position:relative;height:160px;margin-top:8px}
+/* Util */
+.flex-between{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.section-title{font-size:22px;font-weight:700;color:var(--slate800)}
+.section-sub{font-size:13px;color:var(--slate500);margin-top:2px}
+.text-emerald{color:#059669;font-weight:600}
+.text-slate{color:var(--slate400)}
+.text-dim{color:var(--slate500);font-size:12px;font-style:italic}
+.empty-row{text-align:center;padding:48px 0;color:var(--slate400);font-size:13px}
+.sort-asc::after{content:'↑';margin-left:3px;opacity:.8}
+.sort-desc::after{content:'↓';margin-left:3px;opacity:.8}
+.pagination-info{font-size:12px;color:var(--slate400);margin-top:12px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-badge">
+      <div class="logo-icon">LIV</div>
+      <div>
+        <div class="logo-text">LIV Afiliada</div>
+        <div class="logo-sub">leticia-ferrari</div>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-label">Menu</div>
+    <button class="nav-item active" data-section="dashboard" onclick="showSection('dashboard',this)">
+      <span class="nav-icon">📊</span> Visão Geral
+    </button>
+    <button class="nav-item" data-section="pipeline" onclick="showSection('pipeline',this)">
+      <span class="nav-icon">👥</span> Pipeline de Leads
+    </button>
+    <button class="nav-item" data-section="links" onclick="showSection('links',this)">
+      <span class="nav-icon">🔗</span> Gerar Links
+    </button>
+  </div>
+  <div class="sidebar-footer">© 2026 LIV Advocacia Imigratória</div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <!-- Topbar -->
+  <div id="topbar">
+    <div>
+      <div class="topbar-title">Dashboard de Afiliada</div>
+      <div class="topbar-sub">Leticia Ferrari · leticia.ferrari@liv.law</div>
+    </div>
+    <span class="sync-badge"><span class="sync-dot"></span> Sincronizado com HubSpot CRM · 11/06/2026 · 14:18</span>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- ===== DASHBOARD SECTION ===== -->
+    <div id="sec-dashboard" class="section active">
+      <div class="flex-between" style="align-items:flex-start">
+        <div>
+          <div class="section-title">Visão Geral</div>
+          <div class="section-sub" id="dash-subtitle">Afiliada: <code>leticia-ferrari</code></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div class="date-filter">
+            <span style="font-size:13px;color:var(--slate400)">📅</span>
+            <input type="date" id="date-from" value="">
+            <span class="date-filter-arrow">→</span>
+            <input type="date" id="date-to" value="">
+            <button class="btn-clear" id="btn-clear-date" style="display:none" title="Limpar filtro">×</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <!-- Conversion Banner -->
+      <div class="banner" id="conv-banner"></div>
+
+      <!-- Commission ladder -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Escada de Comissionamento — Acumulativo por Etapa</div></div>
+        <div class="panel-body" style="padding:0 20px 4px">
+          <table class="comm-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">Etapa</th>
+                <th>+Comissão</th>
+                <th>Acumulado</th>
+                <th>Leads</th>
+                <th>Total Simulado</th>
+              </tr>
+            </thead>
+            <tbody id="comm-tbody"></tbody>
+            <tfoot id="comm-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="panel">
+        <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center">
+          <div class="panel-title">Evolução de Leads — Mensal</div>
+          <span id="chart-range" style="font-size:11px;color:var(--slate400)"></span>
+        </div>
+        <div class="panel-body">
+          <div id="chart-wrap"><canvas id="leadsChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PIPELINE SECTION ===== -->
+    <div id="sec-pipeline" class="section">
+      <div class="flex-between" style="align-items:flex-start;margin-bottom:16px">
+        <div>
+          <div class="section-title">Pipeline de Leads</div>
+          <div class="section-sub" id="pipeline-subtitle">156 leads · Sincronizado com HubSpot</div>
+        </div>
+      </div>
+      <div class="pipeline-controls">
+        <div class="search-box">
+          <span style="font-size:14px;color:var(--slate300)">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar por nome ou ID…" oninput="renderPipeline()">
+        </div>
+        <div class="stage-filter">
+          <select id="stage-select" onchange="renderPipeline()">
+            <option value="">Todas as etapas</option>
+            <option value="Lead Recebido">📥 Lead Recebido</option>
+            <option value="Em Atendimento">📞 Em Atendimento</option>
+            <option value="Reunião Agendada">📅 Reunião Agendada</option>
+            <option value="Oportunidade">🤝 Oportunidade</option>
+            <option value="Convertido">💰 Convertido</option>
+            <option value="Não Convertido">❌ Não Convertido</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel" style="overflow:hidden">
+        <div style="overflow-x:auto">
+          <table class="pipeline-table" id="pipeline-table">
+            <thead>
+              <tr>
+                <th onclick="setSort('name')" id="th-name">LEAD <span class="sort-icon">↕</span></th>
+                <th onclick="setSort('createdAt')" id="th-createdAt">DT. CRIAÇÃO <span class="sort-icon">↕</span></th>
+                <th onclick="setSort('stageDate')" id="th-stageDate">ENTRADA NO ESTÁGIO <span class="sort-icon">↕</span></th>
+                <th onclick="setSort('stage')" id="th-stage">STATUS <span class="sort-icon">↕</span></th>
+                <th onclick="setSort('commission')" id="th-commission">BONIFICAÇÃO <span class="sort-icon">↕</span></th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="pipeline-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination-info" id="pipeline-info"></div>
+      </div>
+    </div>
+
+    <!-- ===== LINKS SECTION ===== -->
+    <div id="sec-links" class="section">
+      <div class="section-title" style="margin-bottom:4px">Gerador de Links</div>
+      <div class="section-sub" style="margin-bottom:24px">Crie links rastreados para compartilhar com seus contatos</div>
+      <div class="link-gen">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Gerar Link de Afiliada</div></div>
+          <div class="panel-body">
+            <label style="font-size:12px;font-weight:600;color:var(--slate500);display:block;margin-bottom:6px">URL de destino</label>
+            <div class="link-input-wrap">
+              <input class="link-input" type="url" id="link-url-input" placeholder="https://liv.law/visto-eb2-niw" value="https://liv.law/visto-eb2-niw">
+              <button class="btn-primary" onclick="generateLink()">Gerar Link</button>
+            </div>
+            <div id="generated-link-wrap" style="display:none">
+              <div class="generated-link" id="generated-link-display">
+                <span id="generated-link-text"></span>
+                <button class="btn-copy" onclick="copyLink()">Copiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Links Rápidos</div></div>
+          <div class="panel-body" style="padding-top:4px;padding-bottom:4px">
+            <div class="quick-links" id="quick-links"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const AFFILIATE = {
+  name: "Leticia Ferrari", id: "leticia-ferrari", email: "leticia.ferrari@liv.law",
+  totalClicks: null, totalLeads: 156, totalConverted: 126,
+};
+
+const STAGE_COMMISSION = {"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":100};
+const COMMISSION_FLOW  = ["Lead Recebido","Em Atendimento","Reunião Agendada","Oportunidade","Convertido"];
+
+function calcLeadCommission(stage) {
+  const eff = stage === "Não Convertido" ? "Lead Recebido" : stage;
+  const idx = COMMISSION_FLOW.indexOf(eff);
+  if (idx === -1) return 0;
+  return COMMISSION_FLOW.slice(0, idx+1).reduce((s,k)=>s+(STAGE_COMMISSION[k]||0),0);
+}
+
+const fmtUSD = v => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(v);
+const fmtDate = s => { const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; };
+
+const STAGE_ORDER = ["Lead Recebido","Em Atendimento","Reunião Agendada","Oportunidade","Convertido","Não Convertido"];
+
+const STAGE_BADGE = {
+  "Lead Recebido":    {cls:"stage-lr", emoji:"📥"},
+  "Em Atendimento":   {cls:"stage-ea", emoji:"📞"},
+  "Reunião Agendada": {cls:"stage-ra", emoji:"📅"},
+  "Oportunidade":     {cls:"stage-op", emoji:"🤝"},
+  "Convertido":       {cls:"stage-cv", emoji:"💰"},
+  "Não Convertido":   {cls:"stage-nc", emoji:"❌"},
+};
+
+const LEADS = [
+  {id:"209952239135",name:"Romulo Q.**",stage:"Convertido",createdAt:"2026-03-18",stageDate:"2026-03-24",product:"EB-2 NIW"},
+  {id:"205673203113",name:"Andreia S.**",stage:"Não Convertido",createdAt:"2026-02-26",stageDate:"2026-02-26",product:null},
+  {id:"197257431867",name:"Camila F.J.**",stage:"Não Convertido",createdAt:"2026-01-29",stageDate:"2026-02-06",product:"E-2"},
+  {id:"192738144618",name:"Arnaldo C.P.J.**",stage:"Convertido",createdAt:"2026-01-13",stageDate:"2023-02-08",product:"EB-2 NIW"},
+  {id:"176239125666",name:"Pedro C.P.**",stage:"Não Convertido",createdAt:"2025-11-18",stageDate:"2025-11-18",product:null},
+  {id:"176062475819",name:"Ana R.O.**",stage:"Convertido",createdAt:"2025-11-17",stageDate:"2025-11-21",product:"EB-1A"},
+  {id:"170724496702",name:"Felipe M.D.L.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
+  {id:"170725110644",name:"Morgana J.Z.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
+  {id:"165910539780",name:"Camila G.**",stage:"Não Convertido",createdAt:"2025-10-21",stageDate:"2025-10-28",product:"O-1"},
+  {id:"160141296992",name:"Jorge C.F.**",stage:"Não Convertido",createdAt:"2025-10-01",stageDate:"2025-10-01",product:null},
+  {id:"159850440373",name:"Maria C.D.S.S.**",stage:"Não Convertido",createdAt:"2025-09-30",stageDate:"2025-09-30",product:null},
+  {id:"159821141941",name:"Andressa O.D.S.**",stage:"Não Convertido",createdAt:"2025-09-30",stageDate:"2025-09-30",product:null},
+  {id:"157662396846",name:"Francilande M.P.S.S.**",stage:"Convertido",createdAt:"2025-09-23",stageDate:"2022-11-28",product:"EB-2 NIW"},
+  {id:"153848528403",name:"Miriam M.**",stage:"Não Convertido",createdAt:"2025-09-08",stageDate:"2025-09-08",product:null},
+  {id:"152677600114",name:"Stéffany O.**",stage:"Não Convertido",createdAt:"2025-09-03",stageDate:"2025-09-03",product:null},
+  {id:"150568540579",name:"Sergio Z.**",stage:"Não Convertido",createdAt:"2025-08-26",stageDate:"2025-08-28",product:"EB-2 NIW"},
+  {id:"149883184033",name:"Paula G.**",stage:"Não Convertido",createdAt:"2025-08-23",stageDate:"2025-08-23",product:null},
+  {id:"148494395236",name:"Thiago M.**",stage:"Convertido",createdAt:"2025-08-19",stageDate:"2025-08-21",product:"EB-2 NIW"},
+  {id:"139223239462",name:"Uarlem J.D.F.O.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
+  {id:"139213151000",name:"Sandro R.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
+  {id:"129008024867",name:"Wendel A.**",stage:"Não Convertido",createdAt:"2025-06-12",stageDate:"2025-06-12",product:null},
+  {id:"123189484298",name:"Rafael N.**",stage:"Convertido",createdAt:"2025-05-21",stageDate:"2022-11-07",product:"EB-2 NIW"},
+  {id:"158484387900",name:"Vitória C.**",stage:"Não Convertido",createdAt:"2025-05-20",stageDate:"2025-05-20",product:null},
+  {id:"114865888892",name:"Filipe D.**",stage:"Não Convertido",createdAt:"2025-04-18",stageDate:"2025-04-18",product:null},
+  {id:"108801883434",name:"Livia P.**",stage:"Não Convertido",createdAt:"2025-03-25",stageDate:"2025-03-25",product:null},
+  {id:"105896435115",name:"Andressa B.L.**",stage:"Não Convertido",createdAt:"2025-03-13",stageDate:"2025-03-13",product:null},
+  {id:"105861341835",name:"Julius W.**",stage:"Não Convertido",createdAt:"2025-03-13",stageDate:"2025-03-13",product:"E-2"},
+  {id:"105053610777",name:"Samuel P.**",stage:"Convertido",createdAt:"2025-03-10",stageDate:"2025-03-10",product:"EB-2 NIW"},
+  {id:"102607372471",name:"Giuseppe A.**",stage:"Convertido",createdAt:"2025-02-27",stageDate:"2025-02-27",product:"E-2"},
+  {id:"100072843575",name:"Wanderson C.C.**",stage:"Não Convertido",createdAt:"2025-02-17",stageDate:"2025-02-19",product:"L-1A"},
+  {id:"99238309027",name:"Carlos E.V.S.**",stage:"Convertido",createdAt:"2025-02-13",stageDate:"2025-02-13",product:"EB-1A"},
+  {id:"99235638081",name:"Michel M.F.**",stage:"Convertido",createdAt:"2025-02-13",stageDate:"2024-04-10",product:"EB-2 NIW"},
+  {id:"99032246939",name:"Angelo D.O.**",stage:"Não Convertido",createdAt:"2025-02-12",stageDate:"2025-02-19",product:"EB-2 NIW"},
+  {id:"94730385467",name:"Diego C.**",stage:"Não Convertido",createdAt:"2025-01-27",stageDate:"2025-02-14",product:"EB-2 NIW"},
+  {id:"91855412802",name:"Paulo C.D.S.C.J.**",stage:"Convertido",createdAt:"2025-01-15",stageDate:"2025-01-16",product:"EB-2 NIW"},
+  {id:"89711199924",name:"Fabricio P.D.S.**",stage:"Não Convertido",createdAt:"2025-01-07",stageDate:"2025-01-07",product:null},
+  {id:"85235021591",name:"Matheus C.**",stage:"Não Convertido",createdAt:"2024-12-20",stageDate:"2025-05-21",product:"O-1"},
+  {id:"81132684462",name:"Timothy T.O.**",stage:"Convertido",createdAt:"2024-11-29",stageDate:"2024-12-03",product:"EB-2 NIW"},
+  {id:"80590289941",name:"Alexandre P.D.S.**",stage:"Convertido",createdAt:"2024-11-27",stageDate:"2024-11-27",product:"EB-1A"},
+  {id:"76995103410",name:"Rogeria C.**",stage:"Convertido",createdAt:"2024-11-12",stageDate:"2024-11-12",product:"EB-2 NIW"},
+  {id:"75270511997",name:"Ricardo D.**",stage:"Convertido",createdAt:"2024-11-05",stageDate:"2024-11-08",product:"EB-2 NIW"},
+  {id:"82271221815",name:"Maria C.N.M.M.**",stage:"Não Convertido",createdAt:"2024-10-24",stageDate:"2024-10-24",product:null},
+  {id:"71697372198",name:"Roberto C.**",stage:"Convertido",createdAt:"2024-10-24",stageDate:"2024-10-31",product:"EB-2 NIW"},
+  {id:"62528627111",name:"Leonardo P.S.D.M.**",stage:"Não Convertido",createdAt:"2024-10-03",stageDate:"2024-10-03",product:null},
+  {id:"64321936679",name:"Ketlyn C.R.D.M.**",stage:"Não Convertido",createdAt:"2024-10-03",stageDate:"2024-10-03",product:null},
+  {id:"57444274500",name:"Renata L.**",stage:"Convertido",createdAt:"2024-09-12",stageDate:"2023-12-10",product:null},
+  {id:"51868510231",name:"Angelica S.**",stage:"Convertido",createdAt:"2024-08-26",stageDate:"2024-08-28",product:"EB-2 NIW"},
+  {id:"46730169617",name:"Daniel L.**",stage:"Convertido",createdAt:"2024-08-08",stageDate:"2024-08-01",product:"EB-2 NIW"},
+  {id:"43318753929",name:"Ana P.G.**",stage:"Convertido",createdAt:"2024-07-28",stageDate:"2024-08-01",product:"EB-2 NIW"},
+  {id:"39701832872",name:"Danilo F.**",stage:"Não Convertido",createdAt:"2024-07-16",stageDate:"2025-08-18",product:"EB-2 NIW"},
+  {id:"37937282110",name:"Viviane K.**",stage:"Convertido",createdAt:"2024-07-10",stageDate:"2023-05-08",product:"EB-2 NIW"},
+  {id:"37513246030",name:"Ricardo G.**",stage:"Convertido",createdAt:"2024-07-09",stageDate:"2024-07-09",product:"EB-2 NIW"},
+  {id:"35614660473",name:"Patricia M.Q.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-13",product:"EB-2 NIW"},
+  {id:"35634229117",name:"André L.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-09-04",product:"EB-2 NIW"},
+  {id:"35642532431",name:"Gisele M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-22",product:"EB-2 NIW"},
+  {id:"35642532162",name:"Teógenes P.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-11",product:"O-1"},
+  {id:"35633429071",name:"Wellington S.**",stage:"Não Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35631139077",name:"Milene D.Á.M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-12",product:"EB-2 NIW"},
+  {id:"35632850949",name:"Vitor S.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-02",product:"EB-2 NIW"},
+  {id:"35641436688",name:"Aline P.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35633428352",name:"Thaís B.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-19",product:"EB-2 NIW"},
+  {id:"35634209877",name:"Cleider L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-23",product:"EB-2 NIW"},
+  {id:"35641292701",name:"Marcos R.V.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-07",product:"EB-2 NIW"},
+  {id:"35634408735",name:"Viviane L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35616746005",name:"Jakeline C.V.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-09",product:"EB-2 NIW"},
+  {id:"35629388320",name:"Eli O.S.D.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
+  {id:"35628702749",name:"Guilherme G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
+  {id:"35633450169",name:"Hiago L.F.R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-11",product:"EB-2 NIW"},
+  {id:"35633125436",name:"Valmir S.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-03-16",product:"EB-2 NIW"},
+  {id:"35633428038",name:"Rodrigo G.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-27",product:"EB-2 NIW"},
+  {id:"35628702509",name:"Camila G.D.M.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-24",product:"EB-2 NIW"},
+  {id:"35633410928",name:"John E.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-03-07",product:"EB-2 NIW"},
+  {id:"35629746980",name:"Maria C.M.R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-23",product:"EB-2 NIW"},
+  {id:"35629726049",name:"João**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-03-14",product:"EB-2 NIW"},
+  {id:"35616405339",name:"Tiago D.F.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-13",product:"EB-2 NIW"},
+  {id:"35632535095",name:"João A.D.Q.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-06",product:"EB-2 NIW"},
+  {id:"35642232116",name:"Danielle B.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-30",product:"EB-2 NIW"},
+  {id:"35633939734",name:"Lorena A.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-27",product:"EB-2 NIW"},
+  {id:"35632768378",name:"Juarez P.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-19",product:"EB-2 NIW"},
+  {id:"35629725833",name:"Sidney C.D.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-16",product:"EB-2 NIW"},
+  {id:"35631363480",name:"Alexandre F.L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-23",product:"EB-2 NIW"},
+  {id:"35633449537",name:"Maria A.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-03",product:"EB-2 NIW"},
+  {id:"35628734751",name:"Mika S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35633699903",name:"Diego P.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-01-24",product:"EB-2 NIW"},
+  {id:"35631746918",name:"Pablo K.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-11-18",product:"EB-2 NIW"},
+  {id:"35617311776",name:"Dinarte S.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-12-28",product:"EB-2 NIW"},
+  {id:"35633838240",name:"Tamara S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35633634471",name:"Andrea D.S.G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-12-13",product:"EB-2 NIW"},
+  {id:"35633699853",name:"Carlos M.S.R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-12-20",product:"EB-2 NIW"},
+  {id:"35632358747",name:"Mariana C.O.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-10-17",product:"EB-2 NIW"},
+  {id:"35634225552",name:"Neliza J.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-10-11",product:"EB-2 NIW"},
+  {id:"35632672129",name:"Nathalia F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-10-21",product:"EB-2 NIW"},
+  {id:"35633699760",name:"Ellan C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-09-23",product:"EB-2 NIW"},
+  {id:"35631363384",name:"Weber A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-08-23",product:"EB-2 NIW"},
+  {id:"35630758001",name:"Rafaelclementino S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35617311658",name:"Nathalia P.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-09-02",product:"EB-2 NIW"},
+  {id:"35633699759",name:"Gardênia V.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-10-08",product:"EB-2 NIW"},
+  {id:"35628701815",name:"Ricardo L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-09-17",product:"EB-2 NIW"},
+  {id:"35632849266",name:"Luziatavares19**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35632391541",name:"Rdibai**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35633626690",name:"Wellington C.**",stage:"Não Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35634225218",name:"Eustáquio R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2022-07-01",product:"EB-2 NIW"},
+  {id:"35617310567",name:"Roberta K.Q.D.S.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-10-01",product:"EB-2 NIW"},
+  {id:"35633426071",name:"Leonardo P.C.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-02-27",product:"EB-2 NIW"},
+  {id:"35631745452",name:"Flavio D.A.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-11-13",product:"EB-2 NIW"},
+  {id:"35633633133",name:"João B.D.S.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-14",product:"EB-2 NIW"},
+  {id:"35631395594",name:"Rafael D.O.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-08",product:"EB-2 NIW"},
+  {id:"35631135564",name:"Lucas M.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-10",product:"EB-2 NIW"},
+  {id:"35632766765",name:"Simone F.C.T.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-07-27",product:"EB-2 NIW"},
+  {id:"35633017346",name:"Alberto S.K.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-02",product:"EB-2 NIW"},
+  {id:"35629004107",name:"PRISCILA Z.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-03",product:"EB-2 NIW"},
+  {id:"35632356786",name:"Juliana B.D.D.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35630699188",name:"Aline B.D.C.D.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-02",product:"EB-2 NIW"},
+  {id:"35640332885",name:"Giceli N.Z.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-10-18",product:"EB-2 NIW"},
+  {id:"35631417381",name:"Vinícius A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-23",product:"EB-2 NIW"},
+  {id:"35616402996",name:"Rangel D.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-05-17",product:"EB-2 NIW"},
+  {id:"35633008140",name:"Michele P.D.A.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-07-03",product:"EB-2 NIW"},
+  {id:"35629881113",name:"Bruno H.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-09-05",product:"EB-2 NIW"},
+  {id:"35614333859",name:"Carolina R.G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-03-27",product:"EB-2 NIW"},
+  {id:"35613539347",name:"Danilo D.L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2025-02-06",product:"EB-2 NIW"},
+  {id:"35628872234",name:"Carlos F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-12-18",product:"EB-2 NIW"},
+  {id:"35631383093",name:"Marcio D.S.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-22",product:"EB-2 NIW"},
+  {id:"35631744657",name:"Antônio L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-09",product:"EB-2 NIW"},
+  {id:"35633425255",name:"Larissa C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-10-18",product:"EB-2 NIW"},
+  {id:"35617309494",name:"Silvana C.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-12-07",product:"EB-2 NIW"},
+  {id:"35628872233",name:"Gislene A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-10-02",product:"EB-2 NIW"},
+  {id:"35631352115",name:"Haroldo A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-02-15",product:"EB-2 NIW"},
+  {id:"35617891398",name:"Igor B.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-08",product:"EB-2 NIW"},
+  {id:"35617309493",name:"Lucas T.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-02-20",product:"EB-2 NIW"},
+  {id:"35633332125",name:"Thamires L.G.N.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-07",product:"EB-2 NIW"},
+  {id:"35641284136",name:"Adriana M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-21",product:"EB-2 NIW"},
+  {id:"35633007929",name:"Lilian M.R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-07-24",product:"EB-2 NIW"},
+  {id:"35633146960",name:"Janse R.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-28",product:"EB-2 NIW"},
+  {id:"35629743638",name:"Lucilaine L.D.S.R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-16",product:"EB-2 NIW"},
+  {id:"35630755608",name:"José J.J.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-02-02",product:"EB-1A"},
+  {id:"35632765998",name:"João L.D.C.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-12-06",product:"EB-2 NIW"},
+  {id:"35632382012",name:"Ana C.B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-12-01",product:"EB-2 NIW"},
+  {id:"35631744647",name:"Marlon O.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-12-11",product:"EB-2 NIW"},
+  {id:"35629003403",name:"Alcineia C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-10-25",product:"EB-2 NIW"},
+  {id:"35630239807",name:"Andréa A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-11",product:"EB-2 NIW"},
+  {id:"35614675894",name:"Renata S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-16",product:"EB-2 NIW"},
+  {id:"35631110038",name:"Williams R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35628813395",name:"Simone B.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-30",product:"EB-2 NIW"},
+  {id:"35629743637",name:"Jefferson P.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-02-01",product:"EB-2 NIW"},
+  {id:"35628813394",name:"Jaqueline C.K.G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-17",product:"EB-2 NIW"},
+  {id:"35632382008",name:"Paulo R.V.D.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-31",product:"EB-2 NIW"},
+  {id:"35632752448",name:"Milena B.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-07-03",product:null},
+  {id:"35614333713",name:"David R.D.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-30",product:"EB-2 NIW"},
+  {id:"35627033679",name:"Tomaz V.A.D.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-15",product:"EB-2 NIW"},
+  {id:"35629880722",name:"Jose M.J.O.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-06-17",product:"EB-2 NIW"},
+  {id:"35629384288",name:"Eloisa D.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-03",product:"EB-2 NIW"},
+  {id:"35631134361",name:"Luz D.C.G.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2025-09-30",product:"EB-2 NIW"},
+  {id:"35632765562",name:"Amauri G.C.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-07-19",product:"EB-2 NIW"},
+  {id:"35631351706",name:"Thyago M.L.D.L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-08",product:"EB-2 NIW"},
+  {id:"35631340094",name:"Marcelo R.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-03-28",product:"EB-2 NIW"},
+  {id:"35631744171",name:"Daniel M.S.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-06-11",product:"EB-2 NIW"},
+];
+
+const CHART_DATA = [
+  {label:"Jul/24",leads:108},{label:"Ago/24",leads:2},{label:"Set/24",leads:1},
+  {label:"Out/24",leads:4},{label:"Nov/24",leads:5},{label:"Dez/24",leads:2},
+  {label:"Jan/25",leads:7},{label:"Fev/25",leads:5},{label:"Mar/25",leads:4},
+  {label:"Abr/25",leads:1},{label:"Mai/25",leads:2},{label:"Jun/25",leads:1},
+  {label:"Jul/25",leads:3},{label:"Ago/25",leads:3},{label:"Set/25",leads:5},
+  {label:"Out/25",leads:6},{label:"Nov/25",leads:2},{label:"Dez/25",leads:0},
+  {label:"Jan/26",leads:2},{label:"Fev/26",leads:1},{label:"Mar/26",leads:1},
+  {label:"Abr/26",leads:0},{label:"Mai/26",leads:0},{label:"Jun/26",leads:0},
+];
+
+const QUICK_LINKS = [
+  {label:"Visto EB-2 NIW",url:"https://liv.law/visto-eb2-niw"},
+  {label:"Visto O-1 Habilidades Extraordinárias",url:"https://liv.law/visto-o1"},
+  {label:"Visto L-1 Transferência Intraempresarial",url:"https://liv.law/visto-l1"},
+  {label:"Visto E-2 Investidor",url:"https://liv.law/visto-e2"},
+  {label:"Visto EB-1A",url:"https://liv.law/visto-eb1a"},
+];
+
+const MONTH_MAP = {Jan:0,Fev:1,Mar:2,Abr:3,Mai:4,Jun:5,Jul:6,Ago:7,Set:8,Out:9,Nov:10,Dez:11};
+
+// ============================================================
+// HISTORY BUILDER
+// ============================================================
+function buildLeadHistory(lead) {
+  const FLOW = [
+    {key:"Lead Recebido",event:"Lead recebido",commission:3},
+    {key:"Em Atendimento",event:"Em Atendimento",commission:5},
+    {key:"Reunião Agendada",event:"Reunião Agendada",commission:20},
+    {key:"Oportunidade",event:"Oportunidade",commission:50},
+  ];
+  const TERMINAL = {
+    "Convertido":{label:"Cliente convertido",commission:100},
+    "Não Convertido":{label:"Não convertido",commission:0},
+  };
+  const isTerminal = Boolean(TERMINAL[lead.stage]);
+  const flowIdx = FLOW.findIndex(s=>s.key===lead.stage);
+  const upTo = isTerminal ? FLOW.length : (flowIdx===-1?1:flowIdx+1);
+  const hist = [];
+  for(let i=0;i<upTo;i++){
+    hist.push({date:i===0?lead.createdAt:null,event:FLOW[i].event,commission:FLOW[i].commission});
+  }
+  if(isTerminal){
+    const t=TERMINAL[lead.stage];
+    hist.push({date:lead.stageDate||null,event:t.label,commission:t.commission});
+  }
+  return hist.filter(h=>h.date!==null);
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let sortCol = "createdAt", sortDir = "desc";
+let expandedId = null;
+let leadsChart = null;
+
+// ============================================================
+// NAV
+// ============================================================
+function showSection(name, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='dashboard') renderDashboard();
+  if(name==='pipeline') renderPipeline();
+  if(name==='links') renderLinks();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function getFilteredLeads() {
+  const from = document.getElementById('date-from').value;
+  const to   = document.getElementById('date-to').value;
+  if(!from && !to) return LEADS;
+  return LEADS.filter(l=>{
+    const d=new Date(l.createdAt);
+    if(from && d<new Date(from)) return false;
+    if(to   && d>new Date(to))   return false;
+    return true;
+  });
+}
+
+function renderDashboard() {
+  const fl = getFilteredLeads();
+  const from = document.getElementById('date-from').value;
+  const to   = document.getElementById('date-to').value;
+  const hasFilter = from||to;
+
+  const converted  = fl.filter(l=>l.stage==='Convertido').length;
+  const inProgress = fl.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
+  const convRate   = fl.length>0 ? ((converted/fl.length)*100).toFixed(1) : '0.0';
+  const commTotal  = fl.reduce((s,l)=>s+calcLeadCommission(l.stage),0);
+
+  // subtitle
+  document.getElementById('dash-subtitle').innerHTML =
+    `Afiliada: <code>leticia-ferrari</code>${hasFilter?` · <span style="color:#3b82f6;font-weight:600">${fl.length} de ${LEADS.length} leads no período</span>`:''}`;
+
+  // clear button
+  document.getElementById('btn-clear-date').style.display = hasFilter?'inline':'none';
+
+  // KPIs
+  const kpis = [
+    {label:'Cliques Totais',value:'N/D',icon:'🖱️',bg:'#eff6ff',note:'Pixel não configurado'},
+    {label:'Leads Gerados',value:fl.length,icon:'👥',bg:'#eef2ff'},
+    {label:'Em Andamento',value:inProgress,icon:'📈',bg:'#fffbeb'},
+    {label:'Convertidos',value:converted,icon:'✅',bg:'#ecfdf5'},
+    {label:'Bonificações',value:fmtUSD(commTotal),icon:'💵',bg:'#fefce8',note:'Valor simulado',small:true},
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:${k.bg}">${k.icon}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value${k.small||String(k.value).length>6?' sm':''}">${k.value}</div>
+      ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
+    </div>`).join('');
+
+  // Banner
+  document.getElementById('conv-banner').innerHTML = `
+    <div class="banner-left">
+      <div class="banner-icon">🏆</div>
+      <div>
+        <div class="banner-label">Taxa de Conversão</div>
+        <div class="banner-rate">${convRate}%</div>
+        <div class="banner-sub">${converted} convertidos de ${fl.length} leads${hasFilter?' (período filtrado)':' gerados'}</div>
+      </div>
+    </div>
+    <div class="banner-box">
+      <div class="banner-box-title">Bonificação Simulada</div>
+      <div class="banner-row"><span class="banner-row-label">💰 Convertidos (×${converted})</span><span class="banner-row-val">${fmtUSD(converted*178)}</span></div>
+      <div class="banner-row"><span class="banner-row-label">❌ Não Conv. (×${fl.length-converted})</span><span class="banner-row-val nc">${fmtUSD((fl.length-converted)*3)}</span></div>
+      <hr class="banner-divider">
+      <div class="banner-row"><span class="banner-total-label">Total</span><span class="banner-total-val">${fmtUSD(commTotal)}</span></div>
+    </div>`;
+
+  // Commission ladder
+  const LADDER = [
+    {emoji:'📥',label:'Lead Recebido',inc:3,acc:3},
+    {emoji:'📞',label:'Em Atendimento',inc:5,acc:8},
+    {emoji:'📅',label:'Reunião Agendada',inc:20,acc:28},
+    {emoji:'🤝',label:'Oportunidade',inc:50,acc:78},
+    {emoji:'💰',label:'Convertido',inc:100,acc:178},
+    {emoji:'❌',label:'Não Convertido',inc:null,acc:3},
+  ];
+  document.getElementById('comm-tbody').innerHTML = LADDER.map(row=>{
+    const count = fl.filter(l=>l.stage===row.label).length;
+    const total = count>0?fmtUSD(count*row.acc):'—';
+    return `<tr>
+      <td>${row.emoji} ${row.label}</td>
+      <td>${row.inc!==null?`<span style="color:#059669;font-weight:600">+${fmtUSD(row.inc)}</span>`:`<span style="color:#94a3b8;font-size:11px">Lead Rec.</span>`}</td>
+      <td style="font-weight:700;color:#1e293b">${fmtUSD(row.acc)}</td>
+      <td style="color:#64748b">${count}</td>
+      <td style="font-weight:600;color:#059669">${total}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('comm-tfoot').innerHTML = `<tr>
+    <td colspan="3" style="color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Total Geral</td>
+    <td style="text-align:right;color:#1e293b;font-weight:700">${fl.length}</td>
+    <td style="text-align:right;color:#059669;font-size:15px;font-weight:800">${fmtUSD(commTotal)}</td>
+  </tr>`;
+
+  // Chart
+  const visibleData = hasFilter ? CHART_DATA.filter(item=>{
+    const [mon,yr]=item.label.split('/');
+    const d=new Date(2000+parseInt(yr,10),MONTH_MAP[mon],1);
+    if(from){const f=new Date(from);if(d<new Date(f.getFullYear(),f.getMonth(),1))return false;}
+    if(to){const t=new Date(to);if(d>new Date(t.getFullYear(),t.getMonth(),31))return false;}
+    return true;
+  }) : CHART_DATA.slice(-12);
+
+  document.getElementById('chart-range').textContent =
+    visibleData.length>0 ? `${visibleData[0].label} → ${visibleData[visibleData.length-1].label}` : '';
+
+  if(leadsChart) leadsChart.destroy();
+  const ctx = document.getElementById('leadsChart').getContext('2d');
+  leadsChart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:visibleData.map(d=>d.label),
+      datasets:[{
+        data:visibleData.map(d=>d.leads),
+        backgroundColor:visibleData.map(d=>d.leads>0?'#3b82f6':'#e2e8f0'),
+        borderRadius:5,
+        borderSkipped:false,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} leads`}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8'}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},color:'#94a3b8',stepSize:1},beginAtZero:true},
+      }
+    }
+  });
+}
+
+// ============================================================
+// PIPELINE
+// ============================================================
+function stageBadgeHtml(stage) {
+  const b=STAGE_BADGE[stage]??STAGE_BADGE['Lead Recebido'];
+  return `<span class="badge ${b.cls}"><span class="badge-dot"></span>${b.emoji} ${stage}</span>`;
+}
+
+function commBadgeHtml(lead) {
+  const v=calcLeadCommission(lead.stage);
+  if(v===0) return `<span class="text-slate">—</span>`;
+  const color = lead.stage==='Convertido'?'#059669':'#64748b';
+  return `<span style="font-weight:600;font-size:13px;color:${color}">${fmtUSD(v)}</span>`;
+}
+
+function setSort(col) {
+  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir='desc';}
+  renderPipeline();
+}
+
+function getProcessedLeads() {
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  const sf=(document.getElementById('stage-select')?.value||'');
+  let arr=[...LEADS];
+  if(q) arr=arr.filter(l=>l.name.toLowerCase().includes(q)||l.id.includes(q));
+  if(sf) arr=arr.filter(l=>l.stage===sf);
+  arr.sort((a,b)=>{
+    let va,vb;
+    if(sortCol==='name'){va=a.name;vb=b.name;}
+    else if(sortCol==='createdAt'){va=a.createdAt;vb=b.createdAt;}
+    else if(sortCol==='stageDate'){va=a.stageDate||'';vb=b.stageDate||'';}
+    else if(sortCol==='stage'){va=STAGE_ORDER.indexOf(a.stage);vb=STAGE_ORDER.indexOf(b.stage);}
+    else if(sortCol==='commission'){va=calcLeadCommission(a.stage);vb=calcLeadCommission(b.stage);}
+    else{va=a.createdAt;vb=b.createdAt;}
+    if(va<vb) return sortDir==='asc'?-1:1;
+    if(va>vb) return sortDir==='asc'?1:-1;
+    return 0;
+  });
+  return arr;
+}
+
+function renderPipeline() {
+  const leads=getProcessedLeads();
+  document.getElementById('pipeline-subtitle').textContent =
+    `${leads.length} de ${LEADS.length} leads · Sincronizado com HubSpot`;
+
+  // sort headers
+  ['name','createdAt','stageDate','stage','commission'].forEach(col=>{
+    const th=document.getElementById('th-'+col);
+    if(!th)return;
+    const icon=col===sortCol?(sortDir==='asc'?' ↑':' ↓'):' ↕';
+    th.innerHTML=th.textContent.replace(/ [↑↓↕]$/,'')+icon;
+  });
+
+  if(leads.length===0){
+    document.getElementById('pipeline-tbody').innerHTML=`<tr><td colspan="6" class="empty-row">🔍 Nenhum lead encontrado para os filtros aplicados.</td></tr>`;
+    document.getElementById('pipeline-info').textContent='';
+    return;
+  }
+
+  document.getElementById('pipeline-tbody').innerHTML = leads.map(lead=>{
+    const isExp = expandedId===lead.id;
+    const hist  = buildLeadHistory(lead);
+    const histHtml = hist.length===0
+      ? '<p style="font-size:12px;color:#94a3b8;font-style:italic">Sem histórico com data disponível.</p>'
+      : `<ol class="history-list">${hist.map((item,i)=>`
+          <li class="history-item">
+            <div class="history-spine">
+              <div class="history-dot ${i===hist.length-1?'last':'past'}"></div>
+              ${i<hist.length-1?'<div class="history-line"></div>':''}
+            </div>
+            <div class="history-body">
+              <div class="history-meta">
+                <span class="history-date">${item.date?fmtDate(item.date):'—'}</span>
+                ${item.commission>0?`<span class="history-comm">+${fmtUSD(item.commission)}</span>`:''}
+              </div>
+              <div class="history-event">${item.event}</div>
+            </div>
+          </li>`).join('')}</ol>`;
+
+    return `
+      <tr class="lead-row${isExp?' expanded':''}" onclick="toggleExpand('${lead.id}')">
+        <td>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="lead-avatar">${lead.name.charAt(0)}</div>
+            <div>
+              <div class="lead-name">${lead.name}</div>
+              <div class="lead-id">${lead.id}</div>
+            </div>
+          </div>
+        </td>
+        <td style="color:#64748b">${fmtDate(lead.createdAt)}</td>
+        <td style="color:#64748b">${lead.stageDate?fmtDate(lead.stageDate):'—'}</td>
+        <td>${stageBadgeHtml(lead.stage)}</td>
+        <td>${commBadgeHtml(lead)}</td>
+        <td style="text-align:right;color:#94a3b8;font-size:18px">${isExp?'∧':'∨'}</td>
+      </tr>
+      ${isExp?`<tr class="expand-row">
+        <td colspan="6">
+          <div class="history-wrap">
+            <div class="history-title">Histórico de Atualizações</div>
+            ${histHtml}
+          </div>
+        </td>
+      </tr>`:''}`;
+  }).join('');
+
+  document.getElementById('pipeline-info').textContent =
+    `Exibindo ${leads.length} de ${LEADS.length} leads`;
+}
+
+function toggleExpand(id) {
+  expandedId = expandedId===id ? null : id;
+  renderPipeline();
+}
+
+// ============================================================
+// LINKS
+// ============================================================
+function renderLinks() {
+  document.getElementById('quick-links').innerHTML = QUICK_LINKS.map(ql=>`
+    <div class="quick-link-item">
+      <div>
+        <div class="quick-link-label">${ql.label}</div>
+        <div class="quick-link-url">${ql.url}</div>
+      </div>
+      <button class="btn-copy" onclick="useQuickLink('${ql.url}')">Usar</button>
+    </div>`).join('');
+}
+
+function generateLink() {
+  const base = document.getElementById('link-url-input').value.trim();
+  if(!base){alert('Informe a URL de destino.');return;}
+  try{const u=new URL(base);u.searchParams.set('utm_source','afiliada');u.searchParams.set('utm_medium','referral');u.searchParams.set('utm_campaign','leticia-ferrari');u.searchParams.set('utm_affiliatename','leticia-ferrari');
+    document.getElementById('generated-link-text').textContent=u.toString();
+    document.getElementById('generated-link-wrap').style.display='block';
+  }catch{alert('URL inválida.');}
+}
+
+function useQuickLink(url) {
+  document.getElementById('link-url-input').value=url;
+  generateLink();
+}
+
+function copyLink() {
+  const t=document.getElementById('generated-link-text').textContent;
+  navigator.clipboard.writeText(t).catch(()=>{});
+  const btn=event.target;
+  btn.textContent='✓ Copiado';
+  setTimeout(()=>btn.textContent='Copiar',1500);
+}
+
+// ============================================================
+// DATE FILTER EVENTS
+// ============================================================
+document.getElementById('date-from').addEventListener('change',renderDashboard);
+document.getElementById('date-to').addEventListener('change',renderDashboard);
+document.getElementById('btn-clear-date').addEventListener('click',()=>{
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  renderDashboard();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+renderDashboard();
+renderLinks();
+</script>
+</body>
+</html>

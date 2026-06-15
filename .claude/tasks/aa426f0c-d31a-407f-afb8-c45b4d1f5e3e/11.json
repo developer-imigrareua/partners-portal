@@ -1,0 +1,9 @@
+{
+  "id": "11",
+  "subject": "Fix auth logo sizing + sidebar white logo",
+  "description": "Reduce auth card logo container, use white logo URL for sidebar",
+  "activeForm": "Fixing logos",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

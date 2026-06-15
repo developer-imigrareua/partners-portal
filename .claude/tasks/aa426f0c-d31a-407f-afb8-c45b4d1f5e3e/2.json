@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "Construir componentes React (Sidebar, Dashboard, Pipeline, LinkGenerator)",
+  "description": "Implementar todos os módulos com Tailwind + Lucide, responsividade, filtros, modal expand, gerador de links UTM, feedback de cópia",
+  "activeForm": "Codificando componentes React",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

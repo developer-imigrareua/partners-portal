@@ -1,0 +1,9 @@
+{
+  "id": "7",
+  "subject": "Cadastro de afiliados + fluxo de aprovação",
+  "description": "Formulário de cadastro, status pending/active/rejected, notificação no admin",
+  "activeForm": "Construindo cadastro de afiliados",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,9 @@
+{
+  "id": "10",
+  "subject": "Atualizar portal: HS ID por afiliado + bonificação por afiliado + renomear",
+  "description": "1) Campo HS affiliate ID no admin + botão sync que busca leads/vendas no HubSpot via MCP. 2) Modelos de bonificação por afiliado (presets + customização). 3) Renomear tudo de comissionamento → bonificação.",
+  "activeForm": "Reestruturando o portal",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

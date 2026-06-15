@@ -1,0 +1,9 @@
+{
+  "id": "8",
+  "subject": "Painel Admin (aplicações + matriz de comissionamento)",
+  "description": "Admin overview, lista de pendentes com aprovar/rejeitar, lista de afiliados ativos, matriz produto×etapa editável",
+  "activeForm": "Construindo painel admin",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

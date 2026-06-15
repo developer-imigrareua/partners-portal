@@ -1,0 +1,200 @@
+function Sidebar({ active, onChange, affiliate, onClose }) {
+  const navItems = [
+    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+    { key: "pipeline", label: "Meus Leads", Icon: Users },
+    { key: "links", label: "Gerador de Links", Icon: Link2 },
+  ];
+
+  return (
+    <aside className="h-full w-64 bg-slate-900 flex flex-col">
+      {/* Logo */}
+      <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-black text-sm tracking-tight">LIV</span>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-tight">Portal Afiliados</p>
+            <p className="text-slate-400 text-xs">liv.law</p>
+          </div>
+        </div>
+        {/* Mobile close */}
+        {onClose && (
+          <button onClick={onClose} className="text-slate-400 hover:text-white lg:hidden">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Affiliate card */}
+      <div className="px-4 py-4 border-b border-slate-700/50">
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center border border-blue-500/30 flex-shrink-0">
+              <span className="text-blue-300 font-bold text-sm">
+                {affiliate.name.charAt(0)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-sm font-semibold truncate">{affiliate.name}</p>
+              <p className="text-slate-400 text-xs font-mono">{affiliate.id}</p>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-700 flex justify-between">
+            <div>
+              <p className="text-slate-400 text-xs mb-0.5">Saldo</p>
+              <p className="text-emerald-400 text-sm font-bold">
+                {formatCurrency(affiliate.commissionBalance)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-slate-400 text-xs mb-0.5">Convers\u00e3o</p>
+              <p className="text-white text-sm font-bold">{affiliate.conversionRate}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-4 mb-3">
+          Menu
+        </p>
+        {navItems.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => {
+              onChange(key);
+              onClose?.();
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              active === key
+                ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            <Icon size={18} className="flex-shrink-0" />
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-slate-700/50">
+        <div className="px-4 py-2 mb-2">
+          <p className="text-xs text-slate-500 leading-tight">
+            Dados protegidos conforme LGPD
+          </p>
+        </div>
+        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+          <LogOut size={16} className="flex-shrink-0" />
+          Sair
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ============================================================
+// ROOT APP
+// ============================================================
+
+export default function App() {
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const sectionTitles = {
+    dashboard: "Dashboard",
+    pipeline: "Pipeline de Leads",
+    links: "Gerador de Links",
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex font-sans">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-20 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar \u2014 fixed on desktop, slide-in on mobile */}
+      <div
+        className={`fixed top-0 left-0 h-full z-30 transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
+      >
+        <Sidebar
+          active={activeSection}
+          onChange={setActiveSection}
+          affiliate={MOCK_AFFILIATE}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
+
+      {/* Main column */}
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+          {/* Hamburger (mobile) */}
+          <button
+            className="lg:hidden text-slate-600 hover:text-slate-800 p-1"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu"
+          >
+            <Menu size={22} />
+          </button>
+
+          {/* Breadcrumb */}
+          <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500">
+            <span className="text-slate-400">Portal Afiliados</span>
+            <span>/</span>
+            <span className="text-slate-800 font-semibold">{sectionTitles[activeSection]}</span>
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            {/* Mock notification bell */}
+            <button className="relative text-slate-500 hover:text-slate-800 transition-colors p-1.5">
+              <Bell size={20} />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </button>
+
+            {/* Avatar */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {MOCK_AFFILIATE.name.charAt(0)}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-semibold text-slate-800 leading-tight">
+                  {MOCK_AFFILIATE.name}
+                </p>
+                <p className="text-xs text-slate-400 font-mono">{MOCK_AFFILIATE.id}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-5 sm:p-7 lg:p-8">
+          {activeSection === "dashboard" && (
+            <DashboardSection affiliate={MOCK_AFFILIATE} />
+          )}
+          {activeSection === "pipeline" && <PipelineSection />}
+          {activeSection === "links" && (
+            <LinkGeneratorSection affiliate={MOCK_AFFILIATE} />
+          )}
+        </main>
+
+        {/* Footer */}
+        <footer className="px-6 py-4 border-t border-slate-200 bg-white">
+          <p className="text-xs text-slate-400 text-center">
+            \u00a9 2026 LIV \u2014 Escrit\u00f3rio de Advocacia Imigrat\u00f3ria \u00b7 Dados processados conforme a{" "}
+            <span className="font-semibold">Lei Geral de Prote\u00e7\u00e3o de Dados (LGPD)</span>
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}
+"}, "caller": {"type": "direct"}}], "stop_reason": "tool_use", "stop_sequence": null, "stop_details": null, "usage": {"input_tokens": 1, "cache_creation_input_tokens": 90, "cache_read_input_tokens": 50810, "output_tokens": 12378, "server_tool_use": {"web_search_requests": 0, "web_fetch_requests": 0}, "service_tier": "standard", "cache_creation": {"ephemeral_1h_input_tokens": 90, "ephemeral_5m_input_tokens": 0}, "inference_geo": "not_available", "iterations": [{"input_tokens": 1, "output_tokens": 12378, "cache_read_input_tokens": 50810, "cache_creation_input_tokens": 90, "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 90}, "type": "message"}], "speed": "standard"}, "diagnostics": null}, "requestId": "req_011CbwXRUY4rMuHiTaf8xXcp", "type": "assistant", "uuid": "0e28e8fa-6caa-4d83-909c-81fe60a01bac", "timestamp": "2026-06-11T13:10:58.497Z", "userType": "external", "entrypoint": "local-agent", "cwd": "C:\Users\Olive\AppData\Roaming\Claude\local-agent-mode-sessions\d9a07259-1aa2-4e9a-9784-05b7ccf76d4c\478f7d2d-573c-448c-9d69-2d8073333f53\local_be190a9b-d0fb-45e7-86ee-a96eac48d741\outputs", "sessionId": "aa426f0c-d31a-407f-afb8-c45b4d1f5e3e", "version": "2.1.170", "gitBranch": "HEAD"}

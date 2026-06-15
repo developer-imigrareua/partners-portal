@@ -1,0 +1,168 @@
+function Sidebar({ active, onChange, affiliate, onClose }) {
+988	  const navItems = [
+989	    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+990	    { key: "pipeline", label: "Meus Leads", Icon: Users },
+991	    { key: "links", label: "Gerador de Links", Icon: Link2 },
+992	  ];
+993	
+994	  return (
+995	    <aside className="h-full w-64 bg-slate-900 flex flex-col">
+996	      {/* Logo */}
+997	      <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
+998	        <div className="flex items-center gap-3">
+999	          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+1000	            <span className="text-white font-black text-sm tracking-tight">LIV</span>
+1001	          </div>
+1002	          <div>
+1003	            <p className="text-white font-bold text-sm leading-tight">Portal Afiliados</p>
+1004	            <p className="text-slate-400 text-xs">liv.law</p>
+1005	          </div>
+1006	        </div>
+1007	        {onClose && (
+1008	          <button onClick={onClose} className="text-slate-400 hover:text-white lg:hidden">
+1009	            <X size={18} />
+1010	          </button>
+1011	        )}
+1012	      </div>
+1013	
+1014	      {/* Affiliate card */}
+1015	      <div className="px-4 py-4 border-b border-slate-700/50">
+1016	        <div className="bg-slate-800 rounded-xl p-4">
+1017	          <div className="flex items-center gap-3">
+1018	            <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center border border-blue-500/30 flex-shrink-0">
+1019	              <span className="text-blue-300 font-bold text-sm">{affiliate.name.charAt(0)}</span>
+1020	            </div>
+1021	            <div className="min-w-0">
+1022	              <p className="text-white text-sm font-semibold truncate">{affiliate.name}</p>
+1023	              <p className="text-slate-400 text-xs font-mono">{affiliate.id}</p>
+1024	            </div>
+1025	          </div>
+1026	          <div className="mt-3 pt-3 border-t border-slate-700 flex justify-between">
+1027	            <div>
+1028	              <p className="text-slate-400 text-xs mb-0.5">Leads</p>
+1029	              <p className="text-white text-sm font-bold">{affiliate.totalLeads}</p>
+1030	            </div>
+1031	            <div className="text-right">
+1032	              <p className="text-slate-400 text-xs mb-0.5">Convers\u00e3o</p>
+1033	              <p className="text-white text-sm font-bold">{affiliate.conversionRate}%</p>
+1034	            </div>
+1035	          </div>
+1036	        </div>
+1037	      </div>
+1038	
+1039	      {/* Nav */}
+1040	      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+1041	        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-4 mb-3">Menu</p>
+1042	        {navItems.map(({ key, label, Icon }) => (
+1043	          <button
+1044	            key={key}
+1045	            onClick={() => { onChange(key); onClose?.(); }}
+1046	            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+1047	              active === key
+1048	                ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+1049	                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+1050	            }`}
+1051	          >
+1052	            <Icon size={18} className="flex-shrink-0" />
+1053	            {label}
+1054	          </button>
+1055	        ))}
+1056	      </nav>
+1057	
+1058	      <div className="p-4 border-t border-slate-700/50">
+1059	        <div className="px-4 py-2 mb-2">
+1060	          <p className="text-xs text-slate-500 leading-tight">Dados protegidos conforme LGPD</p>
+1061	        </div>
+1062	        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+1063	          <LogOut size={16} className="flex-shrink-0" />
+1064	          Sair
+1065	        </button>
+1066	      </div>
+1067	    </aside>
+1068	  );
+1069	}
+1070	
+1071	// ============================================================
+1072	// ROOT APP
+1073	// ============================================================
+1074	
+1075	export default function App() {
+1076	  const [activeSection, setActiveSection] = useState("dashboard");
+1077	  const [sidebarOpen, setSidebarOpen] = useState(false);
+1078	
+1079	  const sectionTitles = {
+1080	    dashboard: "Dashboard",
+1081	    pipeline: "Pipeline de Leads",
+1082	    links: "Gerador de Links",
+1083	  };
+1084	
+1085	  return (
+1086	    <div className="min-h-screen bg-slate-100 flex font-sans">
+1087	      {sidebarOpen && (
+1088	        <div
+1089	          className="fixed inset-0 bg-black/60 z-20 lg:hidden backdrop-blur-sm"
+1090	          onClick={() => setSidebarOpen(false)}
+1091	        />
+1092	      )}
+1093	
+1094	      <div className={`fixed top-0 left-0 h-full z-30 transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+1095	        <Sidebar
+1096	          active={activeSection}
+1097	          onChange={setActiveSection}
+1098	          affiliate={AFFILIATE}
+1099	          onClose={() => setSidebarOpen(false)}
+1100	        />
+1101	      </div>
+1102	
+1103	      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+1104	        {/* Top bar */}
+1105	        <header className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+1106	          <button
+1107	            className="lg:hidden text-slate-600 hover:text-slate-800 p-1"
+1108	            onClick={() => setSidebarOpen(true)}
+1109	            aria-label="Abrir menu"
+1110	          >
+1111	            <Menu size={22} />
+1112	          </button>
+1113	
+1114	          <div className="hidden lg:flex items-center gap-2 text-sm text-slate-500">
+1115	            <span className="text-slate-400">Portal Afiliados</span>
+1116	            <span>/</span>
+1117	            <span className="text-slate-800 font-semibold">{sectionTitles[activeSection]}</span>
+1118	          </div>
+1119	
+1120	          <div className="flex items-center gap-3 ml-auto">
+1121	            <button className="relative text-slate-500 hover:text-slate-800 transition-colors p-1.5">
+1122	              <Bell size={20} />
+1123	              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+1124	            </button>
+1125	            <div className="flex items-center gap-2.5">
+1126	              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+1127	                {AFFILIATE.name.charAt(0)}
+1128	              </div>
+1129	              <div className="hidden md:block">
+1130	                <p className="text-sm font-semibold text-slate-800 leading-tight">{AFFILIATE.name}</p>
+1131	                <p className="text-xs text-slate-400 font-mono">{AFFILIATE.id}</p>
+1132	              </div>
+1133	            </div>
+1134	          </div>
+1135	        </header>
+1136	
+1137	        <main className="flex-1 p-5 sm:p-7 lg:p-8">
+1138	          {activeSection === "dashboard" && <DashboardSection affiliate={AFFILIATE} />}
+1139	          {activeSection === "pipeline" && <PipelineSection />}
+1140	          {activeSection === "links" && <LinkGeneratorSection affiliate={AFFILIATE} />}
+1141	        </main>
+1142	
+1143	        <footer className="px-6 py-4 border-t border-slate-200 bg-white">
+1144	          <p className="text-xs text-slate-400 text-center">
+1145	            \u00a9 2026 LIV \u2014 Escrit\u00f3rio de Advocacia Imigrat\u00f3ria \u00b7{" "}
+1146	            <span className="font-semibold">Lei Geral de Prote\u00e7\u00e3o de Dados (LGPD)</span> \u00b7
+1147	            Dados sincronizados via HubSpot CRM
+1148	          </p>
+1149	        </footer>
+1150	      </div>
+1151	    </div>
+1152	  );
+1153	}
+1154	"}]}, "uuid": "2287c91a-1404-4961-9b42-4f08909cc5c4"

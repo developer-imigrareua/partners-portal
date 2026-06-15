@@ -1,0 +1,9 @@
+{
+  "id": "13",
+  "subject": "Add sortable column headers in pipeline",
+  "description": "Click headers to toggle sort: alphabetical for name/stage, date for createdAt/stageDate",
+  "activeForm": "Adding sortable columns",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

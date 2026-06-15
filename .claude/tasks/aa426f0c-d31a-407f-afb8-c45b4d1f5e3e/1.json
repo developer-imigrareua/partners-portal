@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "Estruturar mock data e constantes do dashboard",
+  "description": "Criar MOCK_AFFILIATE, MOCK_LEADS (7+ leads), PIPELINE_STAGES, CHART_DATA e utilitários (formatCurrency, formatDate)",
+  "activeForm": "Estruturando dados simulados",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

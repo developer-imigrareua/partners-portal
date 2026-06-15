@@ -1,0 +1,1153 @@
+import { useState, useMemo } from "react";
+import {
+  LayoutDashboard,
+  Users,
+  Link2,
+  Copy,
+  Check,
+  TrendingUp,
+  MousePointer,
+  UserCheck,
+  DollarSign,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  X,
+  AlertCircle,
+  ExternalLink,
+  LogOut,
+  Bell,
+  Menu,
+  Award,
+  RefreshCw,
+} from "lucide-react";
+
+// ============================================================
+// DATA SOURCE
+// Dados sincronizados via HubSpot MCP (utm_affiliatename=leticia-ferrari)
+// Para produção, substitua os objetos abaixo por chamadas fetch/axios
+// apontando para seu backend proxy do HubSpot.
+// Última sincronização: 11/06/2026
+// ============================================================
+
+const DATA_SOURCE = {
+  syncedAt: "11/06/2026 · 09:14",
+  source: "HubSpot CRM",
+};
+
+// ============================================================
+// AFILIADA
+// ============================================================
+
+/** @type {AffiliateData} */
+const AFFILIATE = {
+  name: "Leticia Ferrari",
+  id: "leticia-ferrari",
+  email: "leticia.ferrari@liv.law",
+  totalClicks: null,          // ← não disponível via HubSpot (configurar pixel)
+  totalLeads: 14,
+  totalConverted: 2,
+  conversionRate: 14.3,
+  bonificacaoBalance: null,   // ← integração com tabela de bonificações pendente
+  bonificacaoPending: null,
+};
+
+// ============================================================
+// ETAPAS DO PIPELINE
+// Mapeamento: valor interno HubSpot → display do parceiro
+// ============================================================
+
+const PIPELINE_STAGES = {
+  "Lead Recebido": {
+    label: "Lead Recebido",
+    emoji: "📥",
+    colorClass: "bg-blue-100 text-blue-700",
+    dot: "bg-blue-400",
+  },
+  "Em Atendimento": {
+    label: "Em Atendimento",
+    emoji: "📞",
+    colorClass: "bg-amber-100 text-amber-700",
+    dot: "bg-amber-400",
+  },
+  "Reunião Agendada": {
+    label: "Reunião Agendada",
+    emoji: "📅",
+    colorClass: "bg-teal-100 text-teal-700",
+    dot: "bg-teal-400",
+  },
+  "Oportunidade": {
+    label: "Oportunidade",
+    emoji: "🤝",
+    colorClass: "bg-purple-100 text-purple-700",
+    dot: "bg-purple-400",
+  },
+  "Convertido": {
+    label: "Convertido",
+    emoji: "💰",
+    colorClass: "bg-emerald-100 text-emerald-700",
+    dot: "bg-emerald-400",
+  },
+  "Não Convertido": {
+    label: "Não Convertido",
+    emoji: "❌",
+    colorClass: "bg-red-100 text-red-700",
+    dot: "bg-red-400",
+  },
+};
+
+// HubSpot lifecyclestage → etapa interna do dashboard
+// Substitua pela leitura real de dealstage quando houver deal associado.
+const HS_LIFECYCLE_TO_STAGE = {
+  lead: "Lead Recebido",
+  marketingqualifiedlead: "Em Atendimento",
+  salesqualifiedlead: "Reunião Agendada",
+  opportunity: "Oportunidade",
+  customer: "Convertido",
+  evangelist: "Convertido",
+  other: "Não Convertido",
+  disqualified: "Não Convertido",
+};
+
+/**
+ * Resolve a etapa correta de um contato a partir das propriedades brutas do HubSpot.
+ *
+ * Regra aplicada:
+ *   Se `hs_latest_disqualified_lead_date` estiver preenchida,
+ *   for posterior a `createdate` E for mais recente que `hs_latest_qualified_lead_date`
+ *   (ou não houver data qualificada), o lead é classificado como "Não Convertido",
+ *   independentemente do lifecyclestage atual.
+ *
+ * Use esta função ao substituir os dados estáticos por chamadas reais de API:
+ *   const stage = resolveStageFromHubSpot(contactProperties);
+ */
+function resolveStageFromHubSpot({
+  createdate,
+  lifecyclestage,
+  hs_latest_disqualified_lead_date,
+  hs_latest_qualified_lead_date,
+}) {
+  if (hs_latest_disqualified_lead_date) {
+    const disqDate   = new Date(hs_latest_disqualified_lead_date);
+    const createDt   = new Date(createdate);
+    const qualDate   = hs_latest_qualified_lead_date
+      ? new Date(hs_latest_qualified_lead_date)
+      : null;
+
+    const isAfterCreate  = disqDate > createDt;
+    const isMostRecent   = !qualDate || disqDate >= qualDate;
+
+    if (isAfterCreate && isMostRecent) return "Não Convertido";
+  }
+  return HS_LIFECYCLE_TO_STAGE[lifecyclestage] ?? "Lead Recebido";
+}
+
+// ============================================================
+// LEADS — dados reais do HubSpot (LGPD: nomes ofuscados)
+// Fonte: contacts com utm_affiliatename=leticia-ferrari
+// ============================================================
+
+/**
+ * @type {Lead[]}
+ * Etapas resolvidas via resolveStageFromHubSpot() com dados reais do HubSpot.
+ * Leads marcados com "Não Convertido" possuem hs_latest_disqualified_lead_date
+ * posterior ao createdate e mais recente que qualquer data qualificada no funil.
+ */
+const LEADS = [
+  // ── Não Convertido — hs_latest_disqualified_lead_date posterior ao lead ──
+  {
+    id: "205673203113",
+    name: "And. S.***",
+    createdAt: "2026-02-26",
+    product: "Análise de Elegibilidade",
+    stage: "Não Convertido", // disq: 12/03/2026
+    bonificacao: null,
+    history: [
+      { date: "26/02/2026", event: "Lead criado via link de afiliado" },
+      { date: "12/03/2026", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  {
+    id: "176239125666",
+    name: "Ped. C. P.***",
+    createdAt: "2025-11-18",
+    product: "Consulta de Caso",
+    stage: "Não Convertido", // disq: 24/11/2025
+    bonificacao: null,
+    history: [
+      { date: "18/11/2025", event: "Lead criado via link de afiliado" },
+      { date: "24/11/2025", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  {
+    id: "170724496702",
+    name: "Fel. M.***",
+    createdAt: "2025-10-31",
+    product: "Consulta de Caso",
+    stage: "Não Convertido", // disq: 05/11/2025
+    bonificacao: null,
+    history: [
+      { date: "31/10/2025", event: "Lead criado via link de afiliado" },
+      { date: "05/11/2025", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  {
+    id: "170725110644",
+    name: "Mor. J. Z.***",
+    createdAt: "2025-10-31",
+    product: "Consulta de Caso",
+    stage: "Não Convertido", // disq: 31/10/2025 (mesmo dia, hora posterior)
+    bonificacao: null,
+    history: [
+      { date: "31/10/2025", event: "Lead criado via link de afiliado" },
+      { date: "31/10/2025", event: "Contato desqualificado no pipeline (mesmo dia)" },
+    ],
+  },
+  {
+    id: "159850440373",
+    name: "Mar. C. S.***",
+    createdAt: "2025-09-30",
+    product: "Análise de Elegibilidade",
+    stage: "Não Convertido", // lifecycle=MQL mas disq 16/10/2025 é mais recente
+    bonificacao: null,
+    history: [
+      { date: "30/09/2025", event: "Lead criado via link de afiliado" },
+      { date: "05/10/2025", event: "Triagem realizada — contato qualificado" },
+      { date: "16/10/2025", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  {
+    id: "159821141941",
+    name: "And. O.***",
+    createdAt: "2025-09-30",
+    product: "Análise de Elegibilidade",
+    stage: "Não Convertido", // disq: 02/10/2025
+    bonificacao: null,
+    history: [
+      { date: "30/09/2025", event: "Lead criado via link de afiliado" },
+      { date: "02/10/2025", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  {
+    id: "152677600114",
+    name: "Stf. O.***",
+    createdAt: "2025-09-03",
+    product: "Consulta de Caso",
+    stage: "Não Convertido", // disq: 03/09/2025 (mesmo dia, hora posterior)
+    bonificacao: null,
+    history: [
+      { date: "03/09/2025", event: "Lead criado via link de afiliado" },
+      { date: "03/09/2025", event: "Contato desqualificado no pipeline (mesmo dia)" },
+    ],
+  },
+  {
+    id: "129008024867",
+    name: "Wen. A.***",
+    createdAt: "2025-06-12",
+    product: "Análise de Elegibilidade",
+    stage: "Não Convertido", // lifecycle=MQL mas disq 16/06/2025 é mais recente
+    bonificacao: null,
+    history: [
+      { date: "12/06/2025", event: "Lead criado via link de afiliado" },
+      { date: "16/06/2025", event: "Contato desqualificado no pipeline" },
+    ],
+  },
+  // ── Lead Recebido — sem hs_latest_disqualified_lead_date ─────────────────
+  {
+    id: "160421400844",
+    name: "Bru. L.***",
+    createdAt: "2025-10-02",
+    product: "Análise de Elegibilidade",
+    stage: "Lead Recebido",
+    bonificacao: null,
+    history: [
+      { date: "02/10/2025", event: "Lead criado via link de afiliado" },
+    ],
+  },
+  {
+    id: "138859230276",
+    name: "Bru. B.***",
+    createdAt: "2025-07-17",
+    product: "Consulta de Caso",
+    stage: "Lead Recebido",
+    bonificacao: null,
+    history: [
+      { date: "17/07/2025", event: "Lead criado via link de afiliado" },
+    ],
+  },
+  {
+    id: "91400392357",
+    name: "Fab. G.***",
+    createdAt: "2025-01-13",
+    product: "Análise de Elegibilidade",
+    stage: "Lead Recebido",
+    bonificacao: null,
+    history: [
+      { date: "13/01/2025", event: "Lead criado via link de afiliado" },
+    ],
+  },
+  {
+    id: "89644214650",
+    name: "Raq. V. L.***",
+    createdAt: "2025-01-07",
+    product: "Análise de Elegibilidade",
+    stage: "Lead Recebido",
+    bonificacao: null,
+    history: [
+      { date: "07/01/2025", event: "Lead criado via link de afiliado" },
+    ],
+  },
+  // ── Convertido — lifecycle = "customer", deal fechado ────────────────────
+  {
+    id: "139223239462",
+    name: "Uar. J.***",
+    createdAt: "2025-07-18",
+    product: "Visto EB-2 NIW",
+    stage: "Convertido",
+    bonificacao: null, // ← bonificação a configurar pela LIV
+    history: [
+      { date: "18/07/2025", event: "Lead criado via link de afiliado" },
+      { date: "24/07/2025", event: "Deal iniciado no escritório (EB-2 NIW)" },
+      { date: "28/08/2025", event: "Contrato assinado — Lead Convertido 🎉" },
+    ],
+  },
+  {
+    id: "139213151000",
+    name: "San. R.***",
+    createdAt: "2025-07-18",
+    product: "Visto EB-2 NIW",
+    stage: "Convertido",
+    bonificacao: null, // ← bonificação a configurar pela LIV
+    history: [
+      { date: "18/07/2025", event: "Lead criado via link de afiliado" },
+      { date: "24/07/2025", event: "Deal iniciado no escritório (EB-2 NIW)" },
+      { date: "30/07/2025", event: "Contrato assinado — Lead Convertido 🎉" },
+    ],
+  },
+];
+
+// ============================================================
+// GRÁFICO — Evolução trimestral de leads (real)
+// ============================================================
+
+const CHART_DATA = [
+  { label: "Jan/25", leads: 2 },  // Raquel, Fabio
+  { label: "Fev/25", leads: 0 },
+  { label: "Mar/25", leads: 0 },
+  { label: "Abr/25", leads: 0 },
+  { label: "Mai/25", leads: 0 },
+  { label: "Jun/25", leads: 1 },  // Wendel
+  { label: "Jul/25", leads: 3 },  // Bruno, Sandro, Uarlem
+  { label: "Ago/25", leads: 0 },
+  { label: "Set/25", leads: 3 },  // Stéffany, Maria Cristina, Andressa
+  { label: "Out/25", leads: 3 },  // Brunna, Felipe, Morgana
+  { label: "Nov/25", leads: 1 },  // Pedro
+  { label: "Dez/25", leads: 0 },
+  { label: "Jan/26", leads: 0 },
+  { label: "Fev/26", leads: 1 },  // Andreia
+  { label: "Mar/26", leads: 0 },
+  { label: "Abr/26", leads: 0 },
+  { label: "Mai/26", leads: 0 },
+  { label: "Jun/26", leads: 0 },  // em andamento
+];
+
+// ============================================================
+// PÁGINAS SUGERIDAS PARA LINK
+// ============================================================
+
+const QUICK_LINKS = [
+  { label: "Visto EB-2 NIW", url: "https://liv.law/visto-eb2-niw" },
+  { label: "Visto O-1 Habilidades Extraordinárias", url: "https://liv.law/visto-o1" },
+  { label: "Visto L-1 Transferência Intraempresarial", url: "https://liv.law/visto-l1" },
+  { label: "Visto E-2 Investidor", url: "https://liv.law/visto-e2" },
+  { label: "Visto EB-1A", url: "https://liv.law/visto-eb1a" },
+];
+
+// ============================================================
+// UTILITIES
+// ============================================================
+
+const formatDate = (dateStr) => {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+// ============================================================
+// SHARED COMPONENTS
+// ============================================================
+
+function StageBadge({ stage }) {
+  const cfg = PIPELINE_STAGES[stage] ?? PIPELINE_STAGES["Lead Recebido"];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${cfg.colorClass}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+      {cfg.emoji} {cfg.label}
+    </span>
+  );
+}
+
+function SyncBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-full px-3 py-1">
+      <RefreshCw size={11} className="text-emerald-500" />
+      Sincronizado com {DATA_SOURCE.source} · {DATA_SOURCE.syncedAt}
+    </span>
+  );
+}
+
+// ============================================================
+// SECTION 1 — DASHBOARD
+// ============================================================
+
+function DashboardSection({ affiliate }) {
+  const maxLeads = Math.max(...CHART_DATA.map((d) => d.leads), 1);
+  const inProgress = LEADS.filter((l) =>
+    ["Em Atendimento", "Reunião Agendada", "Oportunidade"].includes(l.stage)
+  ).length;
+
+  const kpis = [
+    {
+      label: "Cliques Totais",
+      value: affiliate.totalClicks !== null ? affiliate.totalClicks.toLocaleString("pt-BR") : "N/D",
+      Icon: MousePointer,
+      accent: "text-blue-600",
+      bg: "bg-blue-50",
+      note: affiliate.totalClicks === null ? "Pixel não configurado" : null,
+    },
+    {
+      label: "Leads Gerados",
+      value: affiliate.totalLeads,
+      Icon: Users,
+      accent: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
+    {
+      label: "Em Andamento",
+      value: inProgress,
+      Icon: TrendingUp,
+      accent: "text-amber-600",
+      bg: "bg-amber-50",
+    },
+    {
+      label: "Convertidos",
+      value: affiliate.totalConverted,
+      Icon: UserCheck,
+      accent: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      label: "Bonificações",
+      value: affiliate.bonificacaoBalance !== null ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(affiliate.bonificacaoBalance) : "A configurar",
+      Icon: DollarSign,
+      accent: "text-yellow-600",
+      bg: "bg-yellow-50",
+      small: true,
+      note: affiliate.bonificacaoBalance === null ? "Aguardando integração" : null,
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Visão Geral</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            Jan 2025 — Jun 2026 · Afiliada: <span className="font-mono text-slate-700">{affiliate.id}</span>
+          </p>
+        </div>
+        <SyncBadge />
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {kpis.map(({ label, value, Icon, accent, bg, small, note }) => (
+          <div
+            key={label}
+            className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center`}>
+              <Icon size={20} className={accent} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide leading-tight">
+                {label}
+              </p>
+              <p className={`font-bold mt-1 text-slate-800 ${small || String(value).length > 6 ? "text-base" : "text-2xl"}`}>
+                {value}
+              </p>
+              {note && (
+                <p className="text-xs text-slate-400 mt-0.5 italic">{note}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Conversion Banner */}
+      <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+            <Award size={24} className="text-blue-400" />
+          </div>
+          <div>
+            <p className="text-slate-400 text-sm font-medium">Taxa de Conversão</p>
+            <p className="text-4xl font-extrabold">{affiliate.conversionRate}%</p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              {affiliate.totalConverted} convertidos de {affiliate.totalLeads} leads gerados
+            </p>
+          </div>
+        </div>
+        <div className="sm:text-right bg-white/5 rounded-xl px-5 py-4 border border-white/10 w-full sm:w-auto">
+          <p className="text-slate-400 text-sm">Bonificações Pendentes</p>
+          <p className="text-2xl font-bold text-amber-400 mt-0.5">
+            {affiliate.bonificacaoPending !== null
+              ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(affiliate.bonificacaoPending)
+              : "—"}
+          </p>
+          <p className="text-slate-500 text-xs mt-0.5">Aguardando configuração da tabela de bonificações</p>
+        </div>
+      </div>
+
+      {/* Bar Chart — mensal, alturas em px para renderizar corretamente */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-5">
+          Evolução de Leads — Mensal (Jan/25 → Jun/26)
+        </h3>
+        {(() => {
+          const BAR_MAX_PX = 90;
+          return (
+            <div>
+              {/* Barras */}
+              <div className="flex items-end gap-1" style={{ height: `${BAR_MAX_PX + 8}px` }}>
+                {CHART_DATA.map((item) => {
+                  const barH = item.leads > 0
+                    ? Math.max(Math.round((item.leads / maxLeads) * BAR_MAX_PX), 6)
+                    : 3;
+                  return (
+                    <div
+                      key={item.label}
+                      className="group relative flex-1 flex items-end"
+                    >
+                      <div
+                        className={`w-full rounded-t-sm transition-colors cursor-default ${
+                          item.leads === 0
+                            ? "bg-slate-100"
+                            : "bg-blue-600 group-hover:bg-blue-500"
+                        }`}
+                        style={{ height: `${barH}px` }}
+                        title={`${item.label}: ${item.leads} lead${item.leads !== 1 ? "s" : ""}`}
+                      />
+                      {item.leads > 0 && (
+                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          {item.leads}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Labels dos meses */}
+              <div className="flex gap-1 mt-1.5">
+                {CHART_DATA.map((item) => (
+                  <div key={item.label} className="flex-1 overflow-hidden text-center">
+                    <span className="text-[8.5px] text-slate-400 leading-tight block">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+        <p className="text-xs text-slate-400 mt-4 text-center">
+          Passe o mouse sobre as barras para ver os valores · Total: {LEADS.length} leads
+        </p>
+      </div>
+
+      {/* Stage Distribution */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">
+          Distribuição por Etapa
+        </h3>
+        <div className="space-y-3">
+          {Object.entries(PIPELINE_STAGES).map(([key, cfg]) => {
+            const count = LEADS.filter((l) => l.stage === key).length;
+            const pct = LEADS.length > 0 ? (count / LEADS.length) * 100 : 0;
+            return (
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-sm text-slate-600 w-40 flex-shrink-0">
+                  {cfg.emoji} {cfg.label}
+                </span>
+                <div className="flex-1 bg-slate-100 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full ${cfg.dot}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-slate-700 w-6 text-right">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// SECTION 2 — PIPELINE
+// ============================================================
+
+function PipelineSection() {
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+
+  const filterOptions = [
+    { key: "all", label: "Todos" },
+    { key: "active", label: "Em Andamento" },
+    { key: "converted", label: "Convertidos" },
+    { key: "lost", label: "Não Convertidos" },
+  ];
+
+  const filteredLeads = useMemo(() => {
+    return LEADS.filter((lead) => {
+      const matchFilter =
+        filter === "all" ||
+        (filter === "active" &&
+          ["Lead Recebido", "Em Atendimento", "Reunião Agendada", "Oportunidade"].includes(lead.stage)) ||
+        (filter === "converted" && lead.stage === "Convertido") ||
+        (filter === "lost" && lead.stage === "Não Convertido");
+
+      const q = search.toLowerCase();
+      const matchSearch =
+        !search ||
+        lead.name.toLowerCase().includes(q) ||
+        lead.product.toLowerCase().includes(q) ||
+        lead.id.toLowerCase().includes(q);
+
+      return matchFilter && matchSearch;
+    });
+  }, [filter, search]);
+
+  const toggleExpand = (id) => setExpandedId((prev) => (prev === id ? null : id));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Pipeline de Leads</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            Acompanhe cada indicação em tempo real. Nomes protegidos conforme LGPD.
+          </p>
+        </div>
+        <SyncBadge />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-0">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ofuscado, produto ou ID…"
+            className="w-full pl-9 pr-9 py-2.5 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setFilter(opt.key)}
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                filter === opt.key
+                  ? "bg-slate-800 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stage pills summary */}
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(PIPELINE_STAGES).map(([key, cfg]) => {
+          const count = LEADS.filter((l) => l.stage === key).length;
+          if (count === 0) return null;
+          return (
+            <span key={key} className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.colorClass}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {cfg.label}: {count}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[580px]">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Lead</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden md:table-cell">Produto</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Criado em</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+              <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden lg:table-cell">Bonificação</th>
+              <th className="px-4 py-3.5 w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {filteredLeads.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-16 text-slate-400">
+                  <Search size={28} className="mx-auto mb-2 opacity-30" />
+                  Nenhum lead encontrado para os filtros aplicados.
+                </td>
+              </tr>
+            )}
+
+            {filteredLeads.map((lead) => (
+              <>
+                <tr
+                  key={lead.id}
+                  className={`border-b border-slate-100 cursor-pointer transition-colors ${
+                    expandedId === lead.id ? "bg-slate-50" : "hover:bg-slate-50/70"
+                  }`}
+                  onClick={() => toggleExpand(lead.id)}
+                >
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
+                        {lead.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-800">{lead.name}</p>
+                        <p className="text-xs text-slate-400 font-mono">{lead.id}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-slate-600 hidden md:table-cell">{lead.product}</td>
+                  <td className="px-4 py-4 text-slate-500 hidden sm:table-cell">{formatDate(lead.createdAt)}</td>
+                  <td className="px-4 py-4"><StageBadge stage={lead.stage} /></td>
+                  <td className="px-4 py-4 hidden lg:table-cell">
+                    {lead.stage === "Convertido" ? (
+                      lead.bonificacao !== null ? (
+                        <span className="text-emerald-600 font-bold">
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(lead.bonificacao)}
+                        </span>
+                      ) : (
+                        <span className="text-amber-500 text-xs font-medium">A definir</span>
+                      )
+                    ) : lead.stage === "Não Convertido" ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <span className="text-slate-400 text-xs italic">Pendente</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-slate-400">
+                    {expandedId === lead.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </td>
+                </tr>
+
+                {expandedId === lead.id && (
+                  <tr key={`${lead.id}-exp`}>
+                    <td colSpan={6} className="px-6 py-5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+                      <div className="max-w-xl">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">
+                          Histórico de Atualizações
+                        </p>
+                        <ol className="space-y-1">
+                          {lead.history.map((item, i) => (
+                            <li key={i} className="flex items-start gap-3">
+                              <div className="flex flex-col items-center pt-1.5">
+                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${i === lead.history.length - 1 ? "bg-blue-500" : "bg-slate-300"}`} />
+                                {i < lead.history.length - 1 && (
+                                  <div className="w-px flex-1 bg-slate-200 my-1 min-h-[16px]" />
+                                )}
+                              </div>
+                              <div className="pb-2">
+                                <span className="text-xs text-slate-400 font-medium">{item.date}</span>
+                                <p className="text-sm text-slate-700 mt-0.5">{item.event}</p>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-slate-400 text-center">
+        Exibindo {filteredLeads.length} de {LEADS.length} leads · Sincronizado com HubSpot
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
+// SECTION 3 — GERADOR DE LINKS
+// ============================================================
+
+function LinkGeneratorSection({ affiliate }) {
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [generatedLink, setGeneratedLink] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  const UTM_PARAMS = [
+    { key: "utm_source", value: "general" },
+    { key: "utm_medium", value: "affiliate" },
+    { key: "utm_campaign", value: "analise-cliente-liv" },
+    { key: "utm_affiliatetype", value: "external" },
+    { key: "utm_affiliatename", value: affiliate.id },
+    { key: "utm_content", value: "direct-message" },
+    { key: "utm_term", value: "affiliate-audience" },
+  ];
+
+  const handleGenerate = () => {
+    const raw = destinationUrl.trim();
+    if (!raw) {
+      setError("Insira uma URL de destino antes de gerar o link.");
+      return;
+    }
+    try {
+      const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+      UTM_PARAMS.forEach(({ key, value }) => url.searchParams.set(key, value));
+      setGeneratedLink(url.toString());
+      setError("");
+    } catch {
+      setError("URL inválida. Verifique o formato (ex: https://liv.law/visto-eb2).");
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedLink);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = generatedLink;
+      ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Gerador de Links</h2>
+        <p className="text-slate-500 text-sm mt-1">
+          Crie links rastreáveis para suas campanhas de indicação.
+        </p>
+      </div>
+
+      {/* How it works */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+        <AlertCircle size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-blue-800">Como o rastreamento funciona?</p>
+          <p className="text-sm text-blue-700 mt-1 leading-relaxed">
+            O link gerado inclui o parâmetro{" "}
+            <code className="bg-blue-100 px-1 py-0.5 rounded text-xs font-mono">
+              utm_affiliatename={affiliate.id}
+            </code>{" "}
+            que identifica suas indicações no HubSpot. A atribuição do lead é confirmada{" "}
+            <strong>somente quando o visitante preenche o formulário de contato</strong> no site da LIV.
+            Cliques sem preenchimento não geram crédito de bonificação.
+          </p>
+        </div>
+      </div>
+
+      {/* Generator card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">URL de Destino</label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={destinationUrl}
+              onChange={(e) => { setDestinationUrl(e.target.value); setError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+              placeholder="https://liv.law/visto-eb2"
+              className={`flex-1 px-4 py-3 text-sm border rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 transition-shadow ${
+                error ? "border-red-300 focus:ring-red-400" : "border-slate-200 focus:ring-blue-500"
+              }`}
+            />
+            {destinationUrl && (
+              <button
+                onClick={() => { setDestinationUrl(""); setGeneratedLink(""); setError(""); }}
+                className="px-3 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          {error && (
+            <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+              <X size={12} /> {error}
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          className="w-full bg-slate-800 hover:bg-slate-700 active:scale-[0.99] text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
+        >
+          <Link2 size={16} />
+          Gerar Link Rastreável
+        </button>
+
+        {generatedLink && (
+          <div className="space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
+                Link Gerado
+              </p>
+              <p className="text-sm text-blue-600 break-all font-mono leading-relaxed">
+                {generatedLink}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
+                Parâmetros de Rastreamento
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {UTM_PARAMS.map(({ key, value }) => (
+                  <div key={key} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+                    <p className="text-xs text-slate-400 font-mono">{key}</p>
+                    <p className="text-sm font-semibold text-slate-700 font-mono truncate">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleCopy}
+              className={`w-full font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] ${
+                copied ? "bg-emerald-500 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"
+              }`}
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+              {copied ? "Link copiado com sucesso!" : "Copiar Link"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Quick links */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <p className="text-sm font-semibold text-slate-700 mb-3">Páginas Populares para Indicação</p>
+        <div className="space-y-2">
+          {QUICK_LINKS.map((page) => (
+            <button
+              key={page.url}
+              onClick={() => { setDestinationUrl(page.url); setGeneratedLink(""); setError(""); }}
+              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm transition-colors text-left ${
+                destinationUrl === page.url
+                  ? "border-blue-300 bg-blue-50 text-blue-700 font-medium"
+                  : "border-slate-100 hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              <span>{page.label}</span>
+              <ExternalLink size={14} className="text-slate-400 flex-shrink-0 ml-2" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+
+function Sidebar({ active, onChange, affiliate, onClose }) {
+  const navItems = [
+    { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+    { key: "pipeline", label: "Meus Leads", Icon: Users },
+    { key: "links", label: "Gerador de Links", Icon: Link2 },
+  ];
+
+  return (
+    <aside className="h-full w-64 bg-slate-900 flex flex-col">
+      {/* Logo */}
+      <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-black text-sm tracking-tight">LIV</span>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-tight">Portal Afiliados</p>
+            <p className="text-slate-400 text-xs">liv.law</p>
+          </div>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="text-slate-400 hover:text-white lg:hidden">
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Affiliate card */}
+      <div className="px-4 py-4 border-b border-slate-700/50">
+        <div className="bg-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600/20 rounded-full flex items-center justify-center border border-blue-500/30 flex-shrink-0">
+              <span className="text-blue-300 font-bold text-sm">{affiliate.name.charAt(0)}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-sm font-semibold truncate">{affiliate.name}</p>
+              <p className="text-slate-400 text-xs font-mono">{affiliate.id}</p>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-700 flex justify-between">
+            <div>
+              <p className="text-slate-400 text-xs mb-0.5">Leads</p>
+              <p className="text-white text-sm font-bold">{affiliate.totalLeads}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-slate-400 text-xs mb-0.5">Conversão</p>
+              <p className="text-white text-sm font-bold">{affiliate.conversionRate}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest px-4 mb-3">Menu</p>
+        {navItems.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => { onChange(key); onClose?.(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              active === key
+                ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+            }`}
+          >
+            <Icon size={18} className="flex-shrink-0" />
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="p-4 border-t border-slate-700/50">
+        <div className="px-4 py-2 mb-2">
+          <p className="text-xs text-slate-500 leading-tight">Dados protegidos conforme LGPD</p>
+        </div>
+        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+          <LogOut size={16} className="flex-shrink-0" />
+          Sair
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ============================================================
+// ROOT APP
+// ============================================================
+
+export default function App() {
+  const [activeSection, setActiveSection] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const sectionTitles = {
+    dashboard: "Dashboard",
+    pipeline: "Pipeline de Leads",
+    links: "Gerador de Links",
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex font-sans">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-20 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className={`fixed top-0 left-0 h-full z-30 transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+        <Sidebar
+          active={activeSection}
+          onChange={setActiveSection}
+          affiliate={AFFILIATE}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </div>
+
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+          <button
+            className="lg:hidden text-slate-600 hover:text-slate-800 p-1"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu"
+          >
+            <Menu size={22} />
+          </button>
+
+          <div className="hidden lg:flex items-center gap-2 text-sm text-slate-500">
+            <span className="text-slate-400">Portal Afiliados</span>
+            <span>/</span>
+            <span className="text-slate-800 font-semibold">{sectionTitles[activeSection]}</span>
+          </div>
+
+          <div className="flex items-center gap-3 ml-auto">
+            <button className="relative text-slate-500 hover:text-slate-800 transition-colors p-1.5">
+              <Bell size={20} />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {AFFILIATE.name.charAt(0)}
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm font-semibold text-slate-800 leading-tight">{AFFILIATE.name}</p>
+                <p className="text-xs text-slate-400 font-mono">{AFFILIATE.id}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 p-5 sm:p-7 lg:p-8">
+          {activeSection === "dashboard" && <DashboardSection affiliate={AFFILIATE} />}
+          {activeSection === "pipeline" && <PipelineSection />}
+          {activeSection === "links" && <LinkGeneratorSection affiliate={AFFILIATE} />}
+        </main>
+
+        <footer className="px-6 py-4 border-t border-slate-200 bg-white">
+          <p className="text-xs text-slate-400 text-center">
+            © 2026 LIV — Escritório de Advocacia Imigratória ·{" "}
+            <span className="font-semibold">Lei Geral de Proteção de Dados (LGPD)</span> ·
+            Dados sincronizados via HubSpot CRM
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}

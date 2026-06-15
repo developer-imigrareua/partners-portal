@@ -1,0 +1,9 @@
+{
+  "id": "12",
+  "subject": "Add \"Esqueceu a senha?\" flow to login",
+  "description": "Add forgot password view and link on login screen",
+  "activeForm": "Adding forgot password flow",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

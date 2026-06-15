@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "Atualizar código: Bonificações + novas etapas do pipeline",
+  "description": "Substituir Comissão/Comissões por Bonificações e atualizar PIPELINE_STAGES para as 6 etapas corretas",
+  "activeForm": "Atualizando o código",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}
