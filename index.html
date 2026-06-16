@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner Portal — ImigrarEUA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:light;
+  --blue:#1B75BC;--blue-dark:#0D255D;--pink:#F90D5B;--emerald:#059669;--amber:#f59e0b;--red:#ef4444;
+  --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
+  --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;--s900:#0f172a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(--s800);min-height:100vh}
+/* ── Auth ── */
+.shell-auth{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D255D 0%,#1B75BC 100%);padding:24px}
+.shell-app{display:flex;height:100vh;overflow:hidden}
+.auth-card{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.28)}
+.auth-logo{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:28px;text-align:center}
+.auth-logo-img{display:block;width:auto;max-width:160px;height:auto;margin:0 auto}
+.auth-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.auth-sub{font-size:13px;color:var(--s500);margin-bottom:26px}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--s600);margin-bottom:5px}
+.form-input{width:100%;border:1.5px solid var(--s200);border-radius:12px;padding:10px 14px;font-size:14px;font-family:'Poppins',sans-serif;color:var(--s800);outline:none;background:#fff;transition:border-color .15s,box-shadow .15s}
+.form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,117,188,.12)}
+.form-input::placeholder{color:var(--s300)}
+.form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-error{font-size:11px;color:var(--red);margin-top:3px}
+.err-banner{background:#fef2f2;border:1px solid #fecaca;border-radius:999px;padding:8px 16px;font-size:12px;color:#b91c1c;margin-bottom:12px;display:none;text-align:center}
+/* ── Buttons (pill/capsule) ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:999px;padding:9px 20px;font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-full{width:100%}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1565a8;box-shadow:0 4px 14px rgba(27,117,188,.35)}
+.btn-accent{background:var(--pink);color:#fff}.btn-accent:hover{background:#d4064c;box-shadow:0 4px 14px rgba(249,13,91,.35)}
+.btn-secondary{background:var(--s100);color:var(--s700);border:1.5px solid var(--s200)}.btn-secondary:hover{background:var(--s200)}
+.btn-success{background:#059669;color:#fff}.btn-success:hover{background:#047857}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-ghost{background:none;color:var(--s500);border:1.5px solid var(--s200)}.btn-ghost:hover{background:var(--s50)}
+.btn-sm{padding:5px 14px;font-size:12px}
+.btn-xs{padding:3px 10px;font-size:11px}
+.btn-outline-blue{background:none;border:1.5px solid var(--blue);color:var(--blue-dark)}.btn-outline-blue:hover{background:#e8f3fb}
+.auth-link{text-align:center;margin-top:18px;font-size:13px;color:var(--s500)}
+.auth-link a{color:var(--blue);font-weight:600;cursor:pointer;text-decoration:none}
+/* ── Sidebar (dark navy) ── */
+#sidebar{width:232px;min-width:232px;background:#0D255D;display:flex;flex-direction:column;height:100vh}
+.sb-logo{padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px}
+.sb-logo-img{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.sb-logo-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:-.01em}
+.sb-logo-role{font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em}
+.sb-nav{padding:10px 10px;flex:1;overflow-y:auto}
+.sb-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.65);border:none;background:none;width:100%;text-align:left;transition:all .12s}
+.sb-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.sb-item.active{background:#1B75BC;color:#fff;font-weight:600}
+.sb-badge{margin-left:auto;background:#F90D5B;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px}
+.sb-footer{padding:12px 14px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
+.sb-footer-info{flex:1;min-width:0}
+.sb-user-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-email{font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-logout{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:11px;padding:5px 8px;border-radius:999px;flex-shrink:0}
+.sb-logout:hover{background:rgba(255,255,255,.1);color:#fff}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:#1B75BC;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;cursor:pointer;border:2px solid rgba(255,255,255,.2)}
+.sb-avatar img{width:100%;height:100%;object-fit:cover}
+/* ── Main ── */
+#main-area{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--s200);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:18px;font-weight:700;color:#0D255D}
+.topbar-sub{font-size:12px;color:var(--s400);margin-top:1px}
+.content{padding:28px;flex:1}
+/* ── Views ── */
+.view{display:none}.view.active{display:block}
+/* ── Panel ── */
+.panel{background:#fff;border:1px solid var(--s200);border-radius:16px;box-shadow:0 2px 8px rgba(13,37,93,.06);margin-bottom:20px;overflow:hidden}
+.panel-hd{padding:14px 20px;border-bottom:1px solid var(--s100);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--s400)}
+.panel-bd{padding:20px}
+/* ── KPIs ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:#fff;border:1px solid var(--s200);border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(13,37,93,.06)}
+.kpi-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.kpi-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--s500)}
+.kpi-value{font-size:24px;font-weight:800;color:var(--s800);margin-top:2px}
+.kpi-value.sm{font-size:15px}
+.kpi-note{font-size:10px;color:var(--s400);margin-top:2px;font-style:italic}
+/* ── Banner ── */
+.banner{background:linear-gradient(135deg,#0D255D,#1B75BC);border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;color:#fff;margin-bottom:20px;flex-wrap:wrap}
+.banner-left{display:flex;align-items:center;gap:16px}
+.banner-icon{width:48px;height:48px;background:rgba(249,13,91,.18);border:1px solid rgba(249,13,91,.3);border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.banner-rate{font-size:38px;font-weight:900}
+.banner-box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;min-width:230px}
+.banner-box-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:8px}
+.brow{display:flex;justify-content:space-between;gap:20px;font-size:13px;padding:2px 0}
+.brow-lbl{color:#94a3b8}.brow-val{font-weight:600;color:#d1fae5}.brow-val.nc{color:#cbd5e1}
+.bdiv{border:none;border-top:1px solid rgba(255,255,255,.1);margin:8px 0}
+.btotal-lbl{font-size:13px;font-weight:700;color:#fff}
+.btotal-val{font-size:20px;font-weight:900;color:#FFFFFF}
+/* ── Tables ── */
+.table{width:100%;border-collapse:collapse}
+.table th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s500);border-bottom:2px solid var(--s100);white-space:nowrap}
+.table td{padding:12px 14px;border-bottom:1px solid var(--s100);font-size:13px;vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tbody tr:hover{background:var(--s50)}
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.badge-pending{background:#fef9c3;color:#a16207}.badge-pending .badge-dot{background:#eab308}
+.badge-active{background:#d1fae5;color:#065f46}.badge-active .badge-dot{background:#34d399}
+.badge-rejected{background:#fee2e2;color:#b91c1c}.badge-rejected .badge-dot{background:#f87171}
+/* ── Bonification matrix ── */
+.matrix-wrap{overflow-x:auto}
+.mtable{border-collapse:collapse;min-width:600px;width:100%}
+.mtable th{padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s500);border:1px solid var(--s100);background:var(--s50);text-align:center;white-space:nowrap}
+.mtable th:first-child{text-align:left}
+.mtable td{padding:6px 8px;border:1px solid var(--s100);text-align:center;vertical-align:middle}
+.mtable td:first-child{text-align:left;font-weight:600;color:var(--s700);background:var(--s50);white-space:nowrap;padding:8px 12px}
+.m-input{width:68px;border:1px solid var(--s200);border-radius:6px;padding:5px 8px;font-size:13px;text-align:center;outline:none;color:var(--s800)}
+.m-input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+.m-input.hilite{background:#f0fdf4;border-color:#bbf7d0}
+/* ── Affiliate detail inline panel ── */
+.aff-detail{background:var(--s50);border-top:2px solid var(--blue);padding:20px 24px;display:none}
+.aff-detail.open{display:block}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.detail-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--s400);margin-bottom:10px}
+.hs-sync-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hs-id-input{flex:1;min-width:180px;border:1px solid var(--s200);border-radius:7px;padding:8px 11px;font-size:13px;font-family:monospace;color:var(--s800);outline:none;background:#fff}
+.hs-id-input:focus{border-color:var(--blue)}
+.sync-result{background:#fff;border:1px solid var(--s200);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--s600);margin-top:8px}
+.sync-result strong{color:var(--s800)}
+.sync-result .sync-ok{color:#059669;font-weight:600}
+.sync-result .sync-err{color:var(--red)}
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px}
+.modal{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--s500);margin-bottom:20px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--s100)}
+/* ── Misc ── */
+.page-header{margin-bottom:22px}
+.page-title{font-size:22px;font-weight:700}
+.page-sub{font-size:13px;color:var(--s500);margin-top:3px}
+.empty-state{text-align:center;padding:44px 20px;color:var(--s400)}
+.empty-state .icon{font-size:34px;margin-bottom:10px}
+.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.25);transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.tag-blue{background:#e0eefa;color:#0D255D}
+.tag-purple{background:#ede9fe;color:#5b21b6}
+.tag-amber{background:#fef3c7;color:#92400e}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--s200);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--s600);flex-shrink:0}
+.text-muted{color:var(--s400)}.text-sm{font-size:12px}.text-success{color:#059669;font-weight:600}
+.divider{height:1px;background:var(--s100);margin:16px 0}
+#chart-wrap{position:relative;height:150px}
+.loading-spin{display:inline-block;width:14px;height:14px;border:2px solid var(--s200);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Period selector ── */
+.period-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.period-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--s200);background:#fff;font-size:12px;font-weight:500;color:var(--s600);cursor:pointer;transition:all .12s;white-space:nowrap}
+.period-btn:hover{background:var(--s50);border-color:var(--s300)}
+.period-btn.active{background:#0D255D;color:#fff;border-color:#0D255D;font-weight:700}
+.period-date-input{border:1px solid var(--s200);border-radius:7px;padding:4px 8px;font-size:12px;color:var(--s700);outline:none;background:#fff}
+.period-date-input:focus{border-color:var(--blue)}
+/* ── Search ── */
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:300px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--s400);pointer-events:none}
+.search-input{width:100%;border:1px solid var(--s200);border-radius:8px;padding:7px 10px 7px 32px;font-size:13px;color:var(--s800);outline:none;background:#fff}
+.search-input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.1)}
+/* ── Charts ── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.chart-box{position:relative;height:180px}
+/* ── Stage distribution bars ── */
+.stage-dist{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.stage-dist-row{display:flex;align-items:center;gap:10px}
+.stage-dist-label{font-size:12px;color:var(--s600);min-width:140px;text-align:right;white-space:nowrap}
+.stage-dist-bar-wrap{flex:1;background:var(--s100);border-radius:4px;height:14px;overflow:hidden}
+.stage-dist-bar{height:100%;border-radius:4px;transition:width .4s ease}
+.stage-dist-count{font-size:12px;font-weight:700;color:var(--s700);min-width:24px}
+/* ── Contact id chip ── */
+.contact-id{font-size:10px;color:var(--s400);font-family:monospace;margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SHELL ══ -->
+<div id="auth-shell" class="shell-auth" style="display:none">
+
+  <!-- Login -->
+  <div id="v-login" class="view auth-card">
+    <div class="auth-logo">
+      <img class="auth-logo-img" src="https://imigrareua.com/wp-content/uploads/2024/10/01-1-300x145.png" alt="ImigrarEUA">
+      <div><div style="font-size:20px;font-weight:800;color:#0D255D">Partner Portal</div><div style="font-size:11px;color:var(--s400);font-weight:500;letter-spacing:.04em">Portal de Afiliados</div></div>
+    </div>
+    <div class="auth-title">Bem-vindo de volta</div>
+    <div class="auth-sub">Entre com suas credenciais para acessar o portal</div>
+    <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="login-email" type="email" placeholder="seu@email.com"></div>
+    <div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="login-err" class="err-banner"></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Entrar</button>
+    <div class="auth-link" style="margin-top:10px"><a onclick="showView('v-forgot')" style="color:var(--s500);font-weight:500;font-size:12px">Esqueceu a senha?</a></div>
+    <div class="auth-link">Ainda não é afiliado? <a onclick="showView('v-register')">Solicitar acesso</a></div>
+  </div>
+
+  <!-- Forgot password -->
+  <div id="v-forgot" class="view auth-card">
+    <div class="auth-logo">
+      <img class="auth-logo-img" src="https://imigrareua.com/wp-content/uploads/2024/10/01-1-300x145.png" alt="ImigrarEUA">
+      <div><div style="font-size:20px;font-weight:800;color:#0D255D">Partner Portal</div><div style="font-size:11px;color:var(--s400);font-weight:500;letter-spacing:.04em">Portal de Afiliados</div></div>
+    </div>
+    <div class="auth-title">Recuperar senha</div>
+    <div class="auth-sub">Informe seu e-mail e enviaremos instruções para redefinir sua senha.</div>
+    <div id="forgot-success" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;font-size:13px;color:#065f46;margin-bottom:14px;text-align:center">
+      ✅ Instruções enviadas! Verifique sua caixa de entrada.
+    </div>
+    <div id="forgot-form-area">
+      <div class="form-group"><label class="form-label">E-mail cadastrado</label><input class="form-input" id="forgot-email" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doForgotPassword()"></div>
+      <div id="forgot-err" class="err-banner"></div>
+      <button class="btn btn-primary btn-full" onclick="doForgotPassword()">Enviar instruções</button>
+    </div>
+    <div class="auth-link"><a onclick="showView('v-login')">← Voltar ao login</a></div>
+  </div>
+
+  <!-- Register -->
+  <div id="v-register" class="view auth-card" style="max-width:500px">
+    <div class="auth-logo">
+      <img class="auth-logo-img" src="https://imigrareua.com/wp-content/uploads/2024/10/01-1-300x145.png" alt="ImigrarEUA">
+      <div><div style="font-size:20px;font-weight:800;color:#0D255D">Partner Portal</div><div style="font-size:11px;color:var(--s400);font-weight:500;letter-spacing:.04em">Portal de Afiliados</div></div>
+    </div>
+    <div class="auth-title">Solicitar acesso</div>
+    <div class="auth-sub">Preencha o formulário. Após aprovação pela equipe LIV, você terá acesso ao portal.</div>
+    <div class="form-grid2">
+      <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="reg-name" type="text" placeholder="Maria Silva"></div>
+      <div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="reg-email" type="email" placeholder="maria@email.com"></div>
+      <div class="form-group"><label class="form-label">Telefone *</label><input class="form-input" id="reg-phone" type="tel" placeholder="+55 11 99999-9999"></div>
+      <div class="form-group"><label class="form-label">Senha *</label><input class="form-input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Empresa / Organização</label><input class="form-input" id="reg-company" type="text" placeholder="Nome da empresa ou projeto"></div>
+    <div class="form-group"><label class="form-label">Site ou rede social</label><input class="form-input" id="reg-site" type="url" placeholder="https://instagram.com/seuperfil"></div>
+    <div class="form-group"><label class="form-label">Como planeja divulgar? *</label>
+      <select class="form-input" id="reg-channel">
+        <option value="">Selecione…</option>
+        <option>Instagram / TikTok / YouTube</option>
+        <option>Blog ou site</option>
+        <option>Indicação direta (network pessoal)</option>
+        <option>WhatsApp / Grupos</option>
+        <option>LinkedIn</option>
+        <option>Outro</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:14px;background:var(--s50);border-radius:10px;margin-bottom:4px">
+      <input type="checkbox" id="reg-terms" style="margin-top:3px;flex-shrink:0;accent-color:var(--blue);width:16px;height:16px;cursor:pointer">
+      <label for="reg-terms" style="font-size:12px;color:var(--s600);cursor:pointer;line-height:1.5">
+        Li e aceito os <a href="https://imigrareua.com/programa-de-parceiros" target="_blank" style="color:var(--blue);font-weight:600">Termos e Condições do Programa de Parcerias</a> da ImigrarEUA, incluindo as regras de bonificação, uso da marca e confidencialidade.
+      </label>
+    </div>
+    <div id="reg-err" class="err-banner"></div>
+    <button class="btn btn-primary btn-full" onclick="doRegister()">Enviar solicitação</button>
+    <div class="auth-link"><a onclick="showView('v-login')">← Voltar ao login</a></div>
+  </div>
+
+  <!-- Pending -->
+  <div id="v-pending" class="view auth-card" style="text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">⏳</div>
+    <div class="auth-title">Solicitação em análise</div>
+    <div class="auth-sub" style="margin-bottom:24px">Sua solicitação foi enviada e está aguardando aprovação da equipe LIV.</div>
+    <button class="btn btn-ghost btn-full" onclick="doLogout()">Sair</button>
+  </div>
+
+  <!-- Rejected -->
+  <div id="v-rejected" class="view auth-card" style="text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">❌</div>
+    <div class="auth-title">Solicitação não aprovada</div>
+    <div class="auth-sub" style="margin-bottom:24px">Entre em contato com a equipe LIV para mais informações.</div>
+    <button class="btn btn-ghost btn-full" onclick="doLogout()">Sair</button>
+  </div>
+
+</div>
+
+<!-- ══ APP SHELL ══ -->
+<div id="app-shell" class="shell-app" style="display:none">
+  <nav id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-img" style="background:transparent;width:auto;height:auto;padding:4px 6px"><img src="https://imigrareua.com/wp-content/uploads/2024/10/logo-imigrar-eua-branco-1.webp" style="width:90px;height:auto;display:block" alt="ImigrarEUA"></div>
+      <div><div class="sb-logo-name">Partner Portal</div><div class="sb-logo-role">ImigrarEUA</div></div>
+    </div>
+    <div class="sb-nav" id="sb-nav"></div>
+    <div class="sb-footer">
+      <div class="sb-avatar" id="sb-avatar" onclick="currentUser?.role==='affiliate'?navigate('aff-profile'):null"></div>
+      <div class="sb-footer-info"><div class="sb-user-name" id="sb-user-name">—</div><div class="sb-user-email" id="sb-user-email">—</div></div>
+      <button class="sb-logout" onclick="doLogout()">↩</button>
+    </div>
+  </nav>
+  <div id="main-area">
+    <div class="topbar">
+      <div><div class="topbar-title" id="topbar-title">—</div><div class="topbar-sub" id="topbar-sub">—</div></div>
+    </div>
+    <div class="content" id="app-content"></div>
+  </div>
+</div>
+
+<!-- Modal de Modelo de Bonificação -->
+<div class="modal-overlay" id="bonif-modal" style="display:none" onclick="if(event.target===this)closeBonifModal()">
+  <div class="modal">
+    <div class="modal-title" id="bonif-modal-title">Modelo de Bonificação</div>
+    <div class="modal-sub" id="bonif-modal-sub">Configure os valores por etapa e produto</div>
+    <div class="form-group"><label class="form-label">Nome do modelo</label><input class="form-input" id="bm-name" placeholder="Ex: Premium, Parceiro Plus…"></div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);margin-bottom:8px">Bonificação Incremental (USD) por Etapa</div>
+      <div class="matrix-wrap"><table class="mtable" id="bm-matrix-table"></table></div>
+    </div>
+    <p style="font-size:11px;color:var(--s400);margin-top:6px">💡 Valores são incrementais e acumulativos. Linha <strong>Padrão</strong> aplica a todos os produtos sem override específico.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeBonifModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="saveBonifModel()">Salvar modelo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leads-popup" style="display:none" onclick="if(event.target===this)closeLeadsPopup()">
+  <div class="modal" style="max-width:620px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title" id="leads-popup-title">Leads</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeLeadsPopup()">✕ Fechar</button>
+    </div>
+    <div class="modal-sub" id="leads-popup-sub"></div>
+    <div id="leads-popup-body" style="max-height:420px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// SUPABASE CLIENT
+// ═══════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://kkrhtfpjdlzuebqnyzzy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtrcmh0ZnBqZGx6dWVicW55enp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDA0MDYsImV4cCI6MjA5NzIxNjQwNn0.sfeLDgWy5Bp8NSkO3xu4o4Sai-_XvcVAgpnjhfx7GFo';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════
+const PRODUCTS = ["Padrão","EB-2 NIW","EB-1A","O-1","E-2","L-1A"];
+const STAGES   = ["Lead Recebido","Em Atendimento","Reunião Agendada","Oportunidade","Convertido"];
+const STAGE_EMOJI = {"Lead Recebido":"📥","Em Atendimento":"📞","Reunião Agendada":"📅","Oportunidade":"🤝","Convertido":"💰"};
+const PROD_EMOJI  = {Padrão:"⚙️","EB-2 NIW":"🇺🇸",EB1A:"🌟","O-1":"✨","E-2":"💼","L-1A":"🏢"};
+
+const DEFAULT_BONIF_MODEL = {
+  id:"standard", name:"Padrão", isPreset:true,
+  products:{
+    "Padrão":   {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":100}},
+    "EB-2 NIW": {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":120}},
+    "EB-1A":    {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":130}},
+    "O-1":      {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":110}},
+    "E-2":      {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":100}},
+    "L-1A":     {stages:{"Lead Recebido":3,"Em Atendimento":5,"Reunião Agendada":20,"Oportunidade":50,"Convertido":100}},
+  }
+};
+const PREMIUM_BONIF_MODEL = {
+  id:"premium", name:"Premium", isPreset:true,
+  products:{
+    "Padrão":   {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":150}},
+    "EB-2 NIW": {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":180}},
+    "EB-1A":    {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":200}},
+    "O-1":      {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":160}},
+    "E-2":      {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":150}},
+    "L-1A":     {stages:{"Lead Recebido":5,"Em Atendimento":8,"Reunião Agendada":30,"Oportunidade":70,"Convertido":150}},
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// DATA LAYER (Supabase + in-memory cache)
+// ═══════════════════════════════════════════════════════
+let usersCache = [];
+let modelsCache = [];
+
+function mapUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    authId: row.auth_id,
+    role: row.role,
+    name: row.name,
+    email: row.email,
+    phone: row.phone || '',
+    company: row.company || '',
+    site: row.site || '',
+    channel: row.channel || '',
+    status: row.status,
+    appliedAt: row.applied_at || '',
+    approvedAt: row.approved_at || null,
+    hsAffiliateId: row.hs_affiliate_id || '',
+    bonifModelId: row.bonif_model_id || 'standard',
+    photo: row.photo || null,
+    syncData: row.sync_data || null,
+    affiliateType: row.affiliate_type || 'external',
+  };
+}
+function mapModel(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    isPreset: row.id === 'standard' || row.id === 'premium',
+    products: row.tiers || {},
+  };
+}
+function userToRow(u) {
+  return {
+    id: u.id || undefined,
+    auth_id: u.authId || null,
+    role: u.role,
+    name: u.name,
+    email: u.email,
+    phone: u.phone || null,
+    company: u.company || null,
+    site: u.site || null,
+    channel: u.channel || null,
+    status: u.status,
+    applied_at: u.appliedAt || null,
+    approved_at: u.approvedAt || null,
+    hs_affiliate_id: u.hsAffiliateId || null,
+    bonif_model_id: u.bonifModelId || 'standard',
+    photo: u.photo || null,
+    sync_data: u.syncData || null,
+    affiliate_type: u.affiliateType || 'external',
+  };
+}
+
+const getUsers      = () => usersCache;
+const getModels     = () => modelsCache;
+const getAffiliates = () => usersCache.filter(u => u.role === 'affiliate');
+const getPending    = () => getAffiliates().filter(u => u.status === 'pending');
+
+// Fire-and-forget upsert – keeps cache in sync with Supabase
+function saveUsers(users) {
+  usersCache = users;
+  sb.from('users').upsert(users.map(userToRow), { onConflict: 'id' })
+    .then(() => {}).catch(e => console.error('saveUsers:', e));
+}
+function saveModels(models) {
+  modelsCache = models;
+  sb.from('bonif_models')
+    .upsert(models.map(m => ({ id: m.id, name: m.name, description: m.description || null, tiers: m.products || {} })), { onConflict: 'id' })
+    .then(() => {}).catch(e => console.error('saveModels:', e));
+}
+
+async function loadData() {
+  const [{ data: users }, { data: models }] = await Promise.all([
+    sb.from('users').select('*'),
+    sb.from('bonif_models').select('*'),
+  ]);
+  usersCache = (users || []).map(mapUser);
+  modelsCache = (models || []).length ? models.map(mapModel) : [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
+  // seed default models if missing
+  if (!modelsCache.find(m => m.id === 'standard')) {
+    modelsCache = [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
+    saveModels(modelsCache);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let currentUser=null, leadsChart=null, stageChart=null, evoChart=null;
+let adminEvoChart=null, adminPerfChart=null;
+let editingBonifModelId=null, editingAffiliateId=null;
+let openDetailId=null;
+let affPeriod='this-year', affCustomStart='', affCustomEnd='', affSearch='', affStageFilter='Todos';
+let affSortCol='createdAt', affSortDir='desc';
+let adminPeriod='this-year', adminCustomStart='', adminCustomEnd='';
+
+// ═══════════════════════════════════════════════════════
+// BOOT / AUTH
+// ═══════════════════════════════════════════════════════
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadData();
+    let u = usersCache.find(x => x.authId === session.user.id)
+           || usersCache.find(x => x.email.toLowerCase() === session.user.email.toLowerCase());
+    if (u) {
+      if (!u.authId) {
+        await sb.from('users').update({ auth_id: session.user.id }).eq('id', u.id);
+        u.authId = session.user.id;
+      }
+      currentUser = u;
+      enterApp();
+      return;
+    }
+    await sb.auth.signOut();
+  }
+  enterAuth('v-login');
+}
+
+function enterAuth(view) {
+  document.getElementById('auth-shell').style.display = 'flex';
+  document.getElementById('app-shell').style.display = 'none';
+  showView(view);
+}
+function enterApp() {
+  document.getElementById('auth-shell').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+  buildSidebar();
+  navigate(currentUser.role === 'admin' ? 'admin-overview' : 'aff-dashboard');
+}
+function showView(id) {
+  document.querySelectorAll('#auth-shell .view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-err');
+  err.style.display = 'none';
+  const btn = document.querySelector('#v-login .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) { err.textContent = 'E-mail ou senha incorretos.'; err.style.display = 'block'; return; }
+    await loadData();
+    let u = usersCache.find(x => x.authId === data.user.id)
+           || usersCache.find(x => x.email.toLowerCase() === email);
+    if (!u) { err.textContent = 'Perfil não encontrado. Contate o administrador.'; err.style.display = 'block'; await sb.auth.signOut(); return; }
+    if (!u.authId) { await sb.from('users').update({ auth_id: data.user.id }).eq('id', u.id); u.authId = data.user.id; }
+    currentUser = u;
+    if (u.role === 'admin')       { enterApp(); return; }
+    if (u.status === 'pending')   { enterAuth('v-pending'); return; }
+    if (u.status === 'rejected')  { enterAuth('v-rejected'); return; }
+    enterApp();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+  }
+}
+
+async function doRegister() {
+  const name    = document.getElementById('reg-name').value.trim();
+  const email   = document.getElementById('reg-email').value.trim().toLowerCase();
+  const pass    = document.getElementById('reg-pass').value;
+  const phone   = document.getElementById('reg-phone').value.trim();
+  const channel = document.getElementById('reg-channel').value;
+  const site    = document.getElementById('reg-site').value.trim();
+  const company = document.getElementById('reg-company').value.trim();
+  const terms   = document.getElementById('reg-terms')?.checked;
+  const err     = document.getElementById('reg-err');
+  err.style.display = 'none';
+  if (!name||!email||!pass||!phone||!channel) { err.textContent='Preencha todos os campos obrigatórios.'; err.style.display='block'; return; }
+  if (pass.length < 6) { err.textContent='Senha deve ter ao menos 6 caracteres.'; err.style.display='block'; return; }
+  if (!terms) { err.textContent='Você precisa aceitar os Termos e Condições para continuar.'; err.style.display='block'; return; }
+  const btn = document.querySelector('#v-register .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  try {
+    const { data, error } = await sb.auth.signUp({ email, password: pass });
+    if (error) {
+      err.textContent = error.message.includes('already') ? 'E-mail já cadastrado.' : error.message;
+      err.style.display = 'block'; return;
+    }
+    const newRow = { auth_id: data.user?.id||null, role:'affiliate', name, email, phone, company, site, channel, status:'pending', applied_at: new Date().toISOString().slice(0,10), bonif_model_id:'standard', affiliate_type:'external' };
+    const { data: inserted, error: ie } = await sb.from('users').insert(newRow).select().single();
+    if (ie) { err.textContent='Erro ao criar perfil. Tente novamente.'; err.style.display='block'; return; }
+    currentUser = mapUser(inserted);
+    usersCache.push(currentUser);
+    enterAuth('v-pending');
+  } finally {
+    if (btn) { btn.disabled=false; btn.textContent='Enviar solicitação'; }
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  currentUser=null; usersCache=[]; modelsCache=[];
+  if(leadsChart){leadsChart.destroy();leadsChart=null;}
+  document.getElementById('login-email').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-err').style.display='none';
+  enterAuth('v-login');
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  const err   = document.getElementById('forgot-err');
+  err.style.display='none';
+  if (!email) { err.textContent='Digite seu e-mail.'; err.style.display='block'; return; }
+  await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  document.getElementById('forgot-form-area').style.display='none';
+  document.getElementById('forgot-success').style.display='block';
+}
+
+// ═══════════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════════
+function buildSidebar(){
+  const u=currentUser;
+  document.getElementById('sb-user-name').textContent=u.name;
+  document.getElementById('sb-user-email').textContent=u.email;
+  const avatarEl=document.getElementById('sb-avatar');
+  if(avatarEl){
+    if(u.photo) avatarEl.innerHTML=`<img src="${u.photo}" alt="">`;
+    else avatarEl.innerHTML=`<span style="font-size:13px;font-weight:700">${u.name[0]}</span>`;
+  }
+  const p=getPending().length;
+  const nav=u.role==='admin'?`
+    <div class="sb-lbl">Administração</div>
+    <button class="sb-item" data-page="admin-overview"     onclick="navigate('admin-overview')"><span>📊</span> Visão Geral</button>
+    <button class="sb-item" data-page="admin-applications" onclick="navigate('admin-applications')"><span>📋</span> Solicitações${p?`<span class="sb-badge">${p}</span>`:''}</button>
+    <button class="sb-item" data-page="admin-affiliates"   onclick="navigate('admin-affiliates')"><span>👥</span> Afiliados</button>
+    <button class="sb-item" data-page="admin-bonif-models" onclick="navigate('admin-bonif-models')"><span>💎</span> Modelos de Bonificação</button>
+  `:`
+    <div class="sb-lbl">Afiliado</div>
+    <button class="sb-item" data-page="aff-dashboard"  onclick="navigate('aff-dashboard')"><span>📊</span> Dashboard</button>
+    <button class="sb-item" data-page="aff-pipeline"   onclick="navigate('aff-pipeline')"><span>🎯</span> Pipeline de Leads</button>
+    <button class="sb-item" data-page="aff-links"      onclick="navigate('aff-links')"><span>🔗</span> Gerador de Links</button>
+    <button class="sb-item" data-page="aff-profile"    onclick="navigate('aff-profile')"><span>👤</span> Meu Perfil</button>
+  `;
+  document.getElementById('sb-nav').innerHTML=nav;
+}
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function navigate(page){
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  document.querySelector(`.sb-item[data-page="${page}"]`)?.classList.add('active');
+  if(leadsChart){leadsChart.destroy();leadsChart=null;}
+  if(evoChart){evoChart.destroy();evoChart=null;}
+  if(stageChart){stageChart.destroy();stageChart=null;}
+  if(adminEvoChart){adminEvoChart.destroy();adminEvoChart=null;}
+  if(adminPerfChart){adminPerfChart.destroy();adminPerfChart=null;}
+  openDetailId=null;
+  renderPage(page);
+}
+function setTopbar(title,sub){
+  document.getElementById('topbar-title').textContent=title;
+  document.getElementById('topbar-sub').textContent=sub;
+}
+function renderPage(page){
+  const c=document.getElementById('app-content'); c.innerHTML='';
+  ({
+    'admin-overview':    ()=>renderAdminOverview(c),
+    'admin-applications':()=>renderAdminApplications(c),
+    'admin-affiliates':  ()=>renderAdminAffiliates(c),
+    'admin-bonif-models':()=>renderAdminBonifModels(c),
+    'aff-dashboard':     ()=>renderAffDashboard(c),
+    'aff-pipeline':      ()=>renderAffPipeline(c),
+    'aff-links':         ()=>renderAffLinks(c),
+    'aff-profile':       ()=>renderAffProfile(c),
+  }[page]||(() => {}))();
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Overview
+// ═══════════════════════════════════════════════════════
+function getAdminDateRange(){
+  if(adminPeriod==='custom') return{start:adminCustomStart||null,end:adminCustomEnd||null};
+  const t=new Date(),y=t.getFullYear(),m=t.getMonth(),d=t.getDate();
+  const pad=n=>String(n).padStart(2,'0');
+  const fmt=d=>d.toISOString().slice(0,10);
+  if(adminPeriod==='today') return{start:fmt(t),end:fmt(t)};
+  if(adminPeriod==='this-week'){const s=new Date(t);s.setDate(d-t.getDay());return{start:fmt(s),end:fmt(t)};}
+  if(adminPeriod==='this-month') return{start:`${y}-${pad(m+1)}-01`,end:fmt(t)};
+  if(adminPeriod==='last-90'){const s=new Date(t);s.setDate(d-90);return{start:fmt(s),end:fmt(t)};}
+  if(adminPeriod==='this-year') return{start:`${y}-01-01`,end:fmt(t)};
+  if(adminPeriod==='all') return{start:null,end:null};
+  return{start:null,end:null};
+}
+function filterAdminPeriod(leads){
+  const{start,end}=getAdminDateRange();
+  if(!start&&!end) return leads;
+  return leads.filter(l=>{
+    const d=l.createdAt||'';
+    if(start&&d<start) return false;
+    if(end&&d>end) return false;
+    return true;
+  });
+}
+function getAffLeads(a){ return a.id==='aff-1'?LEADS:(a.syncData?.leads??[]); }
+
+function renderAdminOverview(c){
+  setTopbar('Visão Geral','Painel analítico — rede de afiliados ImigrarEUA');
+  const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const affs=getAffiliates();
+  const active=affs.filter(a=>a.status==='active');
+  const pending=affs.filter(a=>a.status==='pending');
+  const affMetrics=active.map(a=>{
+    const model=getModels().find(m=>m.id===a.bonifModelId)||DEFAULT_BONIF_MODEL;
+    const allLeads=getAffLeads(a);
+    const leads=filterAdminPeriod(allLeads);
+    const converted=leads.filter(l=>l.stage==='Convertido').length;
+    const inProg=leads.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
+    const bonif=leads.reduce((s,l)=>s+calcLeadBonif(l,model),0);
+    const bonifConv=leads.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
+    const mql=leads.filter(l=>['Reunião Agendada','Oportunidade','Convertido'].includes(l.stage)).length;
+    const sql=leads.filter(l=>['Oportunidade','Convertido'].includes(l.stage)).length;
+    const rate=leads.length>0?((converted/leads.length)*100).toFixed(1):'0.0';
+    return{a,leads,converted,mql,sql,inProg,bonif,bonifConv,rate:parseFloat(rate)};
+  }).sort((a,b)=>b.leads.length-a.leads.length);
+  const totalLeads=affMetrics.reduce((s,m)=>s+m.leads.length,0);
+  const totalConv=affMetrics.reduce((s,m)=>s+m.converted,0);
+  const totalMQL=affMetrics.reduce((s,m)=>s+m.mql,0);
+  const totalSQL=affMetrics.reduce((s,m)=>s+m.sql,0);
+  const totalBonif=affMetrics.reduce((s,m)=>s+m.bonif,0);
+  const avgRate=affMetrics.filter(m=>m.leads.length>=2).length>0
+    ?(affMetrics.filter(m=>m.leads.length>=2).reduce((s,m)=>s+m.rate,0)/affMetrics.filter(m=>m.leads.length>=2).length).toFixed(1):'—';
+  const allLeadsInPeriod=affMetrics.flatMap(m=>m.leads);
+  const evo=buildEvolutionBuckets(allLeadsInPeriod);
+  const insights=[];
+  const topPerf=[...affMetrics].sort((a,b)=>b.converted-a.converted)[0];
+  if(topPerf&&topPerf.converted>0) insights.push({type:'success',icon:'🏆',title:`${topPerf.a.name} é o top performer`,text:`${topPerf.converted} vendas fechadas no período (${topPerf.rate}% de conversão).`,action:'Ver afiliado',page:'admin-affiliates'});
+  const topLeads=affMetrics[0];
+  if(topLeads&&topLeads.leads.length>0&&topLeads.a.id!==topPerf?.a.id) insights.push({type:'info',icon:'📥',title:`${topLeads.a.name} gerou mais leads`,text:`${topLeads.leads.length} leads no período.`,action:null});
+  const bestConv=[...affMetrics].filter(m=>m.leads.length>=3).sort((a,b)=>b.rate-a.rate)[0];
+  if(bestConv&&bestConv.rate>0&&bestConv.a.id!==topPerf?.a.id) insights.push({type:'info',icon:'📈',title:`Maior taxa: ${bestConv.a.name}`,text:`${bestConv.rate}% com ${bestConv.converted} convertidos de ${bestConv.leads.length} leads.`,action:null});
+  if(pending.length>0) insights.push({type:'warning',icon:'⏳',title:`${pending.length} solicitação(ões) aguardando`,text:'Responda rapidamente para não perder afiliados engajados.',action:'Ver solicitações',page:'admin-applications'});
+  const adminPeriodBtns=[['this-month','Este mês'],['last-90','90 dias'],['this-year','Este ano'],['all','Todos']];
+  c.innerHTML=`
+    <div class="page-header" style="margin-bottom:12px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div><div class="page-title">Visão Geral</div><div class="page-sub">Painel analítico da rede de afiliados ImigrarEUA</div></div>
+      </div>
+    </div>
+    <div class="period-bar" style="margin-bottom:20px">
+      ${adminPeriodBtns.map(([k,l])=>`<button class="period-btn${adminPeriod===k?' active':''}" onclick="setAdminPeriod('${k}')">${l}</button>`).join('')}
+      <button class="period-btn${adminPeriod==='custom'?' active':''}" onclick="setAdminPeriod('custom')">Personalizado</button>
+      ${adminPeriod==='custom'?`<input type="date" class="period-date-input" value="${adminCustomStart}" onchange="adminCustomStart=this.value;renderPage('admin-overview')">
+      <span style="color:var(--s400);font-size:12px">até</span>
+      <input type="date" class="period-date-input" value="${adminCustomEnd}" onchange="adminCustomEnd=this.value;renderPage('admin-overview')">`:''}
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+      ${[
+        {icon:'👥',lbl:'Afiliados Ativos',val:active.length,bg:'#eff6ff'},
+        {icon:'🎯',lbl:'Leads no Período',val:totalLeads,bg:'#f0fdf4'},
+        {icon:'💰',lbl:'Convertidos',val:totalConv,bg:'#fdf4ff'},
+        {icon:'📊',lbl:'Taxa Média',val:avgRate==='—'?'—':avgRate+'%',bg:'#fefce8'},
+        {icon:'💵',lbl:'Bonificação Total',val:fmt(totalBonif),bg:'#f0fdf4',sm:true},
+      ].map(k=>`<div class="kpi-card"><div class="kpi-icon" style="background:${k.bg}">${k.icon}</div><div class="kpi-label">${k.lbl}</div><div class="kpi-value${k.sm?' sm':''}">${k.val}</div></div>`).join('')}
+    </div>
+    <div class="charts-grid" style="margin-bottom:20px">
+      <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">📈 Evolução de Leads</div></div><div class="panel-bd"><div style="position:relative;height:180px"><canvas id="adminEvoChart"></canvas></div></div></div>
+      <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">🏅 Performance por Afiliado</div></div><div class="panel-bd"><div style="position:relative;height:180px"><canvas id="adminPerfChart"></canvas></div></div></div>
+    </div>
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-hd"><div class="panel-title">💵 Bonificação por Afiliado</div><div style="text-align:right"><div style="font-size:10px;color:var(--s400);text-transform:uppercase">Bonificação simulada</div><div style="font-size:20px;font-weight:900;color:#059669">${fmt(totalBonif)}</div></div></div>
+      <table class="table"><thead><tr><th>Afiliado</th><th>Modelo</th><th style="text-align:right">Leads</th><th style="text-align:right">MQL</th><th style="text-align:right">SQL</th><th style="text-align:right">Conv.</th><th style="text-align:right">Taxa</th><th style="text-align:right">Bonif.</th></tr></thead>
+      <tbody>${affMetrics.length===0?`<tr><td colspan="8" class="empty-state">Nenhum dado disponível.</td></tr>`:
+        affMetrics.map(({a,leads,converted,mql,sql,bonif,rate})=>{
+          const model=getModels().find(m=>m.id===a.bonifModelId);
+          const barW=affMetrics[0].leads.length>0?Math.round(leads.length/affMetrics[0].leads.length*100):0;
+          return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><div><div style="font-weight:600;font-size:13px">${a.name}</div><div style="height:4px;background:var(--s100);border-radius:2px;margin-top:4px;width:80px"><div style="height:100%;width:${barW}%;background:#1B75BC;border-radius:2px"></div></div></div></div></td>
+          <td><span class="tag tag-blue" style="font-size:10px">${model?.name||'—'}</span></td>
+          <td style="text-align:right;font-weight:600">${leads.length}</td>
+          <td style="text-align:right;color:#7c3aed;font-weight:600">${mql||'—'}</td>
+          <td style="text-align:right;color:#1B75BC;font-weight:600">${sql||'—'}</td>
+          <td style="text-align:right;font-weight:600;color:#059669">${converted}</td>
+          <td style="text-align:right"><span style="font-weight:600;color:${parseFloat(rate)>=50?'#059669':parseFloat(rate)>=30?'#f59e0b':'#ef4444'}">${leads.length>0?rate+'%':'—'}</span></td>
+          <td style="text-align:right;color:var(--s500);font-size:12px">${fmt(bonif)}</td></tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot><tr style="background:var(--s50);font-weight:700"><td colspan="2" style="padding:10px 14px;font-size:12px;color:var(--s600)">TOTAL</td><td style="text-align:right;padding:10px 14px">${totalLeads}</td><td style="text-align:right;padding:10px 14px;color:#7c3aed">${totalMQL}</td><td style="text-align:right;padding:10px 14px;color:#1B75BC">${totalSQL}</td><td style="text-align:right;padding:10px 14px;color:#059669">${totalConv}</td><td style="text-align:right;padding:10px 14px">${avgRate==='—'?'—':avgRate+'%'}</td><td style="text-align:right;padding:10px 14px;color:var(--s500)">${fmt(totalBonif)}</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-hd"><div class="panel-title">🧠 Insights</div></div>
+      <div class="panel-bd" style="display:flex;flex-direction:column;gap:10px">
+        ${insights.length===0?`<p class="text-muted text-sm">Sem dados suficientes para gerar insights.</p>`:
+        insights.map(ins=>{
+          const colors={success:'#d1fae5|#059669|#f0fdf4',info:'#dbeafe|#1B75BC|#eff6ff',warning:'#fef9c3|#92400e|#fefce8',danger:'#fee2e2|#b91c1c|#fef2f2'};
+          const[border,text,bg]=colors[ins.type].split('|');
+          return`<div style="background:${bg};border-left:4px solid ${border};border-radius:0 10px 10px 0;padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px">${ins.icon}</span><div><div style="font-size:13px;font-weight:700;color:${text};margin-bottom:2px">${ins.title}</div><div style="font-size:12px;color:var(--s600)">${ins.text}</div></div></div>${ins.action?`<button class="btn btn-sm btn-ghost" onclick="navigate('${ins.page}')">${ins.action} →</button>`:''}</div>`;
+        }).join('')}
+      </div>
+    </div>
+    ${pending.length?`<div class="panel"><div class="panel-hd"><div class="panel-title">⏳ Solicitações Pendentes</div><button class="btn btn-primary btn-sm" onclick="navigate('admin-applications')">Ver todas</button></div><table class="table"><thead><tr><th>Nome</th><th>E-mail</th><th>Canal</th><th>Solicitado</th><th></th></tr></thead><tbody>
+    ${pending.slice(0,3).map(a=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div>${a.name}</div></td><td class="text-muted">${a.email}</td><td class="text-muted text-sm">${a.channel||'—'}</td><td class="text-muted text-sm">${fmtDate(a.appliedAt)}</td><td style="text-align:right"><button class="btn btn-success btn-xs" onclick="approveAff('${a.id}')">Aprovar</button> <button class="btn btn-danger btn-xs" onclick="rejectAff('${a.id}')">Rejeitar</button></td></tr>`).join('')}
+    </tbody></table></div>`:''}`;
+  setTimeout(()=>{
+    if(adminEvoChart){adminEvoChart.destroy();adminEvoChart=null;}
+    const ctx1=document.getElementById('adminEvoChart')?.getContext('2d');
+    if(ctx1) adminEvoChart=new Chart(ctx1,{type:'bar',data:{labels:evo.labels,datasets:[{data:evo.data,backgroundColor:'#1B75BC',borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8',maxRotation:45}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},color:'#94a3b8'},beginAtZero:true,precision:0}}}});
+    if(adminPerfChart){adminPerfChart.destroy();adminPerfChart=null;}
+    const ctx2=document.getElementById('adminPerfChart')?.getContext('2d');
+    const perfData=affMetrics.slice(0,8);
+    if(ctx2) adminPerfChart=new Chart(ctx2,{type:'bar',data:{labels:perfData.map(m=>m.a.name.split(' ')[0]),datasets:[{label:'Leads',data:perfData.map(m=>m.leads.length),backgroundColor:'#1B75BC',borderRadius:4,borderSkipped:false},{label:'Convertidos',data:perfData.map(m=>m.converted),backgroundColor:'#059669',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8'}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},color:'#94a3b8'},beginAtZero:true,precision:0}}}});
+  },50);
+}
+window.setAdminPeriod=function(p){adminPeriod=p;if(adminEvoChart){adminEvoChart.destroy();adminEvoChart=null;}if(adminPerfChart){adminPerfChart.destroy();adminPerfChart=null;}renderPage('admin-overview');};
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Applications
+// ═══════════════════════════════════════════════════════
+function renderAdminApplications(c){
+  const pending=getPending();
+  setTopbar('Solicitações',`${pending.length} aguardando aprovação`);
+  const hist=getAffiliates().filter(a=>a.status!=='pending');
+  c.innerHTML=`
+    <div class="page-header"><div class="page-title">Solicitações de Afiliados</div><div class="page-sub">Analise e aprove ou rejeite cada solicitação</div></div>
+    ${pending.length===0?`<div class="panel"><div class="empty-state"><div class="icon">✅</div><p>Nenhuma solicitação pendente.</p></div></div>`:`
+    <div class="panel"><table class="table"><thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Canal</th><th>Site</th><th>Solicitado</th><th style="text-align:right">Ações</th></tr></thead><tbody>
+    ${pending.map(a=>`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><strong>${a.name}</strong></div></td><td class="text-muted">${a.email}</td><td class="text-muted text-sm">${a.phone||'—'}</td><td class="text-muted text-sm">${a.channel||'—'}</td><td class="text-muted text-sm">${a.site?`<a href="${a.site}" target="_blank" style="color:var(--blue)">Ver</a>`:'—'}</td><td class="text-muted text-sm">${fmtDate(a.appliedAt)}</td><td style="text-align:right;white-space:nowrap"><button class="btn btn-success btn-xs" onclick="approveAff('${a.id}')">✓ Aprovar</button> <button class="btn btn-danger btn-xs" onclick="rejectAff('${a.id}')">✗ Rejeitar</button></td></tr>`).join('')}
+    </tbody></table></div>`}
+    ${hist.length?`<div class="panel"><div class="panel-hd"><div class="panel-title">Histórico</div></div><table class="table"><thead><tr><th>Nome</th><th>E-mail</th><th>Canal</th><th>Solicitado</th><th>Status</th></tr></thead><tbody>
+    ${hist.map(a=>`<tr><td>${a.name}</td><td class="text-muted">${a.email}</td><td class="text-muted text-sm">${a.channel||'—'}</td><td class="text-muted text-sm">${fmtDate(a.appliedAt)}</td><td>${statusBadge(a.status)}</td></tr>`).join('')}
+    </tbody></table></div>`:''}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Affiliates
+// ═══════════════════════════════════════════════════════
+function renderAdminAffiliates(c){
+  const active=getAffiliates().filter(a=>a.status==='active');
+  setTopbar('Afiliados',`${active.length} afiliados ativos`);
+  c.innerHTML=`
+    <div class="page-header"><div class="page-title">Afiliados</div><div class="page-sub">Configure o HubSpot ID e o modelo de bonificação de cada afiliado</div></div>
+    <div class="panel" style="overflow:visible">
+      ${active.length===0?`<div class="empty-state"><div class="icon">👥</div><p>Nenhum afiliado ativo.</p></div>`:`
+      <table class="table" id="affs-table"><thead><tr><th>Afiliado</th><th>HubSpot ID</th><th>Modelo</th><th>Leads</th><th>Convertidos</th><th>Última Sync</th><th style="text-align:right">Ações</th></tr></thead><tbody id="affs-tbody"></tbody></table>`}
+    </div>`;
+  if(active.length) renderAffRows(active);
+}
+function renderAffRows(active){
+  const tbody=document.getElementById('affs-tbody'); if(!tbody) return;
+  const models=getModels();
+  tbody.innerHTML=active.map(a=>{
+    const model=models.find(m=>m.id===a.bonifModelId);
+    const isOpen=openDetailId===a.id;
+    return`<tr style="cursor:pointer;${isOpen?'background:#f8fafc':''}"><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><div><div style="font-weight:600">${a.name}</div><div class="text-muted text-sm">${a.email}</div></div></div></td>
+      <td>${a.hsAffiliateId?`<code style="font-size:11px;background:var(--s50);border:1px solid var(--s200);padding:2px 7px;border-radius:5px">${a.hsAffiliateId}</code>`:'<span class="text-muted text-sm">—</span>'}</td>
+      <td>${model?`<span class="tag tag-blue">${model.name}</span>`:'<span class="text-muted text-sm">—</span>'}</td>
+      <td>${a.syncData?.totalLeads??'—'}</td><td>${a.syncData?.converted??'—'}</td>
+      <td class="text-muted text-sm">${a.syncData?.lastSync?fmtDate(a.syncData.lastSync):'—'}</td>
+      <td style="text-align:right"><button class="btn btn-outline-blue btn-xs" onclick="toggleAffDetail('${a.id}',event)">⚙ Configurar</button> <button class="btn btn-danger btn-xs" onclick="revokeAff('${a.id}')">Revogar</button></td></tr>
+      <tr id="detail-row-${a.id}" style="display:${isOpen?'table-row':'none'}"><td colspan="7" style="padding:0"><div class="aff-detail open" id="detail-${a.id}">${renderAffDetailHTML(a)}</div></td></tr>`;
+  }).join('');
+}
+function renderAffDetailHTML(a){
+  const models=getModels();
+  const modelOpts=models.map(m=>`<option value="${m.id}"${a.bonifModelId===m.id?' selected':''}>${m.name}${m.isPreset?' (preset)':''}</option>`).join('');
+  return`<div class="detail-grid">
+    <div><div class="detail-section-title">🔗 Integração HubSpot</div>
+      <p class="text-muted text-sm" style="margin-bottom:10px">Informe o identificador do afiliado no HubSpot (<code>referred_by</code>). Ao sincronizar, o sistema buscará os contatos associados.</p>
+      <div class="hs-sync-row"><input class="hs-id-input" id="hs-id-${a.id}" placeholder="ex: leticia-ferrari" value="${a.hsAffiliateId||''}">
+        <button class="btn btn-outline-blue btn-sm" onclick="syncHubSpot('${a.id}')"><span id="sync-icon-${a.id}">🔄</span> Sincronizar</button>
+        <button class="btn btn-secondary btn-sm" onclick="saveHsId('${a.id}')">Salvar ID</button>
+      </div>
+      <div id="sync-result-${a.id}" class="sync-result" style="display:${a.syncData?'block':'none'}">${a.syncData?renderSyncResult(a.syncData):''}</div>
+    </div>
+    <div><div class="detail-section-title">💎 Modelo de Bonificação</div>
+      <div class="form-group"><label class="form-label">Modelo aplicado</label>
+        <select class="form-input" id="bonif-model-select-${a.id}" onchange="previewModel('${a.id}')">${modelOpts}</select>
+      </div>
+      <div id="model-preview-${a.id}" style="margin-top:8px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary btn-sm" onclick="assignModel('${a.id}')">Aplicar modelo</button>
+        <button class="btn btn-ghost btn-sm" onclick="openNewCustomModel('${a.id}')">+ Criar modelo customizado</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderSyncResult(sd){
+  if(sd.error) return`<span class="sync-err">❌ ${sd.error}</span>`;
+  return`<strong>✅ ${sd.totalLeads}</strong> leads · <strong>${sd.converted}</strong> convertidos · <strong>${sd.convRate}%</strong><br><span class="text-muted" style="font-size:11px">Última sync: ${sd.lastSync||'—'} · ${sd.source||'HubSpot CRM'}</span>`;
+}
+function toggleAffDetail(id,e){
+  e.stopPropagation();
+  openDetailId=openDetailId===id?null:id;
+  renderAffRows(getAffiliates().filter(a=>a.status==='active'));
+  if(openDetailId===id){ const sel=document.getElementById(`bonif-model-select-${id}`); if(sel) previewModel(id); }
+}
+function previewModel(affId){
+  const select=document.getElementById(`bonif-model-select-${affId}`); if(!select) return;
+  const model=getModels().find(m=>m.id===select.value);
+  const el=document.getElementById(`model-preview-${affId}`); if(!el||!model) return;
+  let acc=0;
+  const defStages=model.products['Padrão']?.stages??{};
+  const rows=STAGES.map(s=>{acc+=Number(defStages[s]||0);return`<tr><td style="padding:4px 8px;font-size:12px">${STAGE_EMOJI[s]} ${s}</td><td style="text-align:right;padding:4px 8px;font-size:12px;color:#059669;font-weight:600">+$${defStages[s]||0}</td><td style="text-align:right;padding:4px 8px;font-size:12px;font-weight:700">$${acc}</td></tr>`;}).join('');
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);margin-bottom:6px">Preview</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:4px 8px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Etapa</th><th style="text-align:right;padding:4px 8px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Incremental</th><th style="text-align:right;padding:4px 8px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Acumulado</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function saveHsId(affId){
+  const val=document.getElementById(`hs-id-${affId}`)?.value.trim();
+  const users=getUsers(); const u=users.find(x=>x.id===affId); if(!u) return;
+  u.hsAffiliateId=val; saveUsers(users); toast('✅ HubSpot ID salvo.');
+}
+async function syncHubSpot(affId){
+  const hsId=document.getElementById(`hs-id-${affId}`)?.value.trim();
+  if(!hsId){ toast('Informe o HubSpot ID antes de sincronizar.'); return; }
+  saveHsId(affId);
+  const iconEl=document.getElementById(`sync-icon-${affId}`);
+  const resultEl=document.getElementById(`sync-result-${affId}`);
+  if(iconEl) iconEl.innerHTML='<span class="loading-spin"></span>';
+  if(resultEl){ resultEl.style.display='block'; resultEl.innerHTML='<span class="text-muted">Buscando no HubSpot…</span>'; }
+  try {
+    const res=await fetch(`/api/hubspot/sync?hsId=${encodeURIComponent(hsId)}`);
+    if(!res.ok) throw new Error(`Erro ${res.status}`);
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    const contacts=data.results||[];
+    const total=contacts.length;
+    const converted=contacts.filter(ct=>{ const ls=(ct.properties?.lifecyclestage||'').toLowerCase(); return ls==='customer'||ls==='evangelist'; }).length;
+    const convRate=total>0?((converted/total)*100).toFixed(1):'0.0';
+    const today=new Date().toISOString().slice(0,10);
+    const leads=contacts.map(ct=>{
+      const ls=(ct.properties?.lifecyclestage||'').toLowerCase();
+      const disq=ct.properties?.hs_latest_disqualified_lead_date;
+      return{id:ct.id,name:obfuscateName((ct.properties?.firstname||'')+(ct.properties?.lastname?' '+ct.properties.lastname:'')),stage:mapLifecycle(ls,disq),product:null,createdAt:(ct.properties?.createdate||'').slice(0,10),stageDate:(ct.properties?.notes_last_updated||ct.properties?.createdate||'').slice(0,10),owner:ct.properties?.hubspot_owner_id||null};
+    });
+    const syncData={totalLeads:total,converted,convRate:parseFloat(convRate),lastSync:today,source:'HubSpot CRM',leads};
+    const users=getUsers(); const u=users.find(x=>x.id===affId);
+    if(u){ u.syncData=syncData; saveUsers(users); }
+    if(resultEl) resultEl.innerHTML=renderSyncResult(syncData);
+    if(iconEl) iconEl.textContent='🔄';
+    toast(`✅ Sincronizado: ${total} leads, ${converted} convertidos.`);
+    renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
+  } catch(err){
+    const sd={error:`Erro: ${err?.message||err}`};
+    if(resultEl) resultEl.innerHTML=renderSyncResult(sd);
+    if(iconEl) iconEl.textContent='🔄';
+    toast('❌ Falha na sincronização.');
+  }
+}
+function assignModel(affId){
+  const select=document.getElementById(`bonif-model-select-${affId}`); if(!select) return;
+  const modelId=select.value;
+  const users=getUsers(); const u=users.find(x=>x.id===affId); if(!u) return;
+  u.bonifModelId=modelId; saveUsers(users);
+  const model=getModels().find(m=>m.id===modelId);
+  toast(`✅ Modelo "${model?.name||modelId}" aplicado a ${u.name}.`);
+  renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
+}
+function openNewCustomModel(affId){
+  editingBonifModelId=null; editingAffiliateId=affId;
+  const u=getUsers().find(x=>x.id===affId);
+  openBonifModal(null,`Novo modelo para ${u?.name||'afiliado'}`);
+}
+function revokeAff(id){
+  if(!confirm('Revogar o acesso deste afiliado?')) return;
+  const users=getUsers(); const u=users.find(x=>x.id===id); if(!u) return;
+  u.status='rejected'; saveUsers(users); buildSidebar(); navigate('admin-affiliates'); toast(`Acesso de ${u.name} revogado.`);
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Bonif Models
+// ═══════════════════════════════════════════════════════
+function renderAdminBonifModels(c){
+  setTopbar('Modelos de Bonificação','Gerencie os modelos disponíveis');
+  const models=getModels();
+  c.innerHTML=`<div class="page-header"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div class="page-title">Modelos de Bonificação</div><div class="page-sub">Crie presets reutilizáveis para os afiliados.</div></div><button class="btn btn-primary btn-sm" onclick="openBonifModal(null,'Novo modelo')">+ Novo modelo</button></div></div>
+  <div id="models-list">${models.map(m=>renderModelCard(m)).join('')}</div>`;
+}
+function renderModelCard(m){
+  const defStages=m.products?.['Padrão']?.stages??{};
+  let acc=0;
+  const stagesHtml=STAGES.map(s=>{acc+=Number(defStages[s]||0);return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--s50)"><span style="color:var(--s600)">${STAGE_EMOJI[s]} ${s}</span><span><span style="color:#059669;font-weight:600">+$${defStages[s]||0}</span> <span style="color:var(--s400);font-size:11px">(= $${acc})</span></span></div>`;}).join('');
+  const affCount=getAffiliates().filter(a=>a.status==='active'&&a.bonifModelId===m.id).length;
+  return`<div class="panel"><div class="panel-hd"><div style="display:flex;align-items:center;gap:10px"><div class="panel-title">${m.name}</div>${m.isPreset?'<span class="tag tag-purple">Preset</span>':'<span class="tag tag-amber">Customizado</span>'}${affCount?`<span class="text-muted text-sm">${affCount} afiliado${affCount>1?'s':''} usando</span>`:''}</div><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="openBonifModal('${m.id}','Editar modelo')">Editar</button>${!m.isPreset?`<button class="btn btn-danger btn-sm" onclick="deleteModel('${m.id}')">Excluir</button>`:''}</div></div>
+  <div class="panel-bd" style="padding-top:10px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div><div class="detail-section-title" style="margin-bottom:8px">Valores Padrão</div>${stagesHtml}</div><div><div class="detail-section-title" style="margin-bottom:8px">Override Convertido por Produto</div>${PRODUCTS.filter(p=>p!=='Padrão').map(p=>{const v=m.products?.[p]?.stages?.['Convertido'];return`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--s50)"><span style="color:var(--s600)">${p}</span><span style="font-weight:600;color:var(--s800)">${v!=null?'$'+v:'usa padrão'}</span></div>`;}).join('')}</div></div></div></div>`;
+}
+function openBonifModal(modelId,title){
+  editingBonifModelId=modelId;
+  document.getElementById('bonif-modal-title').textContent=title||'Modelo de Bonificação';
+  const model=modelId?getModels().find(m=>m.id===modelId):null;
+  document.getElementById('bm-name').value=model?.name||'';
+  const stageHeaders=STAGES.map(s=>`<th>${STAGE_EMOJI[s]}<br><span style="font-weight:400;text-transform:none;font-size:10px">${s}</span></th>`).join('');
+  const rows=PRODUCTS.map(prod=>{
+    const isDefault=prod==='Padrão';
+    const cells=STAGES.map(stage=>{const v=model?.products?.[prod]?.stages?.[stage]??model?.products?.['Padrão']?.stages?.[stage]??'';return`<td><input class="m-input${isDefault?' hilite':''}" data-prod="${esc(prod)}" data-stage="${esc(stage)}" value="${v}" type="number" min="0" step="1"></td>`;}).join('');
+    return`<tr><td>${isDefault?'<strong>⚙️ Padrão</strong>':prod}</td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('bm-matrix-table').innerHTML=`<thead><tr><th style="text-align:left;min-width:140px">Produto</th>${stageHeaders}</tr></thead><tbody>${rows}</tbody>`;
+  document.getElementById('bonif-modal').style.display='flex';
+}
+function closeBonifModal(){ document.getElementById('bonif-modal').style.display='none'; editingBonifModelId=null; editingAffiliateId=null; }
+function saveBonifModel(){
+  const name=document.getElementById('bm-name').value.trim();
+  if(!name){ toast('Dê um nome ao modelo.'); return; }
+  const products={};
+  PRODUCTS.forEach(prod=>{products[prod]={stages:{}};});
+  document.querySelectorAll('#bm-matrix-table .m-input').forEach(inp=>{
+    const prod=inp.dataset.prod,stage=inp.dataset.stage,val=parseFloat(inp.value)||0;
+    if(!products[prod]) products[prod]={stages:{}};
+    products[prod].stages[stage]=val;
+  });
+  const models=getModels();
+  if(editingBonifModelId){
+    const idx=models.findIndex(m=>m.id===editingBonifModelId);
+    if(idx>-1){ models[idx].name=name; models[idx].products=products; }
+  } else {
+    const newModel={id:'custom-'+Date.now(),name,isPreset:false,products};
+    models.push(newModel);
+    if(editingAffiliateId){ const users=getUsers(); const u=users.find(x=>x.id===editingAffiliateId); if(u){ u.bonifModelId=newModel.id; saveUsers(users); } }
+  }
+  saveModels(models); closeBonifModal(); toast(`✅ Modelo "${name}" salvo.`);
+  if(openDetailId) renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
+  else if(document.querySelector('.sb-item[data-page="admin-bonif-models"]')?.classList.contains('active')) navigate('admin-bonif-models');
+}
+function deleteModel(id){
+  if(!confirm('Excluir este modelo?')) return;
+  const models=getModels().filter(m=>m.id!==id); saveModels(models);
+  const users=getUsers(); users.forEach(u=>{if(u.bonifModelId===id) u.bonifModelId='standard';}); saveUsers(users);
+  navigate('admin-bonif-models'); toast('Modelo excluído.');
+}
+
+// ═══════════════════════════════════════════════════════
+// LEADS DATA (Leticia Ferrari - hardcoded rich dataset)
+// ═══════════════════════════════════════════════════════
+const LEADS=[
+  {id:"209952239135",name:"Romulo Q.**",stage:"Convertido",createdAt:"2026-03-18",stageDate:"2026-03-24",product:"EB-2 NIW",owner:"Breno F."},
+  {id:"205673203113",name:"Andreia S.**",stage:"Não Convertido",createdAt:"2026-02-26",stageDate:"2026-02-26",product:null},
+  {id:"197257431867",name:"Camila F.J.**",stage:"Não Convertido",createdAt:"2026-01-29",stageDate:"2026-02-06",product:"E-2"},
+  {id:"192738144618",name:"Arnaldo C.P.J.**",stage:"Convertido",createdAt:"2026-01-13",stageDate:"2023-02-08",product:"EB-2 NIW",owner:"Lívia L."},
+  {id:"176239125666",name:"Pedro C.P.**",stage:"Não Convertido",createdAt:"2025-11-18",stageDate:"2025-11-18",product:null},
+  {id:"176062475819",name:"Ana R.O.**",stage:"Convertido",createdAt:"2025-11-17",stageDate:"2025-11-21",product:"EB-1A"},
+  {id:"170724496702",name:"Felipe M.D.L.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
+  {id:"170725110644",name:"Morgana J.Z.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
+  {id:"165910539780",name:"Camila G.**",stage:"Não Convertido",createdAt:"2025-10-21",stageDate:"2025-10-28",product:"O-1"},
+  {id:"160141296992",name:"Jorge C.F.**",stage:"Não Convertido",createdAt:"2025-10-01",stageDate:"2025-10-01",product:null},
+  {id:"157662396846",name:"Francilande M.P.S.S.**",stage:"Convertido",createdAt:"2025-09-23",stageDate:"2022-11-28",product:"EB-2 NIW"},
+  {id:"153848528403",name:"Miriam M.**",stage:"Não Convertido",createdAt:"2025-09-08",stageDate:"2025-09-08",product:null},
+  {id:"152677600114",name:"Stéffany O.**",stage:"Não Convertido",createdAt:"2025-09-03",stageDate:"2025-09-03",product:null},
+  {id:"148494395236",name:"Thiago M.**",stage:"Convertido",createdAt:"2025-08-19",stageDate:"2025-08-21",product:"EB-2 NIW"},
+  {id:"139223239462",name:"Uarlem J.D.F.O.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
+  {id:"139213151000",name:"Sandro R.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
+  {id:"129008024867",name:"Wendel A.**",stage:"Não Convertido",createdAt:"2025-06-12",stageDate:"2025-06-12",product:null},
+  {id:"123189484298",name:"Rafael N.**",stage:"Convertido",createdAt:"2025-05-21",stageDate:"2022-11-07",product:"EB-2 NIW"},
+  {id:"105053610777",name:"Samuel P.**",stage:"Convertido",createdAt:"2025-03-10",stageDate:"2025-03-10",product:"EB-2 NIW"},
+  {id:"102607372471",name:"Giuseppe A.**",stage:"Convertido",createdAt:"2025-02-27",stageDate:"2025-02-27",product:"E-2"},
+  {id:"99238309027",name:"Carlos E.V.S.**",stage:"Convertido",createdAt:"2025-02-13",stageDate:"2025-02-13",product:"EB-1A"},
+  {id:"91855412802",name:"Paulo C.D.S.C.J.**",stage:"Convertido",createdAt:"2025-01-15",stageDate:"2025-01-16",product:"EB-2 NIW"},
+  {id:"81132684462",name:"Timothy T.O.**",stage:"Convertido",createdAt:"2024-11-29",stageDate:"2024-12-03",product:"EB-2 NIW"},
+  {id:"80590289941",name:"Alexandre P.D.S.**",stage:"Convertido",createdAt:"2024-11-27",stageDate:"2024-11-27",product:"EB-1A"},
+  {id:"76995103410",name:"Rogeria C.**",stage:"Convertido",createdAt:"2024-11-12",stageDate:"2024-11-12",product:"EB-2 NIW"},
+  {id:"75270511997",name:"Ricardo D.**",stage:"Convertido",createdAt:"2024-11-05",stageDate:"2024-11-08",product:"EB-2 NIW"},
+  {id:"71697372198",name:"Roberto C.**",stage:"Convertido",createdAt:"2024-10-24",stageDate:"2024-10-31",product:"EB-2 NIW"},
+  {id:"57444274500",name:"Renata L.**",stage:"Convertido",createdAt:"2024-09-12",stageDate:"2023-12-10",product:null},
+  {id:"51868510231",name:"Angelica S.**",stage:"Convertido",createdAt:"2024-08-26",stageDate:"2024-08-28",product:"EB-2 NIW"},
+  {id:"46730169617",name:"Daniel L.**",stage:"Convertido",createdAt:"2024-08-08",stageDate:"2024-08-01",product:"EB-2 NIW"},
+  {id:"43318753929",name:"Ana P.G.**",stage:"Convertido",createdAt:"2024-07-28",stageDate:"2024-08-01",product:"EB-2 NIW"},
+  {id:"37937282110",name:"Viviane K.**",stage:"Convertido",createdAt:"2024-07-10",stageDate:"2023-05-08",product:"EB-2 NIW"},
+  {id:"37513246030",name:"Ricardo G.**",stage:"Convertido",createdAt:"2024-07-09",stageDate:"2024-07-09",product:"EB-2 NIW"},
+  {id:"35614660473",name:"Patricia M.Q.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-13",product:"EB-2 NIW"},
+  {id:"35634229117",name:"André L.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-09-04",product:"EB-2 NIW"},
+  {id:"35642532431",name:"Gisele M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-22",product:"EB-2 NIW"},
+  {id:"35642532162",name:"Teógenes P.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-11",product:"O-1"},
+  {id:"35631139077",name:"Milene D.Á.M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-12",product:"EB-2 NIW"},
+  {id:"35632850949",name:"Vitor S.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-02",product:"EB-2 NIW"},
+  {id:"35633428352",name:"Thaís B.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-19",product:"EB-2 NIW"},
+  {id:"35634209877",name:"Cleider L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-23",product:"EB-2 NIW"},
+  {id:"35641292701",name:"Marcos R.V.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-07",product:"EB-2 NIW"},
+  {id:"35616746005",name:"Jakeline C.V.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-09",product:"EB-2 NIW"},
+  {id:"35629388320",name:"Eli O.S.D.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
+  {id:"35628702749",name:"Guilherme G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
+  {id:"35633633133",name:"João B.D.S.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-14",product:"EB-2 NIW"},
+  {id:"35631395594",name:"Rafael D.O.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-08",product:"EB-2 NIW"},
+  {id:"35631135564",name:"Lucas M.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-10",product:"EB-2 NIW"},
+  {id:"35633017346",name:"Alberto S.K.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-02",product:"EB-2 NIW"},
+  {id:"35631417381",name:"Vinícius A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-23",product:"EB-2 NIW"},
+];
+
+// ═══════════════════════════════════════════════════════
+// BONIF CALC
+// ═══════════════════════════════════════════════════════
+function calcLeadBonif(lead,model){
+  const m=model||getModels().find(x=>x.id==='standard')||DEFAULT_BONIF_MODEL;
+  const prod=lead.product&&m.products?.[lead.product]?lead.product:'Padrão';
+  const stages=m.products?.[prod]?.stages??m.products?.['Padrão']?.stages??{};
+  const FLOW=["Lead Recebido","Em Atendimento","Reunião Agendada","Oportunidade","Convertido"];
+  const eff=lead.stage==="Não Convertido"?"Lead Recebido":lead.stage;
+  const idx=FLOW.indexOf(eff); if(idx===-1) return 0;
+  return FLOW.slice(0,idx+1).reduce((s,st)=>s+(Number(stages[st])||0),0);
+}
+
+// ═══════════════════════════════════════════════════════
+// DATE / PERIOD HELPERS
+// ═══════════════════════════════════════════════════════
+const PERIODS=[['today','Hoje'],['this-week','Esta semana'],['last-week','Semana passada'],['this-month','Este mês'],['last-90','Últimos 90 dias'],['this-year','Este ano'],['all','Tudo']];
+function getDateRange(period){
+  const now=new Date(); const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(period==='today') return{start:today,end:now};
+  if(period==='this-week'){const d=new Date(today);d.setDate(today.getDate()-today.getDay());return{start:d,end:now};}
+  if(period==='last-week'){const e=new Date(today);e.setDate(today.getDate()-today.getDay()-1);const s=new Date(e);s.setDate(e.getDate()-6);return{start:s,end:e};}
+  if(period==='this-month') return{start:new Date(today.getFullYear(),today.getMonth(),1),end:now};
+  if(period==='last-90') return{start:new Date(now-90*864e5),end:now};
+  if(period==='this-year') return{start:new Date(today.getFullYear(),0,1),end:now};
+  if(period==='custom') return{start:affCustomStart?new Date(affCustomStart):null,end:affCustomEnd?new Date(affCustomEnd+' 23:59:59'):null};
+  return{start:null,end:null};
+}
+function filterByPeriod(leads,period){
+  const{start,end}=getDateRange(period);
+  if(!start&&!end) return leads;
+  return leads.filter(l=>{if(!l.createdAt) return true; const d=new Date(l.createdAt); if(start&&d<start) return false; if(end&&d>end) return false; return true;});
+}
+function periodLabel(period){
+  if(period==='custom'&&affCustomStart&&affCustomEnd) return`${fmtDate(affCustomStart)} – ${fmtDate(affCustomEnd)}`;
+  return PERIODS.find(p=>p[0]===period)?.[1]||period;
+}
+function buildEvolutionBuckets(leads){
+  const buckets={};
+  leads.forEach(l=>{if(!l.createdAt) return; const d=new Date(l.createdAt); const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; buckets[key]=(buckets[key]||0)+1;});
+  const keys=Object.keys(buckets).sort();
+  return{labels:keys.map(k=>{const[y,m]=k.split('-');return new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}),data:keys.map(k=>buckets[k])};
+}
+function renderPeriodBar(activePage,extraHtml=''){
+  return`<div class="period-bar">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}${extraHtml}</div>`;
+}
+const STAGE_COLORS={'Lead Recebido':'#64748b','Em Atendimento':'#3b82f6','Reunião Agendada':'#8b5cf6','Oportunidade':'#f59e0b','Convertido':'#059669','Não Convertido':'#94a3b8'};
+function mapLifecycle(ls,disqDate){
+  if(disqDate||ls==='other'||ls==='unqualifiedlead') return'Não Convertido';
+  if(ls==='customer'||ls==='evangelist') return'Convertido';
+  if(ls==='opportunity') return'Oportunidade';
+  if(ls==='salesqualifiedlead') return'Reunião Agendada';
+  if(ls==='marketingqualifiedlead') return'Em Atendimento';
+  return'Lead Recebido';
+}
+function obfuscateName(n){
+  const parts=n.trim().split(/\s+/).filter(Boolean); if(!parts.length) return'—';
+  const rest=parts.slice(1).map(p=>p[0]+'.**').join(' ');
+  return rest?`${parts[0]} ${rest}`:`${parts[0]}**`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Affiliate Dashboard
+// ═══════════════════════════════════════════════════════
+function renderAffDashboard(c){
+  const u=currentUser;
+  setTopbar('Dashboard',`Afiliado: ${u.email}`);
+  const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
+  const leads=u.id==='aff-1'?LEADS:(u.syncData?.leads??null);
+  if(!leads){
+    const defStages=model.products?.['Padrão']?.stages??{};
+    let acc=0;
+    const rows=STAGES.map(s=>{acc+=Number(defStages[s]||0);return`<tr><td style="padding:5px 10px;font-size:13px">${STAGE_EMOJI[s]} ${s}</td><td style="text-align:right;padding:5px 10px;color:#059669;font-weight:600">+$${defStages[s]||0}</td><td style="text-align:right;padding:5px 10px;font-weight:700">$${acc}</td></tr>`;}).join('');
+    c.innerHTML=`<div class="page-header"><div class="page-title">Bem-vindo, ${u.name.split(' ')[0]}! 👋</div><div class="page-sub">Sua conta está ativa. Seus leads aparecerão aqui após sincronização com o HubSpot pelo time LIV.</div></div>
+    <div class="panel" style="max-width:480px"><div class="panel-hd"><div class="panel-title">Sua Tabela de Bonificação — <span style="color:var(--blue-dark)">${model.name}</span></div></div>
+    <div class="panel-bd" style="padding-top:0"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Etapa</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Incremental</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Acumulado</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return;
+  }
+  const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const filtered=filterByPeriod(leads,affPeriod);
+  const converted=filtered.filter(l=>l.stage==='Convertido').length;
+  const notConv=filtered.filter(l=>l.stage==='Não Convertido').length;
+  const inProgress=filtered.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
+  const convRate=filtered.length>0?((converted/filtered.length)*100).toFixed(1):'0.0';
+  const commTotal=filtered.reduce((s,l)=>s+calcLeadBonif(l,model),0);
+  const commConv=filtered.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
+  const commNC=filtered.filter(l=>l.stage==='Não Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
+  const evo=buildEvolutionBuckets(filtered);
+  const stageCounts={};
+  STAGES.concat(['Não Convertido']).forEach(s=>stageCounts[s]=0);
+  filtered.forEach(l=>{if(stageCounts[l.stage]!==undefined) stageCounts[l.stage]++;});
+  const maxStageCount=Math.max(1,...Object.values(stageCounts));
+  window._dashFiltered=filtered;
+  const stageDistRows=Object.entries(stageCounts).map(([s,n])=>`<div class="stage-dist-row" style="cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;transition:background .15s" onmouseenter="this.style.background='var(--s50)'" onmouseleave="this.style.background=''" onclick="showLeadsPopup('${STAGE_EMOJI[s]||''} ${s}',(window._dashFiltered||[]).filter(l=>l.stage==='${s}'))"><div class="stage-dist-label">${STAGE_EMOJI[s]||''} ${s}</div><div class="stage-dist-bar-wrap"><div class="stage-dist-bar" style="width:${Math.round(n/maxStageCount*100)}%;background:${STAGE_COLORS[s]||'#94a3b8'}"></div></div><div class="stage-dist-count">${n}</div></div>`).join('');
+  c.innerHTML=`
+    <div class="page-header" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="page-title">Dashboard</div><div class="page-sub">Afiliado: <code>${u.email}</code> · Modelo: <strong>${model.name}</strong> · Sync: ${u.syncData?.lastSync?fmtDate(u.syncData.lastSync):'—'}</div></div></div></div>
+    ${renderPeriodBar('aff-dashboard')}
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5">✅</div><div class="kpi-label">Convertidos</div><div class="kpi-value">${converted}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb">📈</div><div class="kpi-label">Em Andamento</div><div class="kpi-value">${inProgress}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#fefce8">💵</div><div class="kpi-label">Bonificação Simulada</div><div class="kpi-value sm">${fmt(commTotal)}</div><div class="kpi-note">Modelo: ${model.name}</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">📈 Evolução de Leads</div></div><div class="panel-bd"><div class="chart-box"><canvas id="evoChart"></canvas></div></div></div>
+      <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">🎯 Estágio dos Leads</div></div><div class="panel-bd"><div class="stage-dist">${stageDistRows}</div></div></div>
+    </div>
+    <div class="banner" style="margin-top:14px"><div class="banner-left"><div class="banner-icon">🏆</div><div><div style="font-size:12px;color:#94a3b8;font-weight:500">Taxa de Conversão</div><div class="banner-rate">${convRate}%</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">${converted} convertidos de ${filtered.length} leads</div></div></div>
+    <div class="banner-box"><div class="banner-box-title">Bonificação Simulada</div><div class="brow"><span class="brow-lbl">💰 Convertidos (×${converted})</span><span class="brow-val">${fmt(commConv)}</span></div><div class="brow"><span class="brow-lbl">❌ Não Conv. (×${notConv})</span><span class="brow-val nc">${fmt(commNC)}</span></div><hr class="bdiv"><div class="brow"><span class="btotal-lbl">Total</span><span class="btotal-val">${fmt(commTotal)}</span></div></div></div>`;
+  setTimeout(()=>{
+    if(evoChart){evoChart.destroy();evoChart=null;}
+    const ctx=document.getElementById('evoChart')?.getContext('2d'); if(!ctx) return;
+    evoChart=new Chart(ctx,{type:'bar',data:{labels:evo.labels,datasets:[{data:evo.data,backgroundColor:'#3b82f6',borderRadius:5,borderSkipped:false,hoverBackgroundColor:'#1d4ed8'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} leads`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8',maxRotation:45}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},color:'#94a3b8'},beginAtZero:true,precision:0}}}});
+  },50);
+}
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Affiliate Pipeline
+// ═══════════════════════════════════════════════════════
+function renderAffPipeline(c){
+  const u=currentUser;
+  setTopbar('Pipeline de Leads','Todos os seus leads e estágios do funil');
+  const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
+  const allLeads=u.id==='aff-1'?LEADS:(u.syncData?.leads??[]);
+  const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  function getFiltered(){
+    let leads=filterByPeriod(allLeads,affPeriod);
+    if(affStageFilter!=='Todos') leads=leads.filter(l=>l.stage===affStageFilter);
+    if(affSearch.trim()){ const q=affSearch.toLowerCase(); leads=leads.filter(l=>(l.name||'').toLowerCase().includes(q)||(l.id||'').toLowerCase().includes(q)); }
+    return leads.slice().sort((a,b)=>{
+      let va='',vb='';
+      if(affSortCol==='name'){va=(a.name||'').toLowerCase();vb=(b.name||'').toLowerCase();return affSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);}
+      if(affSortCol==='stage'){va=a.stage||'';vb=b.stage||'';return affSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);}
+      if(affSortCol==='lastUpdate'){va=a.stageDate||a.createdAt||'';vb=b.stageDate||b.createdAt||'';return affSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);}
+      va=a.createdAt||'';vb=b.createdAt||'';return affSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
+    });
+  }
+  function sortIcon(col){if(affSortCol!==col) return`<span style="color:var(--s300);margin-left:3px">⇅</span>`;return affSortDir==='asc'?`<span style="color:var(--blue);margin-left:3px">↑</span>`:`<span style="color:var(--blue);margin-left:3px">↓</span>`;}
+  function thSort(col,label,extra=''){return`<th style="cursor:pointer;user-select:none${extra?';'+extra:''}" onclick="setPipelineSort('${col}')">${label}${sortIcon(col)}</th>`;}
+  function renderTable(){
+    const leads=getFiltered();
+    if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
+    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th><th style="text-align:right">Bonificação</th></tr></thead><tbody>
+    ${leads.map(l=>{
+      const bonif=calcLeadBonif(l,model);
+      const sc=STAGE_COLORS[l.stage]||'var(--s400)';
+      const lastUpdate=l.stageDate||l.createdAt;
+      const showOwner=['Em Atendimento','Reunião Agendada','Oportunidade','Convertido'].includes(l.stage);
+      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td><td>${showOwner&&l.owner?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${l.owner}</div>`:showOwner?`<span class="text-muted text-sm">—</span>`:''}</td><td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  }
+  const periodLeads=filterByPeriod(allLeads,affPeriod);
+  const counts={'Todos':periodLeads.length};
+  periodLeads.forEach(l=>{counts[l.stage]=(counts[l.stage]||0)+1;});
+  const searchHtml=`<div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="pipeline-search" placeholder="Buscar por nome ou ID…" value="${esc(affSearch)}" oninput="setPipelineSearch(this.value)"></div>`;
+  c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período · Modelo: ${model.name}</div></div>
+  ${renderPeriodBar('aff-pipeline',searchHtml)}
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
+  <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>`;
+  window._pipelineRenderTable=renderTable;
+}
+window.setStageFilter=function(stage){affStageFilter=stage;document.querySelectorAll('.pipeline-filter').forEach(b=>{b.classList.toggle('btn-primary',b.dataset.stage===stage);b.classList.toggle('btn-ghost',b.dataset.stage!==stage);});const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
+window.setPipelineSearch=function(val){affSearch=val;const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
+window.setPipelineSort=function(col){if(affSortCol===col) affSortDir=affSortDir==='asc'?'desc':'asc';else{affSortCol=col;affSortDir=col==='createdAt'||col==='lastUpdate'?'desc':'asc';}const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Affiliate Links
+// ═══════════════════════════════════════════════════════
+const LINK_FORMS=[
+  {id:'contact',label:'Contato Geral',icon:'📋',platform:'HubSpot',url:'https://share.hsforms.com/12hi7RRqbSjO_J2khC6wPqgrnxd7'},
+  {id:'fb',label:'Facebook Lead',icon:'📘',platform:'HubSpot',url:'https://share.hsforms.com/1Y-9WTeoGTHODm2-aerOyDgrnxd7'},
+  {id:'eb23',label:'EB-2 / EB-3',icon:'🇺🇸',platform:'HubSpot',url:'https://share.hsforms.com/1pWgVKSF7SWKdpAmcEdkbmgrnxd7'},
+  {id:'eb1o1',label:'EB-1A / O-1',icon:'🌟',platform:'HubSpot',url:'https://share.hsforms.com/2LDtlx4vqTzi7YW6l0h-CRArnxd7'},
+  {id:'workvisa',label:'Work Visa',icon:'💼',platform:'HubSpot',url:'https://share.hsforms.com/1piif7-DrSOmNxN2UHK3JEgrnxd7'},
+  {id:'typeform',label:'EB-1A + EB-2 NIW',icon:'📝',platform:'Typeform',url:'https://99l4c7jw78n.pro.typeform.com/to/Iie2l4oF'},
+];
+function buildUTMLink(baseUrl,affiliateName,affiliateType){
+  const params=new URLSearchParams({utm_source:'general',utm_medium:'affiliate',utm_campaign:'analise-liv',utm_term:'affiliate-audience',utm_content:'direct-message',utm_affiliatetype:affiliateType||'external',utm_affiliatename:affiliateName||'afiliado'});
+  return`${baseUrl}?${params.toString()}`;
+}
+function renderAffLinks(c){
+  const u=currentUser;
+  setTopbar('Gerador de Links','Links rastreáveis para suas indicações');
+  const hsId=u.hsAffiliateId||'';
+  const affType=u.affiliateType||'external';
+  const links=LINK_FORMS.map(f=>({...f,full:buildUTMLink(f.url,hsId,affType)}));
+  const utmParams=[['utm_source','general'],['utm_medium','affiliate'],['utm_campaign','analise-liv'],['utm_term','affiliate-audience'],['utm_content','direct-message'],['utm_affiliatetype',affType],['utm_affiliatename',hsId||'(não configurado)']];
+  c.innerHTML=`<div class="page-header"><div class="page-title">Gerador de Links</div><div class="page-sub">Compartilhe estes links para rastrear indicações com parâmetros UTM padronizados</div></div>
+  ${!hsId?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px">⚠️ Seu identificador HubSpot não foi configurado. Fale com o time ImigrarEUA.</div>`:''}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="panel"><div class="panel-hd"><div class="panel-title">Identificador do afiliado</div></div><div class="panel-bd"><div style="background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:12px 16px;font-family:monospace;font-size:15px;font-weight:700;color:var(--s800)">${hsId||'—'}</div><p class="text-muted text-sm" style="margin-top:8px">Registrado em <code>utm_affiliatename</code> de cada link.</p></div></div>
+    <div class="panel"><div class="panel-hd"><div class="panel-title">Parâmetros UTM</div></div><div class="panel-bd" style="padding:12px 16px">${utmParams.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--s50);font-size:12px"><span class="text-muted">${k}</span><span style="font-family:monospace;font-weight:600;color:var(--s700)">${v}</span></div>`).join('')}</div></div>
+  </div>
+  <div class="panel"><div class="panel-hd"><div class="panel-title">Links por formulário</div>${hsId?`<button class="btn btn-outline-blue btn-sm" onclick="copyAllLinks()">📋 Copiar todos</button>`:''}</div>
+  <table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link com UTMs</th><th style="text-align:right">Ações</th></tr></thead><tbody>
+  ${links.map((lk,i)=>`<tr><td><span style="font-size:16px">${lk.icon}</span> <strong style="font-size:13px">${lk.label}</strong></td><td><span class="tag ${lk.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${lk.platform}</span></td><td><code id="lk-${i}" style="font-size:10px;color:var(--s500);word-break:break-all;display:block;max-width:360px">${lk.full}</code></td><td style="text-align:right;white-space:nowrap"><button class="btn btn-outline-blue btn-xs" id="cpbtn-${i}" onclick="copyLink('lk-${i}','cpbtn-${i}')">📋 Copiar</button></td></tr>`).join('')}
+  </tbody></table></div>`;
+  window._affLinks=links;
+}
+window.copyLink=function(srcId,btnId){const text=document.getElementById(srcId)?.textContent||'';if(!text||text==='—') return;navigator.clipboard.writeText(text).then(()=>{const btn=document.getElementById(btnId);if(!btn) return;const orig=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent=orig,2000);}).catch(()=>toast('Não foi possível copiar.'));};
+window.copyAllLinks=function(){const all=(window._affLinks||[]).map(lk=>`${lk.label}:\n${lk.full}`).join('\n\n');navigator.clipboard.writeText(all).then(()=>toast('Todos os links copiados!')).catch(()=>toast('Erro ao copiar.'));};
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Affiliate Profile
+// ═══════════════════════════════════════════════════════
+function renderAffProfile(c){
+  const u=currentUser;
+  setTopbar('Meu Perfil','Edite suas informações e foto de perfil');
+  c.innerHTML=`<div class="page-header"><div class="page-title">Meu Perfil</div><div class="page-sub">Suas informações de afiliado</div></div>
+  <div style="display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:start">
+    <div class="panel"><div class="panel-bd" style="text-align:center;padding:28px 20px">
+      <div id="profile-photo-wrap" style="width:96px;height:96px;border-radius:50%;overflow:hidden;background:#e0eefa;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:3px solid #1B75BC;cursor:pointer;position:relative" onclick="document.getElementById('photo-input').click()">
+        ${u.photo?`<img id="profile-img" src="${u.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`:`<span id="profile-initials" style="font-size:32px;font-weight:800;color:#1B75BC">${u.name[0]}</span>`}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;display:flex;align-items:center;justify-content:center;transition:.2s;border-radius:50%" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0"><span style="color:#fff;font-size:11px;font-weight:600">Alterar</span></div>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
+      <div style="font-size:15px;font-weight:700;color:#0D255D;margin-bottom:2px">${u.name}</div>
+      <div style="font-size:12px;color:var(--s400);margin-bottom:4px">${u.email}</div>
+      ${u.company?`<div style="font-size:11px;font-weight:600;color:#1B75BC;background:#e0eefa;padding:3px 10px;border-radius:999px;display:inline-block;margin-top:4px">${u.company}</div>`:''}
+      <div style="margin-top:16px"><button class="btn btn-sm btn-ghost" onclick="document.getElementById('photo-input').click()">📷 Trocar foto</button></div>
+    </div></div>
+    <div class="panel"><div class="panel-hd"><div class="panel-title">Informações Pessoais</div></div><div class="panel-bd">
+      <div class="form-grid2">
+        <div class="form-group"><label class="form-label">Nome completo</label><input class="form-input" id="prof-name" value="${esc(u.name||'')}"></div>
+        <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" value="${esc(u.email||'')}" disabled style="opacity:.6"></div>
+        <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="prof-phone" value="${esc(u.phone||'')}"></div>
+        <div class="form-group"><label class="form-label">Empresa</label><input class="form-input" id="prof-company" value="${esc(u.company||'')}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Site ou rede social</label><input class="form-input" id="prof-site" value="${esc(u.site||'')}"></div>
+      <div class="form-group"><label class="form-label">Canal de divulgação</label>
+        <select class="form-input" id="prof-channel">${['Instagram / TikTok / YouTube','Blog ou site','Indicação direta (network pessoal)','WhatsApp / Grupos','LinkedIn','Outro'].map(ch=>`<option${u.channel===ch?' selected':''}>${ch}</option>`).join('')}</select>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px"><button class="btn btn-primary" onclick="saveProfile()">Salvar alterações</button></div>
+    </div></div>
+  </div>`;
+}
+window.handlePhotoUpload=function(input){
+  const file=input.files?.[0]; if(!file) return;
+  if(file.size>2*1024*1024){ toast('Foto muito grande. Máximo 2 MB.'); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const data=e.target.result;
+    const users=getUsers(); const u=users.find(x=>x.id===currentUser.id);
+    if(u){ u.photo=data; saveUsers(users); currentUser=u; }
+    const wrap=document.getElementById('profile-photo-wrap');
+    if(wrap){const img=document.getElementById('profile-img');if(img){img.src=data;}else{const ini=document.getElementById('profile-initials');if(ini) ini.replaceWith(Object.assign(document.createElement('img'),{id:'profile-img',src:data,style:'width:100%;height:100%;object-fit:cover'}));}}
+    buildSidebar(); toast('✅ Foto atualizada.');
+  };
+  reader.readAsDataURL(file);
+};
+window.saveProfile=function(){
+  const name=document.getElementById('prof-name')?.value.trim();
+  if(!name){ toast('Nome não pode estar vazio.'); return; }
+  const users=getUsers(); const u=users.find(x=>x.id===currentUser.id); if(!u) return;
+  u.name=name; u.phone=document.getElementById('prof-phone')?.value.trim(); u.company=document.getElementById('prof-company')?.value.trim(); u.site=document.getElementById('prof-site')?.value.trim(); u.channel=document.getElementById('prof-channel')?.value;
+  saveUsers(users); currentUser=u; buildSidebar(); toast('✅ Perfil atualizado.'); navigate('aff-profile');
+};
+
+// ═══════════════════════════════════════════════════════
+// LEADS POPUP
+// ═══════════════════════════════════════════════════════
+function showLeadsPopup(title,leads){
+  document.getElementById('leads-popup-title').textContent=title;
+  document.getElementById('leads-popup-sub').textContent=`${leads.length} lead${leads.length!==1?'s':''} neste segmento`;
+  const body=document.getElementById('leads-popup-body');
+  if(!leads.length){ body.innerHTML=`<p class="text-muted text-sm" style="padding:16px 0">Nenhum lead neste segmento.</p>`; }
+  else{ body.innerHTML=`<table class="table" style="margin-top:4px"><thead><tr><th>Nome / ID</th><th>Etapa</th><th>Criado em</th><th>Últ. Movimentação</th></tr></thead><tbody>${leads.map(l=>{const sc=STAGE_COLORS[l.stage]||'var(--s400)';return`<tr><td><div style="font-size:12px;font-weight:600">${l.name}</div><div style="font-size:10px;color:var(--s400)">#${l.id||'—'}</div></td><td><span style="font-size:11px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${fmtDate(l.createdAt)}</td><td class="text-muted text-sm">${fmtDate(l.stageDate||l.createdAt)}</td></tr>`;}).join('')}</tbody></table>`; }
+  document.getElementById('leads-popup').style.display='flex';
+}
+function closeLeadsPopup(){ document.getElementById('leads-popup').style.display='none'; }
+window.showLeadsPopup=showLeadsPopup;
+window.closeLeadsPopup=closeLeadsPopup;
+
+// ═══════════════════════════════════════════════════════
+// SHARED CONTROLS
+// ═══════════════════════════════════════════════════════
+window.setPeriod=function(period,page){ affPeriod=period; navigate(page); };
+window.setCustomDate=function(which,val,page){ if(which==='start') affCustomStart=val; else affCustomEnd=val; navigate(page); };
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+const fmtDate=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;};
+const esc=s=>String(s).replace(/"/g,'&quot;');
+function statusBadge(s){const map={pending:'badge-pending',active:'badge-active',rejected:'badge-rejected'};const lbl={pending:'Pendente',active:'Ativo',rejected:'Rejeitado'};return`<span class="badge ${map[s]||'badge-pending'}"><span class="badge-dot"></span>${lbl[s]||s}</span>`;}
+function approveAff(id){const users=getUsers();const u=users.find(x=>x.id===id);if(!u) return;u.status='active';u.approvedAt=new Date().toISOString().slice(0,10);saveUsers(users);buildSidebar();navigate('admin-applications');toast(`✅ ${u.name} aprovado.`);}
+function rejectAff(id){if(!confirm('Rejeitar esta solicitação?')) return;const users=getUsers();const u=users.find(x=>x.id===id);if(!u) return;u.status='rejected';saveUsers(users);buildSidebar();navigate('admin-applications');toast(`${u.name} rejeitado.`);}
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3000);}
+
+// ═══════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════
+boot();
+</script>
+</body>
+</html>
