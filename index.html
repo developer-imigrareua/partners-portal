@@ -609,6 +609,7 @@ function buildSidebar(){
     <button class="sb-item" data-page="admin-applications" onclick="navigate('admin-applications')"><span>📋</span> Solicitações${p?`<span class="sb-badge">${p}</span>`:''}</button>
     <button class="sb-item" data-page="admin-affiliates"   onclick="navigate('admin-affiliates')"><span>👥</span> Afiliados</button>
     <button class="sb-item" data-page="admin-bonif-models" onclick="navigate('admin-bonif-models')"><span>💎</span> Modelos de Bonificação</button>
+    <button class="sb-item" data-page="admin-health"       onclick="navigate('admin-health')"><span>🔌</span> Health das Integrações</button>
   `:`
     <div class="sb-lbl">Afiliado</div>
     <button class="sb-item" data-page="aff-dashboard"  onclick="navigate('aff-dashboard')"><span>📊</span> Dashboard</button>
@@ -644,6 +645,7 @@ function renderPage(page){
     'admin-applications':()=>renderAdminApplications(c),
     'admin-affiliates':  ()=>renderAdminAffiliates(c),
     'admin-bonif-models':()=>renderAdminBonifModels(c),
+    'admin-health':      ()=>renderAdminHealth(c),
     'aff-dashboard':     ()=>renderAffDashboard(c),
     'aff-pipeline':      ()=>renderAffPipeline(c),
     'aff-links':         ()=>renderAffLinks(c),
@@ -1118,6 +1120,86 @@ function obfuscateName(n){
   const rest=parts.slice(1).map(p=>p[0]+'.**').join(' ');
   return rest?`${parts[0]} ${rest}`:`${parts[0]}**`;
 }
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Health
+// ═══════════════════════════════════════════════════════
+function renderAdminHealth(c){
+  setTopbar('Health das Integrações','Verificação de conectividade com APIs externas');
+  c.innerHTML=`
+    <div style="max-width:680px;margin:0 auto;padding:24px 0">
+      <div style="display:flex;gap:16px;margin-bottom:24px" id="health-cards">
+        ${healthCard('hubspot','HubSpot CRM','Sincronização de leads e contatos','⏳ Verificando…','checking')}
+        ${healthCard('shortio','Short.io','Geração e rastreamento de links','⏳ Verificando…','checking')}
+      </div>
+      <div style="text-align:right">
+        <button class="btn btn-secondary" onclick="runHealthCheck()" id="health-refresh-btn">🔄 Verificar novamente</button>
+      </div>
+      <div id="health-detail" style="margin-top:24px"></div>
+    </div>`;
+  runHealthCheck();
+}
+
+function healthCard(id,title,desc,statusText,state){
+  const colors={ok:'#16a34a',error:'#dc2626',checking:'#6b7280'};
+  const bg={ok:'#f0fdf4',error:'#fef2f2',checking:'#f9fafb'};
+  const col=colors[state]||colors.checking;
+  const bgc=bg[state]||bg.checking;
+  return `<div id="hcard-${id}" style="flex:1;border-radius:12px;border:1.5px solid ${col}33;background:${bgc};padding:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:22px">${id==='hubspot'?'🟠':'🔵'}</span>
+      <span style="font-weight:700;font-size:15px;color:#0D255D">${title}</span>
+    </div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">${desc}</div>
+    <div id="hstatus-${id}" style="font-size:13px;font-weight:600;color:${col}">${statusText}</div>
+  </div>`;
+}
+
+async function runHealthCheck(){
+  const btn=document.getElementById('health-refresh-btn');
+  if(btn){btn.disabled=true;btn.textContent='Verificando…';}
+  // reset cards to checking state
+  ['hubspot','shortio'].forEach(id=>{
+    const card=document.getElementById(`hcard-${id}`);
+    const status=document.getElementById(`hstatus-${id}`);
+    if(card){card.style.borderColor='#6b728033';card.style.background='#f9fafb';}
+    if(status){status.textContent='⏳ Verificando…';status.style.color='#6b7280';}
+  });
+
+  let results={hubspot:{ok:false,error:'Sem resposta'},shortio:{ok:false,error:'Sem resposta'}};
+  try{
+    const r=await fetch('/api/health');
+    if(r.ok) results=await r.json();
+    else results={hubspot:{ok:false,error:`HTTP ${r.status}`},shortio:{ok:false,error:`HTTP ${r.status}`}};
+  }catch(e){
+    results={hubspot:{ok:false,error:e.message},shortio:{ok:false,error:e.message}};
+  }
+
+  const detail=[];
+  [{id:'hubspot',data:results.hubspot},{id:'shortio',data:results.shortio}].forEach(({id,data})=>{
+    const card=document.getElementById(`hcard-${id}`);
+    const status=document.getElementById(`hstatus-${id}`);
+    if(!card||!status) return;
+    if(data.ok){
+      card.style.borderColor='#16a34a33';card.style.background='#f0fdf4';
+      status.textContent='✅ Conectado';status.style.color='#16a34a';
+      if(id==='hubspot'&&data.portalId) detail.push(`<li><b>HubSpot</b> — Portal ID: ${data.portalId}${data.currency?', moeda: '+data.currency:''}</li>`);
+      if(id==='shortio'&&data.domains) detail.push(`<li><b>Short.io</b> — Domínios: ${data.domains.join(', ')||'(nenhum)'}</li>`);
+    }else{
+      card.style.borderColor='#dc262633';card.style.background='#fef2f2';
+      status.textContent=`❌ Erro: ${data.error||'falha desconhecida'}`;status.style.color='#dc2626';
+    }
+  });
+
+  const detailEl=document.getElementById('health-detail');
+  if(detailEl&&detail.length){
+    detailEl.innerHTML=`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;font-size:13px">
+      <b style="color:#0369a1">Detalhes</b><ul style="margin:8px 0 0 16px;color:#0D255D">${detail.join('')}</ul></div>`;
+  }else if(detailEl){detailEl.innerHTML='';}
+
+  if(btn){btn.disabled=false;btn.textContent='🔄 Verificar novamente';}
+}
+window.runHealthCheck=runHealthCheck;
 
 // ═══════════════════════════════════════════════════════
 // PAGE: Affiliate Dashboard
