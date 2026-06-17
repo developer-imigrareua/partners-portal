@@ -1327,19 +1327,148 @@ function renderAffLinks(c){
   const affType=u.affiliateType||'external';
   const links=LINK_FORMS.map(f=>({...f,full:buildUTMLink(f.url,hsId,affType)}));
   const utmParams=[['utm_source','general'],['utm_medium','affiliate'],['utm_campaign','analise-liv'],['utm_term','affiliate-audience'],['utm_content','direct-message'],['utm_affiliatetype',affType],['utm_affiliatename',hsId||'(não configurado)']];
-  c.innerHTML=`<div class="page-header"><div class="page-title">Gerador de Links</div><div class="page-sub">Compartilhe estes links para rastrear indicações com parâmetros UTM padronizados</div></div>
+  c.innerHTML=`<div class="page-header"><div class="page-title">Gerador de Links</div><div class="page-sub">Crie links encurtados (to.imigrareua.com) com rastreamento UTM completo</div></div>
   ${!hsId?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px">⚠️ Seu identificador HubSpot não foi configurado. Fale com o time ImigrarEUA.</div>`:''}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
     <div class="panel"><div class="panel-hd"><div class="panel-title">Identificador do afiliado</div></div><div class="panel-bd"><div style="background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:12px 16px;font-family:monospace;font-size:15px;font-weight:700;color:var(--s800)">${hsId||'—'}</div><p class="text-muted text-sm" style="margin-top:8px">Registrado em <code>utm_affiliatename</code> de cada link.</p></div></div>
     <div class="panel"><div class="panel-hd"><div class="panel-title">Parâmetros UTM</div></div><div class="panel-bd" style="padding:12px 16px">${utmParams.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--s50);font-size:12px"><span class="text-muted">${k}</span><span style="font-family:monospace;font-weight:600;color:var(--s700)">${v}</span></div>`).join('')}</div></div>
   </div>
-  <div class="panel"><div class="panel-hd"><div class="panel-title">Links por formulário</div>${hsId?`<button class="btn btn-outline-blue btn-sm" onclick="copyAllLinks()">📋 Copiar todos</button>`:''}</div>
-  <table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link com UTMs</th><th style="text-align:right">Ações</th></tr></thead><tbody>
-  ${links.map((lk,i)=>`<tr><td><span style="font-size:16px">${lk.icon}</span> <strong style="font-size:13px">${lk.label}</strong></td><td><span class="tag ${lk.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${lk.platform}</span></td><td><code id="lk-${i}" style="font-size:10px;color:var(--s500);word-break:break-all;display:block;max-width:360px">${lk.full}</code></td><td style="text-align:right;white-space:nowrap"><button class="btn btn-outline-blue btn-xs" id="cpbtn-${i}" onclick="copyLink('lk-${i}','cpbtn-${i}')">📋 Copiar</button></td></tr>`).join('')}
-  </tbody></table></div>`;
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-hd">
+      <div class="panel-title">Criar link encurtado</div>
+      <span style="font-size:11px;color:var(--s400)">Salvo automaticamente na pasta de afiliados no Short.io</span>
+    </div>
+    <div class="panel-bd">
+      <div class="form-grid2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label">Formulário / destino</label>
+          <select class="form-input" id="lk-select" onchange="updateShortPreview()">
+            ${links.map((lk,i)=>`<option value="${i}">${lk.icon} ${lk.label}</option>`).join('')}
+            <option value="custom">🔗 URL personalizada…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Slug personalizado <span style="font-weight:400;color:var(--s400)">(opcional)</span></label>
+          <input class="form-input" id="lk-slug" placeholder="${hsId?hsId+'-contato':'afiliado-contato'}" style="font-family:monospace">
+        </div>
+      </div>
+      <div class="form-group" id="lk-custom-wrap" style="display:none">
+        <label class="form-label">URL de destino</label>
+        <input class="form-input" id="lk-custom-url" placeholder="https://…" oninput="updateShortPreview()">
+      </div>
+      <div style="background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--s500);margin-bottom:14px;word-break:break-all">
+        <span style="font-weight:600;color:var(--s700)">Destino: </span><span id="lk-preview-dest">—</span>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" id="lk-create-btn" onclick="createShortLink()" ${!hsId?'disabled':''}>
+          🔗 Criar link encurtado
+        </button>
+      </div>
+      <div id="lk-result" style="display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px">
+        <div style="font-size:12px;color:#16a34a;font-weight:700;margin-bottom:6px">✅ Link criado com sucesso!</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <code id="lk-result-url" style="font-size:14px;font-weight:700;color:#0D255D;flex:1">—</code>
+          <button class="btn btn-outline-blue btn-sm" onclick="copyText('lk-result-url',this)">📋 Copiar</button>
+        </div>
+      </div>
+      <div id="lk-error" style="display:none;margin-top:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;font-size:13px;color:#dc2626"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-hd">
+      <div class="panel-title">Links criados</div>
+      <button class="btn btn-outline-blue btn-sm" onclick="loadShortLinks()">🔄 Atualizar</button>
+    </div>
+    <div class="panel-bd" id="lk-list-wrap">
+      <div style="text-align:center;padding:20px;color:var(--s400);font-size:13px">Carregando…</div>
+    </div>
+  </div>`;
   window._affLinks=links;
+  updateShortPreview();
+  loadShortLinks();
 }
+
+function updateShortPreview(){
+  const sel=document.getElementById('lk-select');
+  const customWrap=document.getElementById('lk-custom-wrap');
+  const prev=document.getElementById('lk-preview-dest');
+  if(!sel||!prev) return;
+  if(sel.value==='custom'){
+    customWrap.style.display='block';
+    prev.textContent=document.getElementById('lk-custom-url')?.value||'(insira a URL acima)';
+  } else {
+    customWrap.style.display='none';
+    prev.textContent=window._affLinks?.[+sel.value]?.full||'—';
+  }
+}
+window.updateShortPreview=updateShortPreview;
+
+async function createShortLink(){
+  const sel=document.getElementById('lk-select');
+  const slugEl=document.getElementById('lk-slug');
+  const btn=document.getElementById('lk-create-btn');
+  const resultEl=document.getElementById('lk-result');
+  const errEl=document.getElementById('lk-error');
+  resultEl.style.display='none'; errEl.style.display='none';
+
+  let originalUrl, title;
+  if(sel.value==='custom'){
+    originalUrl=document.getElementById('lk-custom-url')?.value?.trim();
+    title='Link personalizado';
+  } else {
+    const lk=window._affLinks?.[+sel.value];
+    originalUrl=lk?.full;
+    title=lk?.label;
+  }
+  if(!originalUrl){ errEl.textContent='Selecione ou insira uma URL de destino.'; errEl.style.display='block'; return; }
+
+  btn.disabled=true; btn.textContent='Criando…';
+  try{
+    const r=await fetch('/api/shortio/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({originalUrl,slug:slugEl?.value?.trim()||undefined,title})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erro desconhecido');
+    document.getElementById('lk-result-url').textContent=d.shortUrl;
+    resultEl.style.display='block';
+    loadShortLinks();
+  }catch(e){
+    errEl.textContent='Erro ao criar link: '+e.message;
+    errEl.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='🔗 Criar link encurtado';
+  }
+}
+window.createShortLink=createShortLink;
+
+async function loadShortLinks(){
+  const wrap=document.getElementById('lk-list-wrap');
+  if(!wrap) return;
+  try{
+    const r=await fetch('/api/shortio/links');
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json();
+    const items=(data.links||data||[]);
+    if(!items.length){ wrap.innerHTML='<div style="text-align:center;padding:20px;color:var(--s400);font-size:13px">Nenhum link criado ainda.</div>'; return; }
+    wrap.innerHTML=`<table class="table"><thead><tr><th>Título</th><th>Link encurtado</th><th>Destino</th><th style="text-align:right">Ações</th></tr></thead><tbody>
+      ${items.map((lk,i)=>{
+        const short=lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${lk.path}`;
+        const dest=(lk.originalURL||lk.originalUrl||'').substring(0,60)+'…';
+        return `<tr>
+          <td style="font-size:13px;font-weight:600">${esc(lk.title||lk.path||'—')}</td>
+          <td><code id="sl-${i}" style="font-size:12px;color:#1B75BC">${esc(short)}</code></td>
+          <td style="font-size:11px;color:var(--s400);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(lk.originalURL||'')}">→ ${esc(dest)}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-outline-blue btn-xs" onclick="copyText('sl-${i}',this)">📋 Copiar</button>
+          </td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+  }catch(e){
+    wrap.innerHTML=`<div style="padding:14px;font-size:13px;color:#dc2626">Erro ao carregar links: ${esc(e.message)}</div>`;
+  }
+}
+window.loadShortLinks=loadShortLinks;
+
 window.copyLink=function(srcId,btnId){const text=document.getElementById(srcId)?.textContent||'';if(!text||text==='—') return;navigator.clipboard.writeText(text).then(()=>{const btn=document.getElementById(btnId);if(!btn) return;const orig=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent=orig,2000);}).catch(()=>toast('Não foi possível copiar.'));};
+window.copyText=function(srcId,btn){const text=document.getElementById(srcId)?.textContent||'';if(!text||text==='—') return;navigator.clipboard.writeText(text).then(()=>{const orig=btn.textContent;btn.textContent='✅';setTimeout(()=>btn.textContent=orig,2000);}).catch(()=>toast('Erro ao copiar.'));};
 window.copyAllLinks=function(){const all=(window._affLinks||[]).map(lk=>`${lk.label}:\n${lk.full}`).join('\n\n');navigator.clipboard.writeText(all).then(()=>toast('Todos os links copiados!')).catch(()=>toast('Erro ao copiar.'));};
 
 // ═══════════════════════════════════════════════════════

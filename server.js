@@ -47,15 +47,72 @@ app.get('/api/hubspot/sync', async (req, res) => {
   }
 });
 
+// short.io — create a shortened affiliate link
+app.post('/api/shortio/create', async (req, res) => {
+  const { originalUrl, slug, title } = req.body;
+  if (!originalUrl) return res.status(400).json({ error: 'originalUrl obrigatório' });
+
+  const SHORTIO_KEY    = process.env.SHORTIO_API_KEY;
+  const SHORTIO_DOMAIN = process.env.SHORTIO_DOMAIN;
+  const FOLDER_ID      = process.env.SHORTIO_FOLDER_ID;
+
+  if (!SHORTIO_KEY || !SHORTIO_DOMAIN) {
+    return res.status(500).json({ error: 'Short.io não configurado no servidor' });
+  }
+
+  try {
+    const body = { domain: SHORTIO_DOMAIN, originalURL: originalUrl };
+    if (slug)     body.path      = slug;
+    if (title)    body.title     = title;
+    if (FOLDER_ID) body.folderId = FOLDER_ID;
+
+    const r = await fetch('https://api.short.io/links', {
+      method: 'POST',
+      headers: { authorization: SHORTIO_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.json({ shortUrl: data.shortURL, id: data.id, path: data.path });
+  } catch (err) {
+    console.error('Short.io create error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// short.io — list links for the configured folder
+app.get('/api/shortio/links', async (req, res) => {
+  const SHORTIO_KEY     = process.env.SHORTIO_API_KEY;
+  const SHORTIO_DOMAIN_ID = process.env.SHORTIO_DOMAIN_ID;
+  const FOLDER_ID       = process.env.SHORTIO_FOLDER_ID;
+
+  if (!SHORTIO_KEY || !SHORTIO_DOMAIN_ID) {
+    return res.status(500).json({ error: 'Short.io não configurado no servidor' });
+  }
+
+  try {
+    let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=150`;
+    if (FOLDER_ID) url += `&folderId=${FOLDER_ID}`;
+
+    const r = await fetch(url, { headers: { authorization: SHORTIO_KEY } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.json(data);
+  } catch (err) {
+    console.error('Short.io list error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check — verifies HubSpot and short.io connectivity
 app.get('/api/health', async (req, res) => {
-  const HUBSPOT_KEY = process.env.HUBSPOT_API_KEY;
-  const SHORTIO_KEY = process.env.SHORTIO_API_KEY;
+  const HUBSPOT_KEY    = process.env.HUBSPOT_API_KEY;
+  const SHORTIO_KEY    = process.env.SHORTIO_API_KEY;
   const SHORTIO_DOMAIN = process.env.SHORTIO_DOMAIN;
 
   const results = { hubspot: { ok: false }, shortio: { ok: false } };
 
-  // HubSpot: lightweight account info ping
   try {
     const r = await fetch('https://api.hubapi.com/account-info/v3/details', {
       headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
@@ -70,7 +127,6 @@ app.get('/api/health', async (req, res) => {
     results.hubspot = { ok: false, error: e.message };
   }
 
-  // short.io: list domains ping
   try {
     if (!SHORTIO_KEY) throw new Error('SHORTIO_API_KEY não configurado');
     const r = await fetch('https://api.short.io/api/domains', {
@@ -79,7 +135,7 @@ app.get('/api/health', async (req, res) => {
     if (r.ok) {
       const d = await r.json();
       const domains = (d.domains || d || []).map(x => x.hostname || x.domain).filter(Boolean);
-      results.shortio = { ok: true, domains };
+      results.shortio = { ok: true, domain: SHORTIO_DOMAIN, domains };
     } else {
       results.shortio = { ok: false, error: `HTTP ${r.status}` };
     }
