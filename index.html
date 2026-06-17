@@ -1174,6 +1174,16 @@ async function renderAdminAffLinks(c){
   }
 }
 
+function matchLinkToForm(lk, hsId){
+  const p=lk.path||'';
+  const orig=lk.originalURL||'';
+  // match by canonical slug first, then by base URL in originalURL
+  return AFF_LINK_FORMS.find(f=>
+    p===`${hsId}-${f.id}` ||
+    (orig.includes(f.url) && orig.includes(`utm_affiliatename=${hsId}`))
+  );
+}
+
 async function loadAffLinksRow(affId, hsId){
   const wrap=document.getElementById(`alp-body-${affId}`);
   if(!wrap) return;
@@ -1182,34 +1192,61 @@ async function loadAffLinksRow(affId, hsId){
   try{
     const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
     const data=await r.json();
+    if(data.error) throw new Error(data.error);
     const items=(data.links||data||[]);
-    // map by slug suffix
+    // map form → link (prefer slug match, accept URL match)
     const byId={};
     items.forEach(lk=>{
-      const p=lk.path||'';
-      const form=AFF_LINK_FORMS.find(f=>p===`${hsId}-${f.id}`);
-      if(form) byId[form.id]={shortUrl:lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${p}`,path:p};
+      const form=matchLinkToForm(lk,hsId);
+      if(form && !byId[form.id]){
+        byId[form.id]={
+          shortUrl:lk.shortURL||`https://to.imigrareua.com/${lk.path}`,
+          path:lk.path, id:lk.idString||lk.id,
+          originalUrl:lk.originalURL
+        };
+      }
     });
     const rows=AFF_LINK_FORMS.map((f,i)=>{
-      const existing=byId[f.id];
-      const shortCell=existing
-        ?`<code id="alsl-${affId}-${i}" style="font-size:12px;color:#1B75BC">${esc(existing.shortUrl)}</code>`
+      const ex=byId[f.id];
+      const shortCell=ex
+        ?`<code id="alsl-${affId}-${i}" style="font-size:12px;color:#1B75BC">${esc(ex.shortUrl)}</code>`
         :`<span style="color:var(--s400);font-size:12px">— não criado</span>`;
-      const actionCell=existing
-        ?`<button class="btn btn-outline-blue btn-xs" onclick="copyText('alsl-${affId}-${i}',this)">📋 Copiar</button>`
+      const actions=ex
+        ?`<button class="btn btn-outline-blue btn-xs" onclick="copyText('alsl-${affId}-${i}',this)" style="margin-right:4px">📋 Copiar</button>
+           <button class="btn btn-ghost btn-xs" onclick="editAffLink('${affId}','${hsId}','${f.id}','${esc(ex.id)}','${esc(ex.originalUrl.replace(/'/g,''))}',this)">✏️ Editar</button>`
         :`<button class="btn btn-primary btn-xs" onclick="singleCreateAffLink('${affId}','${hsId}','${f.id}','${esc(f.label)}',this)">+ Criar</button>`;
       return `<tr>
         <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
         <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
-        <td>${shortCell}</td>
-        <td style="text-align:right">${actionCell}</td>
+        <td style="max-width:260px">${shortCell}</td>
+        <td style="text-align:right;white-space:nowrap">${actions}</td>
       </tr>`;
     }).join('');
-    wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link Short.io</th><th style="text-align:right">Ação</th></tr></thead><tbody>${rows}</tbody></table>`;
+    wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link Short.io</th><th style="text-align:right">Ações</th></tr></thead><tbody>${rows}</tbody></table>`;
   }catch(e){
     wrap.innerHTML=`<div style="padding:12px;font-size:13px;color:#dc2626">Erro: ${esc(e.message)}</div>`;
   }
 }
+
+async function editAffLink(affId, hsId, formId, linkId, currentUrl, btn){
+  const form=AFF_LINK_FORMS.find(f=>f.id===formId);
+  const aff=getUsers().find(u=>u.id===affId);
+  const defaultUrl=buildUTMLink(form?.url||'', hsId, aff?.affiliateType||'external');
+  const newUrl=prompt(`URL de destino para "${form?.label}":\n(inclua os parâmetros UTM se necessário)`, currentUrl||defaultUrl);
+  if(!newUrl||newUrl===currentUrl) return;
+  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+  try{
+    const r=await fetch('/api/shortio/update',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId,originalUrl:newUrl})});
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||'Erro');
+    toast('✅ Link atualizado.');
+    loadAffLinksRow(affId, hsId);
+  }catch(e){
+    toast('Erro ao editar: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='✏️ Editar';}
+  }
+}
+window.editAffLink=editAffLink;
 
 async function singleCreateAffLink(affId, hsId, formId, formLabel, btn){
   const form=AFF_LINK_FORMS.find(f=>f.id===formId);
@@ -1484,13 +1521,12 @@ async function reloadAffOwnLinks(){
   try{
     const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
     const data=await r.json();
+    if(data.error) throw new Error(data.error);
     const items=(data.links||data||[]);
-    // map by slug
     const byId={};
     items.forEach(lk=>{
-      const p=lk.path||'';
-      const form=AFF_LINK_FORMS.find(f=>p===`${hsId}-${f.id}`);
-      if(form) byId[form.id]={shortUrl:lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${p}`,path:p};
+      const form=matchLinkToForm(lk,hsId);
+      if(form && !byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||`https://to.imigrareua.com/${lk.path}`};
     });
     const hasAny=Object.keys(byId).length>0;
     if(!hasAny){

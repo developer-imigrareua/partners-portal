@@ -126,27 +126,55 @@ app.post('/api/shortio/create', async (req, res) => {
   }
 });
 
-// short.io — list links for the folder, optionally filtered by affiliateId prefix
+// short.io — list links for the folder, optionally filtered by affiliateId
 app.get('/api/shortio/links', async (req, res) => {
   const SHORTIO_KEY       = process.env.SHORTIO_API_KEY;
   const SHORTIO_DOMAIN_ID = process.env.SHORTIO_DOMAIN_ID;
   const FOLDER_ID         = process.env.SHORTIO_FOLDER_ID;
   const { affiliateId }   = req.query;
 
-  if (!SHORTIO_KEY || !SHORTIO_DOMAIN_ID)
-    return res.status(500).json({ error: 'Short.io não configurado no servidor' });
+  if (!SHORTIO_KEY)       return res.status(500).json({ error: 'SHORTIO_API_KEY não configurado' });
+  if (!SHORTIO_DOMAIN_ID) return res.status(500).json({ error: 'SHORTIO_DOMAIN_ID não configurado' });
 
   try {
     let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=500`;
-    if (FOLDER_ID)   url += `&folderId=${FOLDER_ID}`;
+    if (FOLDER_ID)   url += `&folderId=${encodeURIComponent(FOLDER_ID)}`;
     if (affiliateId) url += `&search=${encodeURIComponent(affiliateId)}`;
 
     const r = await fetch(url, { headers: { authorization: SHORTIO_KEY } });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    const text = await r.text();
+    if (!r.ok) throw new Error(`short.io ${r.status}: ${text.substring(0,200)}`);
+    const data = JSON.parse(text);
     res.json(data);
   } catch (err) {
     console.error('Short.io list error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// short.io — update an existing link (change destination URL or title)
+app.patch('/api/shortio/update', async (req, res) => {
+  const { linkId, originalUrl, title } = req.body;
+  if (!linkId) return res.status(400).json({ error: 'linkId obrigatório' });
+
+  const SHORTIO_KEY = process.env.SHORTIO_API_KEY;
+  if (!SHORTIO_KEY) return res.status(500).json({ error: 'SHORTIO_API_KEY não configurado' });
+
+  try {
+    const body = {};
+    if (originalUrl) body.originalURL = originalUrl;
+    if (title)       body.title       = title;
+
+    const r = await fetch(`https://api.short.io/links/${linkId}`, {
+      method: 'POST',
+      headers: { authorization: SHORTIO_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.json({ ok: true, shortUrl: data.shortURL, id: data.idString });
+  } catch (err) {
+    console.error('Short.io update error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -192,8 +220,9 @@ app.get('/api/health', async (req, res) => {
   res.json(results);
 });
 
-// SPA fallback
+// SPA fallback — never cache index.html so deploys take effect immediately
 app.get('*', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
