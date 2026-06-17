@@ -575,7 +575,12 @@ async function doRegister() {
       err.textContent = error.message.includes('already') ? 'E-mail já cadastrado.' : error.message;
       err.style.display = 'block'; return;
     }
-    const newRow = { auth_id: data.user?.id||null, role:'affiliate', name, email, phone, company, site, channel, status:'pending', applied_at: new Date().toISOString().slice(0,10), bonif_model_id:'standard', affiliate_type:'external' };
+    // auto-generate affiliate slug from name (used as utm_affiliatename and short.io slug prefix)
+    const baseSlug = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const existingSlugs = getUsers().map(u=>u.hsAffiliateId).filter(Boolean);
+    let slug = baseSlug, n = 2;
+    while(existingSlugs.includes(slug)) slug = `${baseSlug}-${n++}`;
+    const newRow = { auth_id: data.user?.id||null, role:'affiliate', name, email, phone, company, site, channel, status:'pending', applied_at: new Date().toISOString().slice(0,10), bonif_model_id:'standard', affiliate_type:'external', hs_affiliate_id: slug };
     const { data: inserted, error: ie } = await sb.from('users').insert(newRow).select().single();
     if (ie) { err.textContent='Erro ao criar perfil. Tente novamente.'; err.style.display='block'; return; }
     currentUser = mapUser(inserted);
