@@ -47,53 +47,99 @@ app.get('/api/hubspot/sync', async (req, res) => {
   }
 });
 
-// short.io — create a shortened affiliate link
-app.post('/api/shortio/create', async (req, res) => {
-  const { originalUrl, slug, title } = req.body;
-  if (!originalUrl) return res.status(400).json({ error: 'originalUrl obrigatório' });
-
+// shared helper — creates one short link
+async function shortioCreate({ originalUrl, slug, title }) {
   const SHORTIO_KEY    = process.env.SHORTIO_API_KEY;
   const SHORTIO_DOMAIN = process.env.SHORTIO_DOMAIN;
   const FOLDER_ID      = process.env.SHORTIO_FOLDER_ID;
+  const body = { domain: SHORTIO_DOMAIN, originalURL: originalUrl };
+  if (slug)      body.path     = slug;
+  if (title)     body.title    = title;
+  if (FOLDER_ID) body.folderId = FOLDER_ID;
+  const r = await fetch('https://api.short.io/links', {
+    method: 'POST',
+    headers: { authorization: SHORTIO_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+  return { shortUrl: data.shortURL, id: data.id, path: data.path };
+}
 
-  if (!SHORTIO_KEY || !SHORTIO_DOMAIN) {
-    return res.status(500).json({ error: 'Short.io não configurado no servidor' });
+// the 6 standard forms — same list as frontend LINK_FORMS
+const LINK_FORMS = [
+  { id: 'contato',   label: 'Contato Geral',   url: 'https://share.hsforms.com/12hi7RRqbSjO_J2khC6wPqgrnxd7' },
+  { id: 'facebook',  label: 'Facebook Lead',    url: 'https://share.hsforms.com/1Y-9WTeoGTHODm2-aerOyDgrnxd7' },
+  { id: 'eb2',       label: 'EB-2 / EB-3',      url: 'https://share.hsforms.com/1pWgVKSF7SWKdpAmcEdkbmgrnxd7' },
+  { id: 'eb1a',      label: 'EB-1A / O-1',      url: 'https://share.hsforms.com/2LDtlx4vqTzi7YW6l0h-CRArnxd7' },
+  { id: 'workvisa',  label: 'Work Visa',         url: 'https://share.hsforms.com/1piif7-DrSOmNxN2UHK3JEgrnxd7' },
+  { id: 'typeform',  label: 'EB-1A + EB-2 NIW', url: 'https://99l4c7jw78n.pro.typeform.com/to/Iie2l4oF' },
+];
+
+function buildUTMUrl(baseUrl, hsId, affiliateType) {
+  const p = new URLSearchParams({
+    utm_source: 'general', utm_medium: 'affiliate', utm_campaign: 'analise-liv',
+    utm_term: 'affiliate-audience', utm_content: 'direct-message',
+    utm_affiliatetype: affiliateType || 'external', utm_affiliatename: hsId,
+  });
+  return `${baseUrl}?${p.toString()}`;
+}
+
+// short.io — bulk-create all 6 standard links for an affiliate
+app.post('/api/shortio/create-bulk', async (req, res) => {
+  const { hsId, affiliateName, affiliateType } = req.body;
+  if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
+  if (!process.env.SHORTIO_API_KEY) return res.status(500).json({ error: 'Short.io não configurado' });
+
+  const results = [];
+  for (const form of LINK_FORMS) {
+    const originalUrl = buildUTMUrl(form.url, hsId, affiliateType);
+    const slug  = `${hsId}-${form.id}`;
+    const title = `${affiliateName || hsId} — ${form.label}`;
+    try {
+      const r = await shortioCreate({ originalUrl, slug, title });
+      results.push({ formId: form.id, label: form.label, ...r, ok: true });
+    } catch (e) {
+      // slug already exists → fetch existing link
+      if (e.message.includes('already exists') || e.message.includes('already taken')) {
+        results.push({ formId: form.id, label: form.label, shortUrl: `https://${process.env.SHORTIO_DOMAIN}/${slug}`, path: slug, ok: true, existed: true });
+      } else {
+        results.push({ formId: form.id, label: form.label, ok: false, error: e.message });
+      }
+    }
   }
+  res.json({ results });
+});
 
+// short.io — create a single shortened link
+app.post('/api/shortio/create', async (req, res) => {
+  const { originalUrl, slug, title } = req.body;
+  if (!originalUrl) return res.status(400).json({ error: 'originalUrl obrigatório' });
+  if (!process.env.SHORTIO_API_KEY || !process.env.SHORTIO_DOMAIN)
+    return res.status(500).json({ error: 'Short.io não configurado no servidor' });
   try {
-    const body = { domain: SHORTIO_DOMAIN, originalURL: originalUrl };
-    if (slug)     body.path      = slug;
-    if (title)    body.title     = title;
-    if (FOLDER_ID) body.folderId = FOLDER_ID;
-
-    const r = await fetch('https://api.short.io/links', {
-      method: 'POST',
-      headers: { authorization: SHORTIO_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
-    res.json({ shortUrl: data.shortURL, id: data.id, path: data.path });
+    const r = await shortioCreate({ originalUrl, slug, title });
+    res.json(r);
   } catch (err) {
     console.error('Short.io create error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// short.io — list links for the configured folder
+// short.io — list links for the folder, optionally filtered by affiliateId prefix
 app.get('/api/shortio/links', async (req, res) => {
-  const SHORTIO_KEY     = process.env.SHORTIO_API_KEY;
+  const SHORTIO_KEY       = process.env.SHORTIO_API_KEY;
   const SHORTIO_DOMAIN_ID = process.env.SHORTIO_DOMAIN_ID;
-  const FOLDER_ID       = process.env.SHORTIO_FOLDER_ID;
+  const FOLDER_ID         = process.env.SHORTIO_FOLDER_ID;
+  const { affiliateId }   = req.query;
 
-  if (!SHORTIO_KEY || !SHORTIO_DOMAIN_ID) {
+  if (!SHORTIO_KEY || !SHORTIO_DOMAIN_ID)
     return res.status(500).json({ error: 'Short.io não configurado no servidor' });
-  }
 
   try {
-    let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=150`;
-    if (FOLDER_ID) url += `&folderId=${FOLDER_ID}`;
+    let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=500`;
+    if (FOLDER_ID)   url += `&folderId=${FOLDER_ID}`;
+    if (affiliateId) url += `&search=${encodeURIComponent(affiliateId)}`;
 
     const r = await fetch(url, { headers: { authorization: SHORTIO_KEY } });
     const data = await r.json();

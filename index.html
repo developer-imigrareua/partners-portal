@@ -609,6 +609,7 @@ function buildSidebar(){
     <button class="sb-item" data-page="admin-applications" onclick="navigate('admin-applications')"><span>📋</span> Solicitações${p?`<span class="sb-badge">${p}</span>`:''}</button>
     <button class="sb-item" data-page="admin-affiliates"   onclick="navigate('admin-affiliates')"><span>👥</span> Afiliados</button>
     <button class="sb-item" data-page="admin-bonif-models" onclick="navigate('admin-bonif-models')"><span>💎</span> Modelos de Bonificação</button>
+    <button class="sb-item" data-page="admin-aff-links"    onclick="navigate('admin-aff-links')"><span>🔗</span> Links de Afiliados</button>
     <button class="sb-item" data-page="admin-health"       onclick="navigate('admin-health')"><span>🔌</span> Health das Integrações</button>
   `:`
     <div class="sb-lbl">Afiliado</div>
@@ -645,6 +646,7 @@ function renderPage(page){
     'admin-applications':()=>renderAdminApplications(c),
     'admin-affiliates':  ()=>renderAdminAffiliates(c),
     'admin-bonif-models':()=>renderAdminBonifModels(c),
+    'admin-aff-links':   ()=>renderAdminAffLinks(c),
     'admin-health':      ()=>renderAdminHealth(c),
     'aff-dashboard':     ()=>renderAffDashboard(c),
     'aff-pipeline':      ()=>renderAffPipeline(c),
@@ -1122,6 +1124,136 @@ function obfuscateName(n){
 }
 
 // ═══════════════════════════════════════════════════════
+// PAGE: Admin Affiliate Links
+// ═══════════════════════════════════════════════════════
+const AFF_LINK_FORMS=[
+  {id:'contato',  label:'Contato Geral',   icon:'📋', platform:'HubSpot',   url:'https://share.hsforms.com/12hi7RRqbSjO_J2khC6wPqgrnxd7'},
+  {id:'facebook', label:'Facebook Lead',   icon:'📘', platform:'HubSpot',   url:'https://share.hsforms.com/1Y-9WTeoGTHODm2-aerOyDgrnxd7'},
+  {id:'eb2',      label:'EB-2 / EB-3',     icon:'🇺🇸', platform:'HubSpot',  url:'https://share.hsforms.com/1pWgVKSF7SWKdpAmcEdkbmgrnxd7'},
+  {id:'eb1a',     label:'EB-1A / O-1',     icon:'🌟', platform:'HubSpot',   url:'https://share.hsforms.com/2LDtlx4vqTzi7YW6l0h-CRArnxd7'},
+  {id:'workvisa', label:'Work Visa',        icon:'💼', platform:'HubSpot',   url:'https://share.hsforms.com/1piif7-DrSOmNxN2UHK3JEgrnxd7'},
+  {id:'typeform', label:'EB-1A + EB-2 NIW',icon:'📝', platform:'Typeform',  url:'https://99l4c7jw78n.pro.typeform.com/to/Iie2l4oF'},
+];
+
+async function renderAdminAffLinks(c){
+  setTopbar('Links de Afiliados','Gerencie os links encurtados de cada afiliado');
+  const affiliates=getUsers().filter(u=>u.role==='affiliate'&&u.status==='active');
+
+  c.innerHTML=`
+    <div class="page-header">
+      <div class="page-title">Links de Afiliados</div>
+      <div class="page-sub">Links criados no Short.io por afiliado. Ao aprovar um afiliado os links são criados automaticamente.</div>
+    </div>
+    ${!affiliates.length?'<div class="panel"><div class="panel-bd" style="padding:32px;text-align:center;color:var(--s400)">Nenhum afiliado ativo.</div></div>':''}
+    <div id="aff-links-container">
+      ${affiliates.map(a=>`
+        <div class="panel" style="margin-bottom:16px" id="alp-${a.id}">
+          <div class="panel-hd" style="justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar">${a.name[0]}</div>
+              <div>
+                <div style="font-weight:700;font-size:14px">${esc(a.name)}</div>
+                <div style="font-size:11px;color:var(--s400)">${esc(a.hsAffiliateId||'sem hsId')}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-outline-blue btn-sm" onclick="loadAffLinksRow('${a.id}','${esc(a.hsAffiliateId||'')}')">🔄 Atualizar</button>
+              ${a.hsAffiliateId?`<button class="btn btn-primary btn-sm" onclick="bulkCreateAffLinks('${a.id}','${esc(a.hsAffiliateId)}','${esc(a.name)}','${esc(a.affiliateType||'external')}')">⚡ Criar todos</button>`:'<span style="font-size:11px;color:#dc2626">⚠ Sem hsId</span>'}
+            </div>
+          </div>
+          <div class="panel-bd" id="alp-body-${a.id}">
+            <div style="text-align:center;padding:16px;color:var(--s400);font-size:13px">Carregando…</div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // load links for each affiliate
+  for(const a of affiliates){
+    if(a.hsAffiliateId) loadAffLinksRow(a.id, a.hsAffiliateId);
+    else document.getElementById(`alp-body-${a.id}`).innerHTML='<div style="padding:12px;font-size:13px;color:#92400e">⚠️ Configure o identificador HubSpot para este afiliado antes de criar links.</div>';
+  }
+}
+
+async function loadAffLinksRow(affId, hsId){
+  const wrap=document.getElementById(`alp-body-${affId}`);
+  if(!wrap) return;
+  if(!hsId){wrap.innerHTML='<div style="padding:12px;font-size:13px;color:#92400e">Sem identificador HubSpot.</div>';return;}
+  wrap.innerHTML='<div style="text-align:center;padding:12px;color:var(--s400);font-size:13px">Buscando links…</div>';
+  try{
+    const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
+    const data=await r.json();
+    const items=(data.links||data||[]);
+    // map by slug suffix
+    const byId={};
+    items.forEach(lk=>{
+      const p=lk.path||'';
+      const form=AFF_LINK_FORMS.find(f=>p===`${hsId}-${f.id}`);
+      if(form) byId[form.id]={shortUrl:lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${p}`,path:p};
+    });
+    const rows=AFF_LINK_FORMS.map((f,i)=>{
+      const existing=byId[f.id];
+      const shortCell=existing
+        ?`<code id="alsl-${affId}-${i}" style="font-size:12px;color:#1B75BC">${esc(existing.shortUrl)}</code>`
+        :`<span style="color:var(--s400);font-size:12px">— não criado</span>`;
+      const actionCell=existing
+        ?`<button class="btn btn-outline-blue btn-xs" onclick="copyText('alsl-${affId}-${i}',this)">📋 Copiar</button>`
+        :`<button class="btn btn-primary btn-xs" onclick="singleCreateAffLink('${affId}','${hsId}','${f.id}','${esc(f.label)}',this)">+ Criar</button>`;
+      return `<tr>
+        <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
+        <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
+        <td>${shortCell}</td>
+        <td style="text-align:right">${actionCell}</td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link Short.io</th><th style="text-align:right">Ação</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }catch(e){
+    wrap.innerHTML=`<div style="padding:12px;font-size:13px;color:#dc2626">Erro: ${esc(e.message)}</div>`;
+  }
+}
+
+async function singleCreateAffLink(affId, hsId, formId, formLabel, btn){
+  const form=AFF_LINK_FORMS.find(f=>f.id===formId);
+  if(!form) return;
+  const aff=getUsers().find(u=>u.id===affId);
+  const originalUrl=buildUTMLink(form.url, hsId, aff?.affiliateType||'external');
+  const slug=`${hsId}-${formId}`;
+  const title=`${aff?.name||hsId} — ${formLabel}`;
+  if(btn){btn.disabled=true;btn.textContent='Criando…';}
+  try{
+    const r=await fetch('/api/shortio/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({originalUrl,slug,title})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erro');
+    toast(`✅ Link criado: ${d.shortUrl}`);
+    loadAffLinksRow(affId, hsId);
+  }catch(e){
+    toast('Erro ao criar link: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='+ Criar';}
+  }
+}
+
+async function bulkCreateAffLinks(affId, hsId, affName, affType){
+  const btn=document.querySelector(`#alp-${affId} .btn-primary`);
+  if(btn){btn.disabled=true;btn.textContent='Criando…';}
+  try{
+    const r=await fetch('/api/shortio/create-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hsId,affiliateName:affName,affiliateType:affType})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erro');
+    const ok=d.results.filter(x=>x.ok).length;
+    const fail=d.results.filter(x=>!x.ok).length;
+    toast(`✅ ${ok} links criados${fail?`, ${fail} erros`:''}.`);
+    loadAffLinksRow(affId, hsId);
+  }catch(e){
+    toast('Erro: '+e.message);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='⚡ Criar todos';}
+  }
+}
+window.renderAdminAffLinks=renderAdminAffLinks;
+window.loadAffLinksRow=loadAffLinksRow;
+window.singleCreateAffLink=singleCreateAffLink;
+window.bulkCreateAffLinks=bulkCreateAffLinks;
+
+// ═══════════════════════════════════════════════════════
 // PAGE: Admin Health
 // ═══════════════════════════════════════════════════════
 function renderAdminHealth(c){
@@ -1320,156 +1452,83 @@ function buildUTMLink(baseUrl,affiliateName,affiliateType){
   const params=new URLSearchParams({utm_source:'general',utm_medium:'affiliate',utm_campaign:'analise-liv',utm_term:'affiliate-audience',utm_content:'direct-message',utm_affiliatetype:affiliateType||'external',utm_affiliatename:affiliateName||'afiliado'});
   return`${baseUrl}?${params.toString()}`;
 }
-function renderAffLinks(c){
+async function renderAffLinks(c){
   const u=currentUser;
-  setTopbar('Gerador de Links','Links rastreáveis para suas indicações');
   const hsId=u.hsAffiliateId||'';
-  const affType=u.affiliateType||'external';
-  const links=LINK_FORMS.map(f=>({...f,full:buildUTMLink(f.url,hsId,affType)}));
-  const utmParams=[['utm_source','general'],['utm_medium','affiliate'],['utm_campaign','analise-liv'],['utm_term','affiliate-audience'],['utm_content','direct-message'],['utm_affiliatetype',affType],['utm_affiliatename',hsId||'(não configurado)']];
-  c.innerHTML=`<div class="page-header"><div class="page-title">Gerador de Links</div><div class="page-sub">Crie links encurtados (to.imigrareua.com) com rastreamento UTM completo</div></div>
-  ${!hsId?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px">⚠️ Seu identificador HubSpot não foi configurado. Fale com o time ImigrarEUA.</div>`:''}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-    <div class="panel"><div class="panel-hd"><div class="panel-title">Identificador do afiliado</div></div><div class="panel-bd"><div style="background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:12px 16px;font-family:monospace;font-size:15px;font-weight:700;color:var(--s800)">${hsId||'—'}</div><p class="text-muted text-sm" style="margin-top:8px">Registrado em <code>utm_affiliatename</code> de cada link.</p></div></div>
-    <div class="panel"><div class="panel-hd"><div class="panel-title">Parâmetros UTM</div></div><div class="panel-bd" style="padding:12px 16px">${utmParams.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--s50);font-size:12px"><span class="text-muted">${k}</span><span style="font-family:monospace;font-weight:600;color:var(--s700)">${v}</span></div>`).join('')}</div></div>
-  </div>
-  <div class="panel" style="margin-bottom:20px">
-    <div class="panel-hd">
-      <div class="panel-title">Criar link encurtado</div>
-      <span style="font-size:11px;color:var(--s400)">Salvo automaticamente na pasta de afiliados no Short.io</span>
+  setTopbar('Meus Links','Links encurtados para compartilhar nas suas indicações');
+  c.innerHTML=`
+    <div class="page-header">
+      <div class="page-title">Meus Links</div>
+      <div class="page-sub">Links personalizados com rastreamento completo via <strong>to.imigrareua.com</strong></div>
     </div>
-    <div class="panel-bd">
-      <div class="form-grid2" style="margin-bottom:12px">
-        <div class="form-group">
-          <label class="form-label">Formulário / destino</label>
-          <select class="form-input" id="lk-select" onchange="updateShortPreview()">
-            ${links.map((lk,i)=>`<option value="${i}">${lk.icon} ${lk.label}</option>`).join('')}
-            <option value="custom">🔗 URL personalizada…</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Slug personalizado <span style="font-weight:400;color:var(--s400)">(opcional)</span></label>
-          <input class="form-input" id="lk-slug" placeholder="${hsId?hsId+'-contato':'afiliado-contato'}" style="font-family:monospace">
-        </div>
+    ${!hsId?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px">⚠️ Seu identificador HubSpot não foi configurado. Fale com o time ImigrarEUA.</div>`:''}
+    <div class="panel">
+      <div class="panel-hd">
+        <div class="panel-title">Seus links de indicação</div>
+        <button class="btn btn-outline-blue btn-sm" onclick="reloadAffOwnLinks()">🔄 Atualizar</button>
       </div>
-      <div class="form-group" id="lk-custom-wrap" style="display:none">
-        <label class="form-label">URL de destino</label>
-        <input class="form-input" id="lk-custom-url" placeholder="https://…" oninput="updateShortPreview()">
+      <div class="panel-bd" id="aff-own-links-wrap">
+        <div style="text-align:center;padding:24px;color:var(--s400);font-size:13px">Carregando seus links…</div>
       </div>
-      <div style="background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--s500);margin-bottom:14px;word-break:break-all">
-        <span style="font-weight:600;color:var(--s700)">Destino: </span><span id="lk-preview-dest">—</span>
-      </div>
-      <div style="display:flex;justify-content:flex-end">
-        <button class="btn btn-primary" id="lk-create-btn" onclick="createShortLink()" ${!hsId?'disabled':''}>
-          🔗 Criar link encurtado
-        </button>
-      </div>
-      <div id="lk-result" style="display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px">
-        <div style="font-size:12px;color:#16a34a;font-weight:700;margin-bottom:6px">✅ Link criado com sucesso!</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <code id="lk-result-url" style="font-size:14px;font-weight:700;color:#0D255D;flex:1">—</code>
-          <button class="btn btn-outline-blue btn-sm" onclick="copyText('lk-result-url',this)">📋 Copiar</button>
-        </div>
-      </div>
-      <div id="lk-error" style="display:none;margin-top:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;font-size:13px;color:#dc2626"></div>
-    </div>
-  </div>
-  <div class="panel">
-    <div class="panel-hd">
-      <div class="panel-title">Links criados</div>
-      <button class="btn btn-outline-blue btn-sm" onclick="loadShortLinks()">🔄 Atualizar</button>
-    </div>
-    <div class="panel-bd" id="lk-list-wrap">
-      <div style="text-align:center;padding:20px;color:var(--s400);font-size:13px">Carregando…</div>
-    </div>
-  </div>`;
-  window._affLinks=links;
-  updateShortPreview();
-  loadShortLinks();
+    </div>`;
+  reloadAffOwnLinks();
 }
 
-function updateShortPreview(){
-  const sel=document.getElementById('lk-select');
-  const customWrap=document.getElementById('lk-custom-wrap');
-  const prev=document.getElementById('lk-preview-dest');
-  if(!sel||!prev) return;
-  if(sel.value==='custom'){
-    customWrap.style.display='block';
-    prev.textContent=document.getElementById('lk-custom-url')?.value||'(insira a URL acima)';
-  } else {
-    customWrap.style.display='none';
-    prev.textContent=window._affLinks?.[+sel.value]?.full||'—';
-  }
-}
-window.updateShortPreview=updateShortPreview;
-
-async function createShortLink(){
-  const sel=document.getElementById('lk-select');
-  const slugEl=document.getElementById('lk-slug');
-  const btn=document.getElementById('lk-create-btn');
-  const resultEl=document.getElementById('lk-result');
-  const errEl=document.getElementById('lk-error');
-  resultEl.style.display='none'; errEl.style.display='none';
-
-  let originalUrl, title;
-  if(sel.value==='custom'){
-    originalUrl=document.getElementById('lk-custom-url')?.value?.trim();
-    title='Link personalizado';
-  } else {
-    const lk=window._affLinks?.[+sel.value];
-    originalUrl=lk?.full;
-    title=lk?.label;
-  }
-  if(!originalUrl){ errEl.textContent='Selecione ou insira uma URL de destino.'; errEl.style.display='block'; return; }
-
-  btn.disabled=true; btn.textContent='Criando…';
-  try{
-    const r=await fetch('/api/shortio/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({originalUrl,slug:slugEl?.value?.trim()||undefined,title})});
-    const d=await r.json();
-    if(!r.ok) throw new Error(d.error||'Erro desconhecido');
-    document.getElementById('lk-result-url').textContent=d.shortUrl;
-    resultEl.style.display='block';
-    loadShortLinks();
-  }catch(e){
-    errEl.textContent='Erro ao criar link: '+e.message;
-    errEl.style.display='block';
-  }finally{
-    btn.disabled=false; btn.textContent='🔗 Criar link encurtado';
-  }
-}
-window.createShortLink=createShortLink;
-
-async function loadShortLinks(){
-  const wrap=document.getElementById('lk-list-wrap');
+async function reloadAffOwnLinks(){
+  const u=currentUser;
+  const hsId=u.hsAffiliateId||'';
+  const wrap=document.getElementById('aff-own-links-wrap');
   if(!wrap) return;
+  if(!hsId){wrap.innerHTML='<div style="padding:16px;font-size:13px;color:#92400e">Sem identificador configurado.</div>';return;}
+  wrap.innerHTML='<div style="text-align:center;padding:24px;color:var(--s400);font-size:13px">Carregando…</div>';
   try{
-    const r=await fetch('/api/shortio/links');
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
     const data=await r.json();
     const items=(data.links||data||[]);
-    if(!items.length){ wrap.innerHTML='<div style="text-align:center;padding:20px;color:var(--s400);font-size:13px">Nenhum link criado ainda.</div>'; return; }
-    wrap.innerHTML=`<table class="table"><thead><tr><th>Título</th><th>Link encurtado</th><th>Destino</th><th style="text-align:right">Ações</th></tr></thead><tbody>
-      ${items.map((lk,i)=>{
-        const short=lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${lk.path}`;
-        const dest=(lk.originalURL||lk.originalUrl||'').substring(0,60)+'…';
-        return `<tr>
-          <td style="font-size:13px;font-weight:600">${esc(lk.title||lk.path||'—')}</td>
-          <td><code id="sl-${i}" style="font-size:12px;color:#1B75BC">${esc(short)}</code></td>
-          <td style="font-size:11px;color:var(--s400);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(lk.originalURL||'')}">→ ${esc(dest)}</td>
-          <td style="text-align:right;white-space:nowrap">
-            <button class="btn btn-outline-blue btn-xs" onclick="copyText('sl-${i}',this)">📋 Copiar</button>
-          </td></tr>`;
-      }).join('')}
-    </tbody></table>`;
+    // map by slug
+    const byId={};
+    items.forEach(lk=>{
+      const p=lk.path||'';
+      const form=AFF_LINK_FORMS.find(f=>p===`${hsId}-${f.id}`);
+      if(form) byId[form.id]={shortUrl:lk.shortURL||lk.shortUrl||`https://to.imigrareua.com/${p}`,path:p};
+    });
+    const hasAny=Object.keys(byId).length>0;
+    if(!hasAny){
+      wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--s400)">
+        <div style="font-size:32px;margin-bottom:8px">🔗</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">Nenhum link criado ainda</div>
+        <div style="font-size:13px">O time ImigrarEUA irá criar seus links em breve.</div>
+      </div>`;
+      return;
+    }
+    const rows=AFF_LINK_FORMS.map((f,i)=>{
+      const lk=byId[f.id];
+      if(!lk) return `<tr style="opacity:.45">
+        <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
+        <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
+        <td colspan="2"><span style="font-size:12px;color:var(--s400)">— ainda não disponível</span></td>
+      </tr>`;
+      return `<tr>
+        <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
+        <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
+        <td><code id="aol-${i}" style="font-size:13px;font-weight:700;color:#1B75BC">${esc(lk.shortUrl)}</code></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-outline-blue btn-xs" onclick="copyText('aol-${i}',this)">📋 Copiar</button>
+        </td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Seu link</th><th style="text-align:right">Ação</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="margin-top:12px;padding:10px 14px;background:var(--s50);border-radius:8px;font-size:11px;color:var(--s500)">
+      💡 Todos os links já incluem seus parâmetros UTM — <strong>utm_affiliatename=${esc(hsId)}</strong>
+    </div>`;
   }catch(e){
     wrap.innerHTML=`<div style="padding:14px;font-size:13px;color:#dc2626">Erro ao carregar links: ${esc(e.message)}</div>`;
   }
 }
-window.loadShortLinks=loadShortLinks;
+window.reloadAffOwnLinks=reloadAffOwnLinks;
 
 window.copyLink=function(srcId,btnId){const text=document.getElementById(srcId)?.textContent||'';if(!text||text==='—') return;navigator.clipboard.writeText(text).then(()=>{const btn=document.getElementById(btnId);if(!btn) return;const orig=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent=orig,2000);}).catch(()=>toast('Não foi possível copiar.'));};
 window.copyText=function(srcId,btn){const text=document.getElementById(srcId)?.textContent||'';if(!text||text==='—') return;navigator.clipboard.writeText(text).then(()=>{const orig=btn.textContent;btn.textContent='✅';setTimeout(()=>btn.textContent=orig,2000);}).catch(()=>toast('Erro ao copiar.'));};
-window.copyAllLinks=function(){const all=(window._affLinks||[]).map(lk=>`${lk.label}:\n${lk.full}`).join('\n\n');navigator.clipboard.writeText(all).then(()=>toast('Todos os links copiados!')).catch(()=>toast('Erro ao copiar.'));};
 
 // ═══════════════════════════════════════════════════════
 // PAGE: Affiliate Profile
@@ -1554,7 +1613,21 @@ window.setCustomDate=function(which,val,page){ if(which==='start') affCustomStar
 const fmtDate=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;};
 const esc=s=>String(s).replace(/"/g,'&quot;');
 function statusBadge(s){const map={pending:'badge-pending',active:'badge-active',rejected:'badge-rejected'};const lbl={pending:'Pendente',active:'Ativo',rejected:'Rejeitado'};return`<span class="badge ${map[s]||'badge-pending'}"><span class="badge-dot"></span>${lbl[s]||s}</span>`;}
-function approveAff(id){const users=getUsers();const u=users.find(x=>x.id===id);if(!u) return;u.status='active';u.approvedAt=new Date().toISOString().slice(0,10);saveUsers(users);buildSidebar();navigate('admin-applications');toast(`✅ ${u.name} aprovado.`);}
+async function approveAff(id){
+  const users=getUsers();const u=users.find(x=>x.id===id);if(!u) return;
+  u.status='active';u.approvedAt=new Date().toISOString().slice(0,10);
+  saveUsers(users);buildSidebar();navigate('admin-applications');
+  toast(`✅ ${u.name} aprovado.`);
+  // auto-create short.io links in background
+  if(u.hsAffiliateId){
+    fetch('/api/shortio/create-bulk',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({hsId:u.hsAffiliateId,affiliateName:u.name,affiliateType:u.affiliateType||'external'})
+    }).then(r=>r.json()).then(d=>{
+      const ok=(d.results||[]).filter(x=>x.ok).length;
+      toast(`🔗 ${ok} links criados no Short.io para ${u.name}.`);
+    }).catch(()=>{});
+  }
+}
 function rejectAff(id){if(!confirm('Rejeitar esta solicitação?')) return;const users=getUsers();const u=users.find(x=>x.id===id);if(!u) return;u.status='rejected';saveUsers(users);buildSidebar();navigate('admin-applications');toast(`${u.name} rejeitado.`);}
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3000);}
