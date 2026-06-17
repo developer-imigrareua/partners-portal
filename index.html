@@ -397,6 +397,7 @@ function mapUser(row) {
     photo: row.photo || null,
     syncData: row.sync_data || null,
     affiliateType: row.affiliate_type || 'external',
+    linksConfig: row.links_config || {},
   };
 }
 function mapModel(row) {
@@ -427,6 +428,7 @@ function userToRow(u) {
     photo: u.photo || null,
     sync_data: u.syncData || null,
     affiliate_type: u.affiliateType || 'external',
+    links_config: u.linksConfig || {},
   };
 }
 
@@ -1230,16 +1232,30 @@ async function loadAffLinksRow(affId, hsId){
         };
       }
     });
+    const aff=getUsers().find(u=>u.id===affId);
+    const cfg=aff?.linksConfig||{};
     const rows=AFF_LINK_FORMS.map((f,i)=>{
       const ex=byId[f.id];
+      const slug=ex?.path||`${hsId}-${f.id}`;
+      const state=cfg[slug]||{};
+      const isHidden=!!state.hidden;
+      const isDeleted=!!state.deleted;
+      const rowStyle=isDeleted?'opacity:.4;':isHidden?'opacity:.6;':'';
+      const statusBadge=isDeleted
+        ?`<span style="font-size:10px;font-weight:600;color:#dc2626;background:#fef2f2;padding:2px 7px;border-radius:99px">Removido</span>`
+        :isHidden
+        ?`<span style="font-size:10px;font-weight:600;color:#92400e;background:#fefce8;padding:2px 7px;border-radius:99px">Oculto</span>`
+        :'';
       const shortCell=ex
-        ?`<code id="alsl-${affId}-${i}" style="font-size:12px;color:#1B75BC">${esc(ex.shortUrl)}</code>`
+        ?`<div style="display:flex;align-items:center;gap:6px"><code id="alsl-${affId}-${i}" style="font-size:12px;color:#1B75BC">${esc(ex.shortUrl)}</code>${statusBadge}</div>`
         :`<span style="color:var(--s400);font-size:12px">— não criado</span>`;
-      const actions=ex
-        ?`<button class="btn btn-outline-blue btn-xs" onclick="copyText('alsl-${affId}-${i}',this)" style="margin-right:4px">📋 Copiar</button>
-           <button class="btn btn-ghost btn-xs" onclick="editAffLink('${affId}','${hsId}','${f.id}','${esc(ex.id)}','${esc(ex.originalUrl.replace(/'/g,''))}',this)">✏️ Editar</button>`
+      const actions=ex?`
+        <button class="btn btn-outline-blue btn-xs" onclick="copyText('alsl-${affId}-${i}',this)">📋</button>
+        <button class="btn btn-ghost btn-xs" onclick="editAffLink('${affId}','${hsId}','${f.id}','${esc(ex.id)}','${esc(ex.originalUrl.replace(/'/g,'\\\''))}',this)" title="Editar destino">✏️</button>
+        <button class="btn btn-ghost btn-xs" onclick="toggleHideAffLink('${affId}','${hsId}','${slug}',${isHidden})" title="${isHidden?'Mostrar':'Ocultar'} para o afiliado">${isHidden?'👁️':'🙈'}</button>
+        <button class="btn btn-ghost btn-xs" onclick="deleteAffLink('${affId}','${hsId}','${slug}',${isDeleted})" title="${isDeleted?'Restaurar':'Remover do portal'}" style="color:${isDeleted?'#16a34a':'#dc2626'}">${isDeleted?'↩️':'🗑️'}</button>`
         :`<button class="btn btn-primary btn-xs" onclick="singleCreateAffLink('${affId}','${hsId}','${f.id}','${esc(f.label)}',this)">+ Criar</button>`;
-      return `<tr>
+      return `<tr style="${rowStyle}">
         <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
         <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
         <td style="max-width:260px">${shortCell}</td>
@@ -1247,6 +1263,7 @@ async function loadAffLinksRow(affId, hsId){
       </tr>`;
     }).join('');
     wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Link Short.io</th><th style="text-align:right">Ações</th></tr></thead><tbody>${rows}</tbody></table>`;
+    if(aff) aff.linksConfig=cfg; // keep cache in sync
   }catch(e){
     wrap.innerHTML=`<div style="padding:12px;font-size:13px;color:#dc2626">Erro: ${esc(e.message)}</div>`;
   }
@@ -1375,6 +1392,38 @@ function editAffLink(affId, hsId, formId, linkId, currentUrl){
   openEditLinkModal(affId, hsId, formId, linkId, currentUrl);
 }
 window.editAffLink=editAffLink;
+
+async function updateLinksConfig(affId, hsId, slug, action){
+  const r=await fetch(`/api/affiliate/${affId}/links-config`,{
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({slug,action})
+  });
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'Erro');
+  // update local cache
+  const aff=getUsers().find(u=>u.id===affId);
+  if(aff) aff.linksConfig=d.links_config||{};
+  return d;
+}
+
+async function toggleHideAffLink(affId, hsId, slug, isHidden){
+  try{
+    await updateLinksConfig(affId, hsId, slug, isHidden?'show':'hide');
+    toast(isHidden?'✅ Link visível para o afiliado.':'🙈 Link ocultado do afiliado.');
+    loadAffLinksRow(affId, hsId);
+  }catch(e){ toast('Erro: '+e.message); }
+}
+window.toggleHideAffLink=toggleHideAffLink;
+
+async function deleteAffLink(affId, hsId, slug, isDeleted){
+  if(!isDeleted && !confirm('Remover este link do portal do afiliado?\n\nO link permanece no Short.io e pode ser restaurado depois.')) return;
+  try{
+    await updateLinksConfig(affId, hsId, slug, isDeleted?'restore':'delete');
+    toast(isDeleted?'↩️ Link restaurado.':'🗑️ Link removido do portal do afiliado.');
+    loadAffLinksRow(affId, hsId);
+  }catch(e){ toast('Erro: '+e.message); }
+}
+window.deleteAffLink=deleteAffLink;
 
 async function singleCreateAffLink(affId, hsId, formId, formLabel, btn){
   const form=AFF_LINK_FORMS.find(f=>f.id===formId);
@@ -1651,10 +1700,15 @@ async function reloadAffOwnLinks(){
     const data=await r.json();
     if(data.error) throw new Error(data.error);
     const items=Array.isArray(data.links)?data.links:Array.isArray(data)?data:[];
+    const cfg=currentUser.linksConfig||{};
     const byId={};
     items.forEach(lk=>{
       const form=matchLinkToForm(lk,hsId);
-      if(form && !byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||`https://to.imigrareua.com/${lk.path}`};
+      if(!form) return;
+      const slug=lk.path||`${hsId}-${form.id}`;
+      const state=cfg[slug]||{};
+      if(state.deleted||state.hidden) return; // admin oculted or deleted
+      if(!byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||`https://to.imigrareua.com/${lk.path}`};
     });
     const hasAny=Object.keys(byId).length>0;
     if(!hasAny){

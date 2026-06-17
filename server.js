@@ -179,6 +179,46 @@ app.patch('/api/shortio/update', async (req, res) => {
   }
 });
 
+// Update links_config for an affiliate (hide/delete a link from their view)
+app.patch('/api/affiliate/:userId/links-config', async (req, res) => {
+  const { userId } = req.params;
+  const { slug, action } = req.body; // action: 'hide' | 'show' | 'delete' | 'restore'
+  if (!userId || !slug || !action) return res.status(400).json({ error: 'userId, slug e action obrigatórios' });
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
+
+  try {
+    // fetch current links_config
+    const getRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=links_config`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    const rows = await getRes.json();
+    const current = rows?.[0]?.links_config || {};
+
+    // apply action
+    if (action === 'hide')    current[slug] = { ...current[slug], hidden: true };
+    if (action === 'show')    { if (current[slug]) { delete current[slug].hidden; if (!Object.keys(current[slug]).length) delete current[slug]; } }
+    if (action === 'delete')  current[slug] = { ...current[slug], deleted: true };
+    if (action === 'restore') { if (current[slug]) { delete current[slug].deleted; if (!Object.keys(current[slug]).length) delete current[slug]; } }
+
+    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ links_config: current }),
+    });
+    if (!patchRes.ok) throw new Error(`Supabase ${patchRes.status}`);
+    res.json({ ok: true, links_config: current });
+  } catch (err) {
+    console.error('links-config error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check — verifies HubSpot and short.io connectivity
 app.get('/api/health', async (req, res) => {
   const HUBSPOT_KEY    = process.env.HUBSPOT_API_KEY;
