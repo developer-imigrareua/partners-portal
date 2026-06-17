@@ -1146,33 +1146,57 @@ async function renderAdminAffLinks(c){
     </div>
     ${!affiliates.length?'<div class="panel"><div class="panel-bd" style="padding:32px;text-align:center;color:var(--s400)">Nenhum afiliado ativo.</div></div>':''}
     <div id="aff-links-container">
-      ${affiliates.map(a=>`
-        <div class="panel" style="margin-bottom:16px" id="alp-${a.id}">
-          <div class="panel-hd" style="justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:10px">
+      ${affiliates.map((a,idx)=>`
+        <div style="border:1px solid var(--s200);border-radius:12px;margin-bottom:8px;overflow:hidden" id="alp-${a.id}">
+          <div onclick="toggleAffAccordion('${a.id}')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:#fff;user-select:none" id="alp-hd-${a.id}">
+            <div style="display:flex;align-items:center;gap:12px">
               <div class="avatar">${a.name[0]}</div>
               <div>
-                <div style="font-weight:700;font-size:14px">${esc(a.name)}</div>
-                <div style="font-size:11px;color:var(--s400)">${esc(a.hsAffiliateId||'sem hsId')}</div>
+                <div style="font-weight:700;font-size:14px;color:#0D255D">${esc(a.name)}</div>
+                <div style="font-size:11px;color:var(--s400)">${esc(a.hsAffiliateId||'sem hsId configurado')}</div>
               </div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-outline-blue btn-sm" onclick="loadAffLinksRow('${a.id}','${esc(a.hsAffiliateId||'')}')">🔄 Atualizar</button>
-              ${a.hsAffiliateId?`<button class="btn btn-primary btn-sm" onclick="bulkCreateAffLinks('${a.id}','${esc(a.hsAffiliateId)}','${esc(a.name)}','${esc(a.affiliateType||'external')}')">⚡ Criar todos</button>`:'<span style="font-size:11px;color:#dc2626">⚠ Sem hsId</span>'}
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="alp-badge-${a.id}" style="font-size:11px;color:var(--s400)"></span>
+              <svg id="alp-chevron-${a.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--s400);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
           </div>
-          <div class="panel-bd" id="alp-body-${a.id}">
-            <div style="text-align:center;padding:16px;color:var(--s400);font-size:13px">Carregando…</div>
+          <div id="alp-body-wrap-${a.id}" style="display:none;border-top:1px solid var(--s100)">
+            <div style="padding:12px 18px;background:#f9fafb;display:flex;justify-content:flex-end;gap:8px">
+              <button class="btn btn-outline-blue btn-sm" onclick="event.stopPropagation();loadAffLinksRow('${a.id}','${esc(a.hsAffiliateId||'')}')">🔄 Atualizar</button>
+              ${a.hsAffiliateId
+                ?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();bulkCreateAffLinks('${a.id}','${esc(a.hsAffiliateId)}','${esc(a.name)}','${esc(a.affiliateType||'external')}')">⚡ Criar todos</button>`
+                :'<span style="font-size:11px;color:#dc2626;align-self:center">⚠ Configure o hsId no perfil do afiliado</span>'}
+            </div>
+            <div id="alp-body-${a.id}" style="padding:0 18px 18px">
+              <div style="text-align:center;padding:20px;color:var(--s400);font-size:13px">Clique em Atualizar para carregar os links.</div>
+            </div>
           </div>
         </div>`).join('')}
     </div>`;
+}
 
-  // load links for each affiliate
-  for(const a of affiliates){
-    if(a.hsAffiliateId) loadAffLinksRow(a.id, a.hsAffiliateId);
-    else document.getElementById(`alp-body-${a.id}`).innerHTML='<div style="padding:12px;font-size:13px;color:#92400e">⚠️ Configure o identificador HubSpot para este afiliado antes de criar links.</div>';
+function toggleAffAccordion(affId){
+  const wrap=document.getElementById(`alp-body-wrap-${affId}`);
+  const chevron=document.getElementById(`alp-chevron-${affId}`);
+  const hd=document.getElementById(`alp-hd-${affId}`);
+  if(!wrap) return;
+  const isOpen=wrap.style.display!=='none';
+  wrap.style.display=isOpen?'none':'block';
+  if(chevron) chevron.style.transform=isOpen?'':'rotate(180deg)';
+  if(hd) hd.style.background=isOpen?'#fff':'#f0f6ff';
+  // load on first open
+  if(!isOpen){
+    const a=getUsers().find(u=>u.id===affId);
+    const body=document.getElementById(`alp-body-${affId}`);
+    if(a?.hsAffiliateId){
+      if(body?.dataset.loaded!=='1') loadAffLinksRow(affId, a.hsAffiliateId);
+    } else if(body){
+      body.innerHTML='<div style="padding:12px;font-size:13px;color:#92400e">⚠️ Configure o identificador HubSpot para este afiliado antes de criar links.</div>';
+    }
   }
 }
+window.toggleAffAccordion=toggleAffAccordion;
 
 function matchLinkToForm(lk, hsId){
   const p=lk.path||'';
