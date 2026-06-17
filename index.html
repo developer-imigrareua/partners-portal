@@ -469,7 +469,10 @@ async function loadData() {
     const r = await fetch('/api/link-forms');
     if (r.ok) {
       const forms = await r.json();
-      if (Array.isArray(forms) && forms.length) linkFormsCache = forms;
+      if (Array.isArray(forms) && forms.length) {
+        // normalize DB column base_url → url so matchLinkToForm works
+        linkFormsCache = forms.map(f => ({ ...f, url: f.url || f.base_url }));
+      }
     }
   } catch(e) { /* fall back to hardcoded AFF_LINK_FORMS */ }
 }
