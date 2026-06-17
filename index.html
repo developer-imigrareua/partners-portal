@@ -1193,7 +1193,7 @@ async function loadAffLinksRow(affId, hsId){
     const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
     const data=await r.json();
     if(data.error) throw new Error(data.error);
-    const items=(data.links||data||[]);
+    const items=Array.isArray(data.links)?data.links:Array.isArray(data)?data:[];
     // map form → link (prefer slug match, accept URL match)
     const byId={};
     items.forEach(lk=>{
@@ -1522,7 +1522,7 @@ async function reloadAffOwnLinks(){
     const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
     const data=await r.json();
     if(data.error) throw new Error(data.error);
-    const items=(data.links||data||[]);
+    const items=Array.isArray(data.links)?data.links:Array.isArray(data)?data:[];
     const byId={};
     items.forEach(lk=>{
       const form=matchLinkToForm(lk,hsId);
