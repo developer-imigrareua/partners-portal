@@ -137,7 +137,7 @@ app.get('/api/shortio/links', async (req, res) => {
   if (!SHORTIO_DOMAIN_ID) return res.status(500).json({ error: 'SHORTIO_DOMAIN_ID não configurado' });
 
   try {
-    let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=500`;
+    let url = `https://api.short.io/api/links?domain_id=${SHORTIO_DOMAIN_ID}&limit=150`;
     if (FOLDER_ID)   url += `&folderId=${encodeURIComponent(FOLDER_ID)}`;
     if (affiliateId) url += `&search=${encodeURIComponent(affiliateId)}`;
 
