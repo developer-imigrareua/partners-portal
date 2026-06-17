@@ -85,14 +85,114 @@ function buildUTMUrl(baseUrl, hsId, affiliateType) {
   return `${baseUrl}?${p.toString()}`;
 }
 
+// ── Supabase helper ──────────────────────────────────────
+function supabaseHeaders() {
+  return {
+    apikey: process.env.SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  };
+}
+
+// link_forms CRUD
+app.get('/api/link-forms', async (req, res) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms?order=sort_order.asc`, {
+      headers: supabaseHeaders(),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.json(data);
+  } catch (err) {
+    console.error('link-forms GET error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/link-forms', async (req, res) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms`, {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify(req.body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.status(201).json(Array.isArray(data) ? data[0] : data);
+  } catch (err) {
+    console.error('link-forms POST error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/link-forms/:id', async (req, res) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms?id=eq.${req.params.id}`, {
+      method: 'PATCH',
+      headers: supabaseHeaders(),
+      body: JSON.stringify(req.body),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
+    res.json(Array.isArray(data) ? data[0] : data);
+  } catch (err) {
+    console.error('link-forms PATCH error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/link-forms/:id', async (req, res) => {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms?id=eq.${req.params.id}`, {
+      method: 'PATCH',
+      headers: supabaseHeaders(),
+      body: JSON.stringify({ active: false }),
+    });
+    if (!r.ok) {
+      const data = await r.json();
+      throw new Error(data.message || `HTTP ${r.status}`);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('link-forms DELETE error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // short.io — bulk-create all 6 standard links for an affiliate
 app.post('/api/shortio/create-bulk', async (req, res) => {
   const { hsId, affiliateName, affiliateType } = req.body;
   if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
   if (!process.env.SHORTIO_API_KEY) return res.status(500).json({ error: 'Short.io não configurado' });
 
+  // fetch active forms from Supabase; fall back to hardcoded list
+  let activeForms = LINK_FORMS;
+  try {
+    const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms?active=eq.true&order=sort_order.asc`, {
+        headers: supabaseHeaders(),
+      });
+      if (r.ok) {
+        const rows = await r.json();
+        if (Array.isArray(rows) && rows.length) activeForms = rows;
+      }
+    }
+  } catch (e) {
+    console.warn('create-bulk: using hardcoded forms (supabase error):', e.message);
+  }
+
   const results = [];
-  for (const form of LINK_FORMS) {
+  for (const form of activeForms) {
     const originalUrl = buildUTMUrl(form.url, hsId, affiliateType);
     const slug  = `${hsId}-${form.id}`;
     const title = `${affiliateName || hsId} — ${form.label}`;

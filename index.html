@@ -450,6 +450,8 @@ function saveModels(models) {
     .then(() => {}).catch(e => console.error('saveModels:', e));
 }
 
+function getLinkForms(){ return linkFormsCache.length ? linkFormsCache : AFF_LINK_FORMS; }
+
 async function loadData() {
   const [{ data: users }, { data: models }] = await Promise.all([
     sb.from('users').select('*'),
@@ -462,6 +464,14 @@ async function loadData() {
     modelsCache = [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
     saveModels(modelsCache);
   }
+  // load link forms from API (fail silently)
+  try {
+    const r = await fetch('/api/link-forms');
+    if (r.ok) {
+      const forms = await r.json();
+      if (Array.isArray(forms) && forms.length) linkFormsCache = forms;
+    }
+  } catch(e) { /* fall back to hardcoded AFF_LINK_FORMS */ }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -470,6 +480,7 @@ async function loadData() {
 let currentUser=null, leadsChart=null, stageChart=null, evoChart=null;
 let adminEvoChart=null, adminPerfChart=null;
 let editingBonifModelId=null, editingAffiliateId=null;
+let linkFormsCache=[];
 let openDetailId=null;
 let affPeriod='this-year', affCustomStart='', affCustomEnd='', affSearch='', affStageFilter='Todos';
 let affSortCol='createdAt', affSortDir='desc';
@@ -612,6 +623,7 @@ function buildSidebar(){
     <button class="sb-item" data-page="admin-affiliates"   onclick="navigate('admin-affiliates')"><span>👥</span> Afiliados</button>
     <button class="sb-item" data-page="admin-bonif-models" onclick="navigate('admin-bonif-models')"><span>💎</span> Modelos de Bonificação</button>
     <button class="sb-item" data-page="admin-aff-links"    onclick="navigate('admin-aff-links')"><span>🔗</span> Links de Afiliados</button>
+    <button class="sb-item" data-page="admin-link-forms"   onclick="navigate('admin-link-forms')"><span>📝</span> Formulários</button>
     <button class="sb-item" data-page="admin-health"       onclick="navigate('admin-health')"><span>🔌</span> Health das Integrações</button>
   `:`
     <div class="sb-lbl">Afiliado</div>
@@ -649,6 +661,7 @@ function renderPage(page){
     'admin-affiliates':  ()=>renderAdminAffiliates(c),
     'admin-bonif-models':()=>renderAdminBonifModels(c),
     'admin-aff-links':   ()=>renderAdminAffLinks(c),
+    'admin-link-forms':  ()=>renderAdminLinkForms(c),
     'admin-health':      ()=>renderAdminHealth(c),
     'aff-dashboard':     ()=>renderAffDashboard(c),
     'aff-pipeline':      ()=>renderAffPipeline(c),
@@ -1204,7 +1217,7 @@ function matchLinkToForm(lk, hsId){
   const p=lk.path||'';
   const orig=lk.originalURL||'';
   // match by canonical slug first, then by base URL in originalURL
-  return AFF_LINK_FORMS.find(f=>
+  return getLinkForms().find(f=>
     p===`${hsId}-${f.id}` ||
     (orig.includes(f.url) && orig.includes(`utm_affiliatename=${hsId}`))
   );
@@ -1234,7 +1247,7 @@ async function loadAffLinksRow(affId, hsId){
     });
     const aff=getUsers().find(u=>u.id===affId);
     const cfg=aff?.linksConfig||{};
-    const rows=AFF_LINK_FORMS.map((f,i)=>{
+    const rows=getLinkForms().map((f,i)=>{
       const ex=byId[f.id];
       const slug=ex?.path||`${hsId}-${f.id}`;
       const state=cfg[slug]||{};
@@ -1273,7 +1286,7 @@ function openEditLinkModal(affId, hsId, formId, linkId, currentUrl){
   // remove any existing modal
   document.getElementById('edit-link-modal')?.remove();
 
-  const form=AFF_LINK_FORMS.find(f=>f.id===formId);
+  const form=getLinkForms().find(f=>f.id===formId);
   const aff=getUsers().find(u=>u.id===affId);
 
   // parse current URL into base + UTM params
@@ -1311,11 +1324,11 @@ function openEditLinkModal(affId, hsId, formId, linkId, currentUrl){
         <div class="form-group" style="margin:0">
           <label class="form-label">URL base do formulário</label>
           <select class="form-input" id="eml-base" onchange="updateEditModalPreview()">
-            ${AFF_LINK_FORMS.map(f=>`<option value="${f.url}" ${baseUrl===f.url||currentUrl.includes(f.url)?'selected':''}>${f.icon} ${f.label}</option>`).join('')}
-            <option value="custom" ${!AFF_LINK_FORMS.some(f=>currentUrl.includes(f.url))?'selected':''}>🔗 URL personalizada</option>
+            ${getLinkForms().map(f=>`<option value="${f.url}" ${baseUrl===f.url||currentUrl.includes(f.url)?'selected':''}>${f.icon} ${f.label}</option>`).join('')}
+            <option value="custom" ${!getLinkForms().some(f=>currentUrl.includes(f.url))?'selected':''}>🔗 URL personalizada</option>
           </select>
         </div>
-        <div id="eml-custom-wrap" style="margin-top:10px;${!AFF_LINK_FORMS.some(f=>currentUrl.includes(f.url))?'':'display:none'}">
+        <div id="eml-custom-wrap" style="margin-top:10px;${!getLinkForms().some(f=>currentUrl.includes(f.url))?'':'display:none'}">
           <input class="form-input" id="eml-custom-url" value="${esc(baseUrl)}" placeholder="https://…" oninput="updateEditModalPreview()">
         </div>
       </div>
@@ -1426,7 +1439,7 @@ async function deleteAffLink(affId, hsId, slug, isDeleted){
 window.deleteAffLink=deleteAffLink;
 
 async function singleCreateAffLink(affId, hsId, formId, formLabel, btn){
-  const form=AFF_LINK_FORMS.find(f=>f.id===formId);
+  const form=getLinkForms().find(f=>f.id===formId);
   if(!form) return;
   const aff=getUsers().find(u=>u.id===affId);
   const originalUrl=buildUTMLink(form.url, hsId, aff?.affiliateType||'external');
@@ -1466,6 +1479,218 @@ window.renderAdminAffLinks=renderAdminAffLinks;
 window.loadAffLinksRow=loadAffLinksRow;
 window.singleCreateAffLink=singleCreateAffLink;
 window.bulkCreateAffLinks=bulkCreateAffLinks;
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Admin Link Forms
+// ═══════════════════════════════════════════════════════
+async function renderAdminLinkForms(c){
+  setTopbar('Formulários de Captação','Gerencie os formulários usados nos links de afiliados');
+  c.innerHTML=`<div style="text-align:center;padding:40px;color:var(--s400)">Carregando…</div>`;
+  let forms=[];
+  try{
+    const r=await fetch('/api/link-forms');
+    if(r.ok){ forms=await r.json(); linkFormsCache=forms; }
+  }catch(e){}
+  if(!forms.length) forms=AFF_LINK_FORMS;
+
+  c.innerHTML=`
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <div class="page-title">Formulários de Captação</div>
+        <div class="page-sub">Formulários usados nos links curtos dos afiliados. Altere aqui para refletir em todo o sistema.</div>
+      </div>
+      <button class="btn btn-primary" onclick="openLinkFormModal()">➕ Novo formulário</button>
+    </div>
+    <div class="panel">
+      <table class="table">
+        <thead><tr><th>Ícone</th><th>Nome</th><th>Plataforma</th><th>URL base</th><th>Status</th><th style="text-align:right">Ações</th></tr></thead>
+        <tbody id="lfm-tbody">
+          ${forms.map(f=>`
+            <tr>
+              <td style="font-size:20px;text-align:center">${f.icon||'🔗'}</td>
+              <td><strong style="font-size:13px">${esc(f.label)}</strong><div style="font-size:11px;color:var(--s400)">${esc(f.id)}</div></td>
+              <td><span class="tag ${(f.platform||'').toLowerCase()==='typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${esc(f.platform||'HubSpot')}</span></td>
+              <td style="max-width:220px;font-size:11px;color:var(--s500);word-break:break-all">${esc(f.url||'')}</td>
+              <td>${f.active===false?'<span style="font-size:11px;font-weight:600;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:99px">Inativo</span>':'<span style="font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;padding:2px 8px;border-radius:99px">Ativo</span>'}</td>
+              <td style="text-align:right;white-space:nowrap">
+                <button class="btn btn-ghost btn-xs" onclick="openLinkFormModal(${JSON.stringify(JSON.stringify(f))})">✏️ Editar</button>
+                <button class="btn btn-ghost btn-xs" style="color:${f.active===false?'#16a34a':'#dc2626'}" onclick="toggleLinkFormActive('${f.id||f._id||f.rowid}',${f.active===false})">${f.active===false?'✅ Ativar':'🚫 Desativar'}</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+window.renderAdminLinkForms=renderAdminLinkForms;
+
+function openLinkFormModal(jsonStr){
+  document.getElementById('lfm-modal')?.remove();
+  let editing=null;
+  try{ if(jsonStr) editing=JSON.parse(jsonStr); }catch(e){}
+
+  const f=editing||{};
+  let utmSource=f.utm_source||'general', utmMedium=f.utm_medium||'affiliate',
+      utmCampaign=f.utm_campaign||'analise-liv', utmTerm=f.utm_term||'affiliate-audience',
+      utmContent=f.utm_content||'direct-message';
+
+  const modal=document.createElement('div');
+  modal.id='lfm-modal';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:16px;width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+      <div style="background:#0D255D;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1">
+        <div>
+          <div style="color:#fff;font-weight:700;font-size:15px">${editing?'✏️ Editar formulário':'➕ Novo formulário'}</div>
+          <div style="color:#8eaadb;font-size:12px;margin-top:2px">${editing?esc(f.label||f.id):'Preencha os campos abaixo'}</div>
+        </div>
+        <button onclick="document.getElementById('lfm-modal').remove()" style="background:none;border:none;color:#8eaadb;font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div style="padding:20px 24px">
+        <div class="form-grid2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">ID (slug) *</label>
+            <input class="form-input" id="lfm-id" value="${esc(f.id||'')}" placeholder="ex: contato" ${editing?'readonly':''} oninput="updateLfmPreview()">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Ícone</label>
+            <input class="form-input" id="lfm-icon" value="${esc(f.icon||'🔗')}" placeholder="🔗" oninput="updateLfmPreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome (label) *</label>
+          <input class="form-input" id="lfm-label" value="${esc(f.label||'')}" placeholder="ex: Contato Geral" oninput="updateLfmPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plataforma</label>
+          <select class="form-input" id="lfm-platform">
+            <option value="HubSpot" ${(f.platform||'HubSpot')==='HubSpot'?'selected':''}>HubSpot</option>
+            <option value="Typeform" ${f.platform==='Typeform'?'selected':''}>Typeform</option>
+            <option value="Outro" ${f.platform==='Outro'?'selected':''}>Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL base do formulário</label>
+          <input class="form-input" id="lfm-url" value="${esc(f.url||'')}" placeholder="https://share.hsforms.com/…" oninput="updateLfmPreview()">
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--s500);letter-spacing:.05em;margin:16px 0 8px">PARÂMETROS UTM</div>
+        <div class="form-grid2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">utm_source</label>
+            <input class="form-input" id="lfm-utm-source" value="${esc(utmSource)}" oninput="updateLfmPreview()">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">utm_medium</label>
+            <input class="form-input" id="lfm-utm-medium" value="${esc(utmMedium)}" oninput="updateLfmPreview()">
+          </div>
+        </div>
+        <div class="form-grid2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">utm_campaign</label>
+            <input class="form-input" id="lfm-utm-campaign" value="${esc(utmCampaign)}" oninput="updateLfmPreview()">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">utm_term</label>
+            <input class="form-input" id="lfm-utm-term" value="${esc(utmTerm)}" oninput="updateLfmPreview()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">utm_content</label>
+          <input class="form-input" id="lfm-utm-content" value="${esc(utmContent)}" oninput="updateLfmPreview()">
+        </div>
+        <div style="font-size:11px;color:var(--s400);background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:8px 12px;margin-bottom:16px">
+          💡 <strong>utm_affiliatetype</strong> e <strong>utm_affiliatename</strong> são preenchidos automaticamente por afiliado
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="lfm-active" ${f.active===false?'':'checked'} style="width:16px;height:16px;cursor:pointer">
+          <label for="lfm-active" style="font-size:13px;font-weight:500;cursor:pointer">Incluir no "Criar todos"</label>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--s100);padding:16px 24px;background:#f8fafc">
+        <div style="font-size:11px;font-weight:700;color:var(--s500);letter-spacing:.05em;margin-bottom:8px">PRÉ-VISUALIZAÇÃO DA URL</div>
+        <code id="lfm-preview" style="font-size:11px;color:#1B75BC;word-break:break-all;line-height:1.5"></code>
+      </div>
+      <div style="padding:16px 24px;border-top:1px solid var(--s100);display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-secondary" onclick="document.getElementById('lfm-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="lfm-save-btn" onclick="saveLinkForm(${editing?`'${f.id}'`:'null'})">💾 Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  updateLfmPreview();
+}
+window.openLinkFormModal=openLinkFormModal;
+
+function updateLfmPreview(){
+  const base=document.getElementById('lfm-url')?.value||'';
+  const src=document.getElementById('lfm-utm-source')?.value||'';
+  const med=document.getElementById('lfm-utm-medium')?.value||'';
+  const cam=document.getElementById('lfm-utm-campaign')?.value||'';
+  const term=document.getElementById('lfm-utm-term')?.value||'';
+  const cont=document.getElementById('lfm-utm-content')?.value||'';
+  if(!base){ document.getElementById('lfm-preview').textContent='—'; return; }
+  const p=new URLSearchParams();
+  if(src) p.set('utm_source',src);
+  if(med) p.set('utm_medium',med);
+  if(cam) p.set('utm_campaign',cam);
+  if(term) p.set('utm_term',term);
+  if(cont) p.set('utm_content',cont);
+  p.set('utm_affiliatetype','[tipo_afiliado]');
+  p.set('utm_affiliatename','[hsId]');
+  const el=document.getElementById('lfm-preview');
+  if(el) el.textContent=`${base}?${p.toString()}`;
+}
+window.updateLfmPreview=updateLfmPreview;
+
+async function saveLinkForm(editingId){
+  const btn=document.getElementById('lfm-save-btn');
+  const id=document.getElementById('lfm-id')?.value.trim();
+  const label=document.getElementById('lfm-label')?.value.trim();
+  if(!id||!label){ toast('Preencha ID e Nome'); return; }
+  const payload={
+    id, label,
+    icon:  document.getElementById('lfm-icon')?.value.trim()||'🔗',
+    platform: document.getElementById('lfm-platform')?.value||'HubSpot',
+    url:   document.getElementById('lfm-url')?.value.trim()||'',
+    utm_source:   document.getElementById('lfm-utm-source')?.value.trim()||'',
+    utm_medium:   document.getElementById('lfm-utm-medium')?.value.trim()||'',
+    utm_campaign: document.getElementById('lfm-utm-campaign')?.value.trim()||'',
+    utm_term:     document.getElementById('lfm-utm-term')?.value.trim()||'',
+    utm_content:  document.getElementById('lfm-utm-content')?.value.trim()||'',
+    active: document.getElementById('lfm-active')?.checked!==false,
+  };
+  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+  try{
+    const method=editingId?'PATCH':'POST';
+    const url=editingId?`/api/link-forms/${editingId}`:'/api/link-forms';
+    const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.error||`HTTP ${r.status}`);
+    toast(editingId?'Formulário atualizado!':'Formulário criado!');
+    document.getElementById('lfm-modal')?.remove();
+    // reload page and cache
+    const c=document.getElementById('app-content');
+    if(c) renderAdminLinkForms(c);
+  }catch(e){
+    toast('Erro: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='💾 Salvar';}
+  }
+}
+window.saveLinkForm=saveLinkForm;
+
+async function toggleLinkFormActive(id, makeActive){
+  try{
+    const r=await fetch(`/api/link-forms/${id}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({active:makeActive}),
+    });
+    if(!r.ok){ const d=await r.json(); throw new Error(d.error||`HTTP ${r.status}`); }
+    toast(makeActive?'Formulário ativado':'Formulário desativado');
+    const c=document.getElementById('app-content');
+    if(c) renderAdminLinkForms(c);
+  }catch(e){ toast('Erro: '+e.message); }
+}
+window.toggleLinkFormActive=toggleLinkFormActive;
 
 // ═══════════════════════════════════════════════════════
 // PAGE: Admin Health
@@ -1719,7 +1944,7 @@ async function reloadAffOwnLinks(){
       </div>`;
       return;
     }
-    const rows=AFF_LINK_FORMS.map((f,i)=>{
+    const rows=getLinkForms().map((f,i)=>{
       const lk=byId[f.id];
       if(!lk) return `<tr style="opacity:.45">
         <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
