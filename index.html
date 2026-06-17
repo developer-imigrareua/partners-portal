@@ -1228,23 +1228,127 @@ async function loadAffLinksRow(affId, hsId){
   }
 }
 
-async function editAffLink(affId, hsId, formId, linkId, currentUrl, btn){
+function openEditLinkModal(affId, hsId, formId, linkId, currentUrl){
+  // remove any existing modal
+  document.getElementById('edit-link-modal')?.remove();
+
   const form=AFF_LINK_FORMS.find(f=>f.id===formId);
   const aff=getUsers().find(u=>u.id===affId);
-  const defaultUrl=buildUTMLink(form?.url||'', hsId, aff?.affiliateType||'external');
-  const newUrl=prompt(`URL de destino para "${form?.label}":\n(inclua os parâmetros UTM se necessário)`, currentUrl||defaultUrl);
-  if(!newUrl||newUrl===currentUrl) return;
-  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+
+  // parse current URL into base + UTM params
+  let baseUrl=currentUrl, utms={};
   try{
-    const r=await fetch('/api/shortio/update',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId,originalUrl:newUrl})});
+    const u=new URL(currentUrl);
+    baseUrl=u.origin+u.pathname;
+    const p=u.searchParams;
+    utms={
+      utm_source:     p.get('utm_source')||'general',
+      utm_medium:     p.get('utm_medium')||'affiliate',
+      utm_campaign:   p.get('utm_campaign')||'analise-liv',
+      utm_term:       p.get('utm_term')||'affiliate-audience',
+      utm_content:    p.get('utm_content')||'direct-message',
+      utm_affiliatetype: p.get('utm_affiliatetype')||aff?.affiliateType||'external',
+      utm_affiliatename: p.get('utm_affiliatename')||hsId,
+    };
+  }catch(e){}
+
+  const modal=document.createElement('div');
+  modal.id='edit-link-modal';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:16px;width:560px;max-width:96vw;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden">
+      <div style="background:#0D255D;padding:18px 24px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="color:#fff;font-weight:700;font-size:15px">✏️ Editar link — ${esc(form?.label||formId)}</div>
+          <div style="color:#8eaadb;font-size:12px;margin-top:2px">${esc(aff?.name||hsId)}</div>
+        </div>
+        <button onclick="document.getElementById('edit-link-modal').remove()" style="background:none;border:none;color:#8eaadb;font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+
+      <div style="padding:20px 24px;border-bottom:1px solid #f0f0f0">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:10px">DESTINO</div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">URL base do formulário</label>
+          <select class="form-input" id="eml-base" onchange="updateEditModalPreview()">
+            ${AFF_LINK_FORMS.map(f=>`<option value="${f.url}" ${baseUrl===f.url||currentUrl.includes(f.url)?'selected':''}>${f.icon} ${f.label}</option>`).join('')}
+            <option value="custom" ${!AFF_LINK_FORMS.some(f=>currentUrl.includes(f.url))?'selected':''}>🔗 URL personalizada</option>
+          </select>
+        </div>
+        <div id="eml-custom-wrap" style="margin-top:10px;${!AFF_LINK_FORMS.some(f=>currentUrl.includes(f.url))?'':'display:none'}">
+          <input class="form-input" id="eml-custom-url" value="${esc(baseUrl)}" placeholder="https://…" oninput="updateEditModalPreview()">
+        </div>
+      </div>
+
+      <div style="padding:20px 24px;border-bottom:1px solid #f0f0f0">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:10px">RASTREAMENTO UTM</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_source</label><input class="form-input" id="eml-source" value="${esc(utms.utm_source||'')}" oninput="updateEditModalPreview()"></div>
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_medium</label><input class="form-input" id="eml-medium" value="${esc(utms.utm_medium||'')}" oninput="updateEditModalPreview()"></div>
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_campaign</label><input class="form-input" id="eml-campaign" value="${esc(utms.utm_campaign||'')}" oninput="updateEditModalPreview()"></div>
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_term</label><input class="form-input" id="eml-term" value="${esc(utms.utm_term||'')}" oninput="updateEditModalPreview()"></div>
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_content</label><input class="form-input" id="eml-content" value="${esc(utms.utm_content||'')}" oninput="updateEditModalPreview()"></div>
+          <div class="form-group" style="margin:0"><label class="form-label" style="font-size:11px">utm_affiliatetype</label><input class="form-input" id="eml-afftype" value="${esc(utms.utm_affiliatetype||'')}" oninput="updateEditModalPreview()"></div>
+        </div>
+        <div class="form-group" style="margin-top:10px;margin-bottom:0"><label class="form-label" style="font-size:11px">utm_affiliatename</label><input class="form-input" id="eml-affname" value="${esc(utms.utm_affiliatename||hsId)}" oninput="updateEditModalPreview()"></div>
+      </div>
+
+      <div style="padding:14px 24px;background:#f9fafb;border-bottom:1px solid #f0f0f0">
+        <div style="font-size:10px;font-weight:600;color:#6b7280;margin-bottom:4px">PREVIEW DA URL FINAL</div>
+        <div id="eml-preview" style="font-size:11px;color:#374151;word-break:break-all;font-family:monospace;max-height:52px;overflow:auto"></div>
+      </div>
+
+      <div style="padding:16px 24px;display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-secondary" onclick="document.getElementById('edit-link-modal').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="eml-save-btn" onclick="saveEditedLink('${affId}','${hsId}','${linkId}')">Salvar alterações</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  updateEditModalPreview();
+}
+
+function updateEditModalPreview(){
+  const sel=document.getElementById('eml-base');
+  const customWrap=document.getElementById('eml-custom-wrap');
+  if(!sel) return;
+  const isCustom=sel.value==='custom';
+  if(customWrap) customWrap.style.display=isCustom?'block':'none';
+  const base=isCustom?(document.getElementById('eml-custom-url')?.value||''):sel.value;
+  const params={};
+  ['source','medium','campaign','term','content','afftype','affname'].forEach(k=>{
+    const el=document.getElementById(`eml-${k}`);
+    const key=k==='afftype'?'utm_affiliatetype':k==='affname'?'utm_affiliatename':`utm_${k}`;
+    if(el?.value) params[key]=el.value;
+  });
+  const qs=new URLSearchParams(params).toString();
+  const full=base+(qs?'?'+qs:'');
+  const prev=document.getElementById('eml-preview');
+  if(prev) prev.textContent=full;
+}
+window.updateEditModalPreview=updateEditModalPreview;
+
+async function saveEditedLink(affId, hsId, linkId){
+  const btn=document.getElementById('eml-save-btn');
+  if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+  const preview=document.getElementById('eml-preview')?.textContent;
+  if(!preview){if(btn){btn.disabled=false;btn.textContent='Salvar alterações';} return;}
+  try{
+    const r=await fetch('/api/shortio/update',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId,originalUrl:preview})});
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||'Erro');
+    document.getElementById('edit-link-modal')?.remove();
     toast('✅ Link atualizado.');
     loadAffLinksRow(affId, hsId);
   }catch(e){
     toast('Erro ao editar: '+e.message);
-    if(btn){btn.disabled=false;btn.textContent='✏️ Editar';}
+    if(btn){btn.disabled=false;btn.textContent='Salvar alterações';}
   }
+}
+window.saveEditedLink=saveEditedLink;
+
+function editAffLink(affId, hsId, formId, linkId, currentUrl){
+  openEditLinkModal(affId, hsId, formId, linkId, currentUrl);
 }
 window.editAffLink=editAffLink;
 
