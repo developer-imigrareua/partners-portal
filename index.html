@@ -393,7 +393,7 @@ function mapUser(row) {
     appliedAt: row.applied_at || '',
     approvedAt: row.approved_at || null,
     hsAffiliateId: row.hs_affiliate_id || '',
-    bonifModelId: row.bonif_model_id || 'standard',
+    bonifModelId: row.bonif_model_id || null,
     photo: row.photo || null,
     syncData: row.sync_data || null,
     affiliateType: row.affiliate_type || 'external',
@@ -424,7 +424,7 @@ function userToRow(u) {
     applied_at: u.appliedAt || null,
     approved_at: u.approvedAt || null,
     hs_affiliate_id: u.hsAffiliateId || null,
-    bonif_model_id: u.bonifModelId || 'standard',
+    bonif_model_id: u.bonifModelId || null,
     photo: u.photo || null,
     sync_data: u.syncData || null,
     affiliate_type: u.affiliateType || 'external',
@@ -434,6 +434,7 @@ function userToRow(u) {
 
 const getUsers      = () => usersCache;
 const getModels     = () => modelsCache;
+const hasPolicy     = u => !!(u && u.bonifModelId) && modelsCache.some(m => m.id === u.bonifModelId);
 const getAffiliates = () => usersCache.filter(u => u.role === 'affiliate');
 const getPending    = () => getAffiliates().filter(u => u.status === 'pending');
 
@@ -580,7 +581,7 @@ async function doRegister() {
     const existingSlugs = getUsers().map(u=>u.hsAffiliateId).filter(Boolean);
     let slug = baseSlug, n = 2;
     while(existingSlugs.includes(slug)) slug = `${baseSlug}-${n++}`;
-    const newRow = { auth_id: data.user?.id||null, role:'affiliate', name, email, phone, company, site, channel, status:'pending', applied_at: new Date().toISOString().slice(0,10), bonif_model_id:'standard', affiliate_type:'external', hs_affiliate_id: slug };
+    const newRow = { auth_id: data.user?.id||null, role:'affiliate', name, email, phone, company, site, channel, status:'pending', applied_at: new Date().toISOString().slice(0,10), bonif_model_id:null, affiliate_type:'external', hs_affiliate_id: slug };
     const { data: inserted, error: ie } = await sb.from('users').insert(newRow).select().single();
     if (ie) { err.textContent='Erro ao criar perfil. Tente novamente.'; err.style.display='block'; return; }
     currentUser = mapUser(inserted);
@@ -864,7 +865,8 @@ function renderAffRows(active){
 }
 function renderAffDetailHTML(a){
   const models=getModels();
-  const modelOpts=models.map(m=>`<option value="${m.id}"${a.bonifModelId===m.id?' selected':''}>${m.name}${m.isPreset?' (preset)':''}</option>`).join('');
+  const noPolicy=!a.bonifModelId;
+  const modelOpts=`<option value=""${noPolicy?' selected':''}>— Sem política (oculto p/ afiliado) —</option>`+models.map(m=>`<option value="${m.id}"${a.bonifModelId===m.id?' selected':''}>${m.name}${m.isPreset?' (preset)':''}</option>`).join('');
   return`<div class="detail-grid">
     <div><div class="detail-section-title">🔗 Integração HubSpot</div>
       <p class="text-muted text-sm" style="margin-bottom:10px">Informe o identificador do afiliado no HubSpot (<code>referred_by</code>). Ao sincronizar, o sistema buscará os contatos associados.</p>
@@ -899,7 +901,8 @@ function toggleAffDetail(id,e){
 function previewModel(affId){
   const select=document.getElementById(`bonif-model-select-${affId}`); if(!select) return;
   const model=getModels().find(m=>m.id===select.value);
-  const el=document.getElementById(`model-preview-${affId}`); if(!el||!model) return;
+  const el=document.getElementById(`model-preview-${affId}`); if(!el) return;
+  if(!model){ el.innerHTML=`<div style="font-size:12px;color:var(--s400);background:var(--s50);border-radius:6px;padding:8px 10px">🔒 Sem política definida. O afiliado <strong>não vê</strong> nenhuma informação de remuneração até um modelo ser aplicado.</div>`; return; }
   let acc=0;
   const defStages=model.products['Padrão']?.stages??{};
   const rows=STAGES.map(s=>{acc+=Number(defStages[s]||0);return`<tr><td style="padding:4px 8px;font-size:12px">${STAGE_EMOJI[s]} ${s}</td><td style="text-align:right;padding:4px 8px;font-size:12px;color:#059669;font-weight:600">+$${defStages[s]||0}</td><td style="text-align:right;padding:4px 8px;font-size:12px;font-weight:700">$${acc}</td></tr>`;}).join('');
@@ -951,9 +954,9 @@ function assignModel(affId){
   const select=document.getElementById(`bonif-model-select-${affId}`); if(!select) return;
   const modelId=select.value;
   const users=getUsers(); const u=users.find(x=>x.id===affId); if(!u) return;
-  u.bonifModelId=modelId; saveUsers(users);
+  u.bonifModelId=modelId||null; saveUsers(users);
   const model=getModels().find(m=>m.id===modelId);
-  toast(`✅ Modelo "${model?.name||modelId}" aplicado a ${u.name}.`);
+  toast(modelId?`✅ Modelo "${model?.name||modelId}" aplicado a ${u.name}.`:`🔒 ${u.name} sem política — remuneração oculta para o afiliado.`);
   renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
 }
 function openNewCustomModel(affId){
@@ -1786,15 +1789,17 @@ window.runHealthCheck=runHealthCheck;
 function renderAffDashboard(c){
   const u=currentUser;
   setTopbar('Dashboard',`Afiliado: ${u.email}`);
+  const showBonif=hasPolicy(u);
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
   const leads=u.id==='aff-1'?LEADS:(u.syncData?.leads??null);
   if(!leads){
     const defStages=model.products?.['Padrão']?.stages??{};
     let acc=0;
     const rows=STAGES.map(s=>{acc+=Number(defStages[s]||0);return`<tr><td style="padding:5px 10px;font-size:13px">${STAGE_EMOJI[s]} ${s}</td><td style="text-align:right;padding:5px 10px;color:#059669;font-weight:600">+$${defStages[s]||0}</td><td style="text-align:right;padding:5px 10px;font-weight:700">$${acc}</td></tr>`;}).join('');
+    const bonifPanel=showBonif?`<div class="panel" style="max-width:480px"><div class="panel-hd"><div class="panel-title">Sua Tabela de Bonificação — <span style="color:var(--blue-dark)">${model.name}</span></div></div>
+    <div class="panel-bd" style="padding-top:0"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Etapa</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Incremental</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Acumulado</th></tr></thead><tbody>${rows}</tbody></table></div></div>`:'';
     c.innerHTML=`<div class="page-header"><div class="page-title">Bem-vindo, ${u.name.split(' ')[0]}! 👋</div><div class="page-sub">Sua conta está ativa. Seus leads aparecerão aqui após sincronização com o HubSpot pelo time LIV.</div></div>
-    <div class="panel" style="max-width:480px"><div class="panel-hd"><div class="panel-title">Sua Tabela de Bonificação — <span style="color:var(--blue-dark)">${model.name}</span></div></div>
-    <div class="panel-bd" style="padding-top:0"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Etapa</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Incremental</th><th style="text-align:right;padding:8px 10px;font-size:10px;color:var(--s400);border-bottom:1px solid var(--s100)">Acumulado</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    ${bonifPanel}`;
     return;
   }
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1814,20 +1819,20 @@ function renderAffDashboard(c){
   window._dashFiltered=filtered;
   const stageDistRows=Object.entries(stageCounts).map(([s,n])=>`<div class="stage-dist-row" style="cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;transition:background .15s" onmouseenter="this.style.background='var(--s50)'" onmouseleave="this.style.background=''" onclick="showLeadsPopup('${STAGE_EMOJI[s]||''} ${s}',(window._dashFiltered||[]).filter(l=>l.stage==='${s}'))"><div class="stage-dist-label">${STAGE_EMOJI[s]||''} ${s}</div><div class="stage-dist-bar-wrap"><div class="stage-dist-bar" style="width:${Math.round(n/maxStageCount*100)}%;background:${STAGE_COLORS[s]||'#94a3b8'}"></div></div><div class="stage-dist-count">${n}</div></div>`).join('');
   c.innerHTML=`
-    <div class="page-header" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="page-title">Dashboard</div><div class="page-sub">Afiliado: <code>${u.email}</code> · Modelo: <strong>${model.name}</strong> · Sync: ${u.syncData?.lastSync?fmtDate(u.syncData.lastSync):'—'}</div></div></div></div>
+    <div class="page-header" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="page-title">Dashboard</div><div class="page-sub">Afiliado: <code>${u.email}</code>${showBonif?` · Modelo: <strong>${model.name}</strong>`:''} · Sync: ${u.syncData?.lastSync?fmtDate(u.syncData.lastSync):'—'}</div></div></div></div>
     ${renderPeriodBar('aff-dashboard')}
     <div class="kpi-grid">
       <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5">✅</div><div class="kpi-label">Convertidos</div><div class="kpi-value">${converted}</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb">📈</div><div class="kpi-label">Em Andamento</div><div class="kpi-value">${inProgress}</div></div>
-      <div class="kpi-card"><div class="kpi-icon" style="background:#fefce8">💵</div><div class="kpi-label">Bonificação Simulada</div><div class="kpi-value sm">${fmt(commTotal)}</div><div class="kpi-note">Modelo: ${model.name}</div></div>
+      ${showBonif?`<div class="kpi-card"><div class="kpi-icon" style="background:#fefce8">💵</div><div class="kpi-label">Bonificação Simulada</div><div class="kpi-value sm">${fmt(commTotal)}</div><div class="kpi-note">Modelo: ${model.name}</div></div>`:`<div class="kpi-card"><div class="kpi-icon" style="background:#eef2ff">🎯</div><div class="kpi-label">Taxa de Conversão</div><div class="kpi-value">${convRate}%</div></div>`}
     </div>
     <div class="charts-grid">
       <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">📈 Evolução de Leads</div></div><div class="panel-bd"><div class="chart-box"><canvas id="evoChart"></canvas></div></div></div>
       <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">🎯 Estágio dos Leads</div></div><div class="panel-bd"><div class="stage-dist">${stageDistRows}</div></div></div>
     </div>
     <div class="banner" style="margin-top:14px"><div class="banner-left"><div class="banner-icon">🏆</div><div><div style="font-size:12px;color:#94a3b8;font-weight:500">Taxa de Conversão</div><div class="banner-rate">${convRate}%</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">${converted} convertidos de ${filtered.length} leads</div></div></div>
-    <div class="banner-box"><div class="banner-box-title">Bonificação Simulada</div><div class="brow"><span class="brow-lbl">💰 Convertidos (×${converted})</span><span class="brow-val">${fmt(commConv)}</span></div><div class="brow"><span class="brow-lbl">❌ Não Conv. (×${notConv})</span><span class="brow-val nc">${fmt(commNC)}</span></div><hr class="bdiv"><div class="brow"><span class="btotal-lbl">Total</span><span class="btotal-val">${fmt(commTotal)}</span></div></div></div>`;
+    ${showBonif?`<div class="banner-box"><div class="banner-box-title">Bonificação Simulada</div><div class="brow"><span class="brow-lbl">💰 Convertidos (×${converted})</span><span class="brow-val">${fmt(commConv)}</span></div><div class="brow"><span class="brow-lbl">❌ Não Conv. (×${notConv})</span><span class="brow-val nc">${fmt(commNC)}</span></div><hr class="bdiv"><div class="brow"><span class="btotal-lbl">Total</span><span class="btotal-val">${fmt(commTotal)}</span></div></div>`:''}</div>`;
   setTimeout(()=>{
     if(evoChart){evoChart.destroy();evoChart=null;}
     const ctx=document.getElementById('evoChart')?.getContext('2d'); if(!ctx) return;
@@ -1842,6 +1847,7 @@ function renderAffPipeline(c){
   const u=currentUser;
   setTopbar('Pipeline de Leads','Todos os seus leads e estágios do funil');
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
+  const showBonif=hasPolicy(u);
   const allLeads=u.id==='aff-1'?LEADS:(u.syncData?.leads??[]);
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   function getFiltered(){
@@ -1861,13 +1867,13 @@ function renderAffPipeline(c){
   function renderTable(){
     const leads=getFiltered();
     if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
-    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th><th style="text-align:right">Bonificação</th></tr></thead><tbody>
+    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>
     ${leads.map(l=>{
       const bonif=calcLeadBonif(l,model);
       const sc=STAGE_COLORS[l.stage]||'var(--s400)';
       const lastUpdate=l.stageDate||l.createdAt;
       const showOwner=['Em Atendimento','Reunião Agendada','Oportunidade','Convertido'].includes(l.stage);
-      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td><td>${showOwner&&l.owner?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${l.owner}</div>`:showOwner?`<span class="text-muted text-sm">—</span>`:''}</td><td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td></tr>`;
+      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td><td>${showOwner&&l.owner?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${l.owner}</div>`:showOwner?`<span class="text-muted text-sm">—</span>`:''}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
     }).join('')}</tbody></table>`;
   }
   const periodLeads=filterByPeriod(allLeads,affPeriod);
