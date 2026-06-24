@@ -15,6 +15,7 @@ app.get('/api/hubspot/sync', async (req, res) => {
   if (!HUBSPOT_KEY) return res.status(500).json({ error: 'HubSpot não configurado no servidor' });
 
   try {
+    // 1. fetch contacts
     const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
       method: 'POST',
       headers: {
@@ -29,6 +30,7 @@ app.get('/api/hubspot/sync', async (req, res) => {
           'firstname', 'lastname', 'lifecyclestage',
           'hs_latest_disqualified_lead_date', 'createdate',
           'hubspot_owner_id', 'notes_last_updated',
+          'next_meeting_time',
         ],
         limit: 200,
       }),
@@ -40,7 +42,77 @@ app.get('/api/hubspot/sync', async (req, res) => {
     }
 
     const data = await response.json();
-    res.json(data);
+    const contacts = data.results || [];
+
+    // 2. fetch owners list to resolve IDs → names
+    let ownerMap = {};
+    try {
+      const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
+        headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
+      });
+      if (ownersRes.ok) {
+        const ownersData = await ownersRes.json();
+        (ownersData.results || []).forEach(o => {
+          ownerMap[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || String(o.id);
+        });
+      }
+    } catch (e) {
+      console.warn('HubSpot owners fetch error:', e.message);
+    }
+
+    // 3. fetch deal associations in batch, then resolve deal owners
+    let dealOwnerMap = {};
+    if (contacts.length > 0) {
+      try {
+        const assocRes = await fetch('https://api.hubapi.com/crm/v4/associations/contacts/deals/batch/read', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inputs: contacts.map(c => ({ id: c.id })) }),
+        });
+        if (assocRes.ok) {
+          const assocData = await assocRes.json();
+          const contactToDeal = {};
+          const dealIds = [];
+          (assocData.results || []).forEach(r => {
+            if (r.to && r.to.length) {
+              const dealId = String(r.to[0].toObjectId || r.to[0].id);
+              contactToDeal[r.from.id] = dealId;
+              if (!dealIds.includes(dealId)) dealIds.push(dealId);
+            }
+          });
+          if (dealIds.length) {
+            const dealsRes = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ inputs: dealIds.map(id => ({ id })), properties: ['hubspot_owner_id'] }),
+            });
+            if (dealsRes.ok) {
+              const dealsData = await dealsRes.json();
+              const dealOwnerIdMap = {};
+              (dealsData.results || []).forEach(d => { dealOwnerIdMap[d.id] = d.properties?.hubspot_owner_id; });
+              Object.entries(contactToDeal).forEach(([contactId, dealId]) => {
+                const ownerId = dealOwnerIdMap[dealId];
+                if (ownerId) dealOwnerMap[contactId] = ownerMap[ownerId] || ownerId;
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('HubSpot deal associations fetch error:', e.message);
+      }
+    }
+
+    // 4. enrich contacts with resolved owner names
+    const enrichedResults = contacts.map(c => ({
+      ...c,
+      properties: {
+        ...c.properties,
+        ownerName: ownerMap[c.properties?.hubspot_owner_id] || null,
+        dealOwnerName: dealOwnerMap[c.id] || null,
+      },
+    }));
+
+    res.json({ ...data, results: enrichedResults });
   } catch (err) {
     console.error('HubSpot sync error:', err.message);
     res.status(500).json({ error: err.message });

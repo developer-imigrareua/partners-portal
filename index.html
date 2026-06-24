@@ -934,7 +934,7 @@ async function syncHubSpot(affId){
     const leads=contacts.map(ct=>{
       const ls=(ct.properties?.lifecyclestage||'').toLowerCase();
       const disq=ct.properties?.hs_latest_disqualified_lead_date;
-      return{id:ct.id,name:obfuscateName((ct.properties?.firstname||'')+(ct.properties?.lastname?' '+ct.properties.lastname:'')),stage:mapLifecycle(ls,disq),product:null,createdAt:(ct.properties?.createdate||'').slice(0,10),stageDate:(ct.properties?.notes_last_updated||ct.properties?.createdate||'').slice(0,10),owner:ct.properties?.hubspot_owner_id||null};
+      return{id:ct.id,name:obfuscateName((ct.properties?.firstname||'')+(ct.properties?.lastname?' '+ct.properties.lastname:'')),stage:mapLifecycle(ls,disq),product:null,createdAt:(ct.properties?.createdate||'').slice(0,10),stageDate:(ct.properties?.notes_last_updated||ct.properties?.createdate||'').slice(0,10),owner:ct.properties?.hubspot_owner_id||null,ownerName:ct.properties?.ownerName||null,dealOwnerName:ct.properties?.dealOwnerName||null,nextMeetingTime:ct.properties?.next_meeting_time||null};
     });
     const syncData={totalLeads:total,converted,convRate:parseFloat(convRate),lastSync:today,source:'HubSpot CRM',leads};
     const users=getUsers(); const u=users.find(x=>x.id===affId);
@@ -1873,7 +1873,9 @@ function renderAffPipeline(c){
       const sc=STAGE_COLORS[l.stage]||'var(--s400)';
       const lastUpdate=l.stageDate||l.createdAt;
       const showOwner=['Em Atendimento','Reunião Agendada','Oportunidade','Convertido'].includes(l.stage);
-      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td><td>${showOwner&&l.owner?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${l.owner}</div>`:showOwner?`<span class="text-muted text-sm">—</span>`:''}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
+      const responsavel=l.dealOwnerName||l.ownerName||(l.owner&&isNaN(Number(l.owner))?l.owner:null);
+      const nmtFmt=(()=>{const r=l.nextMeetingTime;if(!r)return null;return fmtDate(/^\d{10,}$/.test(r)?new Date(parseInt(r)).toISOString().slice(0,10):r.slice(0,10));})();
+      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div>${nmtFmt&&l.stage==='Reunião Agendada'?`<div style="font-size:10px;color:#8b5cf6;margin-top:2px">📅 ${nmtFmt}</div>`:''}</td><td>${showOwner&&responsavel?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${responsavel}</div>`:showOwner?`<span class="text-muted text-sm">—</span>`:''}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
     }).join('')}</tbody></table>`;
   }
   const periodLeads=filterByPeriod(allLeads,affPeriod);
