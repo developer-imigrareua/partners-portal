@@ -926,7 +926,6 @@ async function syncHubSpot(affId){
     if(!res.ok) throw new Error(`Erro ${res.status}`);
     const data=await res.json();
     if(data.error) throw new Error(data.error);
-    console.log('[sync debug]', data._debug);
     const contacts=data.results||[];
     const total=contacts.length;
     const converted=contacts.filter(ct=>{ const ls=(ct.properties?.lifecyclestage||'').toLowerCase(); return ls==='customer'||ls==='evangelist'; }).length;
@@ -1868,7 +1867,7 @@ function renderAffPipeline(c){
   function renderTable(){
     const leads=getFiltered();
     if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
-    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>
+    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>
     ${leads.map(l=>{
       const bonif=calcLeadBonif(l,model);
       const sc=STAGE_COLORS[l.stage]||'var(--s400)';
@@ -1876,7 +1875,7 @@ function renderAffPipeline(c){
       const responsavel=l.dealOwnerName||l.ownerName||(l.owner&&isNaN(Number(l.owner))?l.owner:null);
       const responsavelDisplay=(()=>{if(responsavel==='Marketing LIV'){if(l.stage==='Não Convertido')return'<span class="text-muted text-sm">—</span>';if(l.stage==='Lead Recebido')return'<span class="text-muted text-sm" style="font-style:italic">Aguardando distribuição</span>';}return responsavel?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${responsavel}</div>`:'<span class="text-muted text-sm">—</span>';})();
       const nmtFmt=(()=>{const r=l.nextMeetingTime;if(!r)return null;return fmtDate(/^\d{10,}$/.test(r)?new Date(parseInt(r)).toISOString().slice(0,10):r.slice(0,10));})();
-      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td><td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div>${nmtFmt&&l.stage==='Reunião Agendada'?`<div style="font-size:10px;color:#8b5cf6;margin-top:2px">📅 ${nmtFmt}</div>`:''}</td><td>${responsavelDisplay}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
+      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td>${nmtFmt&&l.stage==='Reunião Agendada'?`<td><div style="font-size:12px;font-weight:500;color:#8b5cf6">📅 Próxima Reunião marcada para ${nmtFmt}</div></td>`:`<td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td>`}${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
     }).join('')}</tbody></table>`;
   }
   const periodLeads=filterByPeriod(allLeads,affPeriod);
