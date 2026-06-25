@@ -1,123 +1,220 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const cron = require('node-cron');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// HubSpot sync proxy (protects API key from being exposed in frontend)
-app.get('/api/hubspot/sync', async (req, res) => {
-  const { hsId } = req.query;
-  if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
+// ── HubSpot helpers ──────────────────────────────────────
 
+function mapLifecycle(ls, disqDate) {
+  if (disqDate || ls === 'other' || ls === 'unqualifiedlead') return 'Não Convertido';
+  if (ls === 'customer' || ls === 'evangelist') return 'Convertido';
+  if (ls === 'opportunity') return 'Oportunidade';
+  if (ls === 'salesqualifiedlead') return 'Reunião Agendada';
+  if (ls === 'marketingqualifiedlead') return 'Em Atendimento';
+  return 'Lead Recebido';
+}
+
+function obfuscateName(n) {
+  const parts = (n || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  const rest = parts.slice(1).map(p => p[0] + '.**').join(' ');
+  return rest ? `${parts[0]} ${rest}` : `${parts[0]}**`;
+}
+
+// Fetches and enriches contacts for a given affiliate hsId
+async function fetchHubSpotContacts(hsId) {
   const HUBSPOT_KEY = process.env.HUBSPOT_API_KEY;
-  if (!HUBSPOT_KEY) return res.status(500).json({ error: 'HubSpot não configurado no servidor' });
 
+  // 1. fetch contacts
+  const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filterGroups: [{ filters: [{ propertyName: 'referred_by', operator: 'EQ', value: hsId }] }],
+      properties: [
+        'firstname', 'lastname', 'lifecyclestage',
+        'hs_latest_disqualified_lead_date', 'createdate',
+        'hubspot_owner_id', 'notes_last_updated', 'next_meeting_time',
+      ],
+      limit: 200,
+    }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`HubSpot ${response.status}: ${text}`);
+  }
+  const data = await response.json();
+  const contacts = data.results || [];
+
+  // 2. fetch owners map
+  let ownerMap = {};
   try {
-    // 1. fetch contacts
-    const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${HUBSPOT_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        filterGroups: [
-          { filters: [{ propertyName: 'referred_by', operator: 'EQ', value: hsId }] },
-        ],
-        properties: [
-          'firstname', 'lastname', 'lifecyclestage',
-          'hs_latest_disqualified_lead_date', 'createdate',
-          'hubspot_owner_id', 'notes_last_updated',
-          'next_meeting_time',
-        ],
-        limit: 200,
-      }),
+    const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
+      headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`HubSpot ${response.status}: ${text}`);
-    }
-
-    const data = await response.json();
-    const contacts = data.results || [];
-
-    // 2. fetch owners list to resolve IDs → names
-    let ownerMap = {};
-    try {
-      const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
-        headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
+    if (ownersRes.ok) {
+      const ownersData = await ownersRes.json();
+      (ownersData.results || []).forEach(o => {
+        ownerMap[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || String(o.id);
       });
-      if (ownersRes.ok) {
-        const ownersData = await ownersRes.json();
-        (ownersData.results || []).forEach(o => {
-          ownerMap[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || String(o.id);
-        });
-      }
-    } catch (e) {
-      console.warn('HubSpot owners fetch error:', e.message);
     }
+  } catch (e) {
+    console.warn('HubSpot owners fetch error:', e.message);
+  }
 
-    // 3. fetch deal associations in batch, then resolve deal owners
-    let dealOwnerMap = {};
-    if (contacts.length > 0) {
-      try {
-        const assocRes = await fetch('https://api.hubapi.com/crm/v4/associations/contacts/deals/batch/read', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inputs: contacts.map(c => ({ id: c.id })) }),
+  // 3. fetch deal associations → deal owners
+  let dealOwnerMap = {};
+  if (contacts.length > 0) {
+    try {
+      const assocRes = await fetch('https://api.hubapi.com/crm/v4/associations/contacts/deals/batch/read', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputs: contacts.map(c => ({ id: c.id })) }),
+      });
+      if (assocRes.ok) {
+        const assocData = await assocRes.json();
+        const contactToDeal = {};
+        const dealIds = [];
+        (assocData.results || []).forEach(r => {
+          if (r.to && r.to.length) {
+            const dealId = String(r.to[0].toObjectId || r.to[0].id);
+            contactToDeal[r.from.id] = dealId;
+            if (!dealIds.includes(dealId)) dealIds.push(dealId);
+          }
         });
-        if (assocRes.ok) {
-          const assocData = await assocRes.json();
-          const contactToDeal = {};
-          const dealIds = [];
-          (assocData.results || []).forEach(r => {
-            if (r.to && r.to.length) {
-              const dealId = String(r.to[0].toObjectId || r.to[0].id);
-              contactToDeal[r.from.id] = dealId;
-              if (!dealIds.includes(dealId)) dealIds.push(dealId);
-            }
+        if (dealIds.length) {
+          const dealsRes = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inputs: dealIds.map(id => ({ id })), properties: ['hubspot_owner_id'] }),
           });
-          if (dealIds.length) {
-            const dealsRes = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ inputs: dealIds.map(id => ({ id })), properties: ['hubspot_owner_id'] }),
+          if (dealsRes.ok) {
+            const dealsData = await dealsRes.json();
+            const dealOwnerIdMap = {};
+            (dealsData.results || []).forEach(d => { dealOwnerIdMap[d.id] = d.properties?.hubspot_owner_id; });
+            Object.entries(contactToDeal).forEach(([contactId, dealId]) => {
+              const ownerId = dealOwnerIdMap[dealId];
+              if (ownerId) dealOwnerMap[contactId] = ownerMap[ownerId] || ownerId;
             });
-            if (dealsRes.ok) {
-              const dealsData = await dealsRes.json();
-              const dealOwnerIdMap = {};
-              (dealsData.results || []).forEach(d => { dealOwnerIdMap[d.id] = d.properties?.hubspot_owner_id; });
-              Object.entries(contactToDeal).forEach(([contactId, dealId]) => {
-                const ownerId = dealOwnerIdMap[dealId];
-                if (ownerId) dealOwnerMap[contactId] = ownerMap[ownerId] || ownerId;
-              });
-            }
           }
         }
-      } catch (e) {
-        console.warn('HubSpot deal associations fetch error:', e.message);
       }
+    } catch (e) {
+      console.warn('HubSpot deal associations fetch error:', e.message);
     }
+  }
 
-    // 4. enrich contacts with resolved owner names
-    const enrichedResults = contacts.map(c => ({
+  // 4. enrich contacts
+  return {
+    data,
+    enrichedResults: contacts.map(c => ({
       ...c,
       properties: {
         ...c.properties,
         ownerName: ownerMap[c.properties?.hubspot_owner_id] || null,
         dealOwnerName: dealOwnerMap[c.id] || null,
       },
-    }));
+    })),
+  };
+}
 
+// HubSpot sync proxy (protects API key from being exposed in frontend)
+app.get('/api/hubspot/sync', async (req, res) => {
+  const { hsId } = req.query;
+  if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
+  if (!process.env.HUBSPOT_API_KEY) return res.status(500).json({ error: 'HubSpot não configurado no servidor' });
+  try {
+    const { data, enrichedResults } = await fetchHubSpotContacts(hsId);
     res.json({ ...data, results: enrichedResults });
   } catch (err) {
     console.error('HubSpot sync error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── Daily auto-sync (7AM BRT = 10AM UTC) ────────────────
+
+async function runDailySync() {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY, HUBSPOT_API_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !HUBSPOT_API_KEY) {
+    console.warn('[daily-sync] Missing env vars, skipping.');
+    return;
+  }
+  console.log('[daily-sync] Starting daily affiliate sync...');
+
+  // Fetch active affiliates with a HubSpot ID
+  let affiliates = [];
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?role=eq.affiliate&status=eq.active&hs_affiliate_id=not.is.null&select=id,hs_affiliate_id`,
+      { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!r.ok) throw new Error(`Supabase ${r.status}`);
+    affiliates = await r.json();
+  } catch (e) {
+    console.error('[daily-sync] Failed to fetch affiliates:', e.message);
+    return;
+  }
+
+  console.log(`[daily-sync] Syncing ${affiliates.length} affiliate(s)...`);
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const aff of affiliates) {
+    try {
+      const { enrichedResults: contacts } = await fetchHubSpotContacts(aff.hs_affiliate_id);
+      const total = contacts.length;
+      const converted = contacts.filter(c => {
+        const ls = (c.properties?.lifecyclestage || '').toLowerCase();
+        return ls === 'customer' || ls === 'evangelist';
+      }).length;
+      const leads = contacts.map(ct => {
+        const ls = (ct.properties?.lifecyclestage || '').toLowerCase();
+        const disq = ct.properties?.hs_latest_disqualified_lead_date;
+        return {
+          id: ct.id,
+          name: obfuscateName((ct.properties?.firstname || '') + (ct.properties?.lastname ? ' ' + ct.properties.lastname : '')),
+          stage: mapLifecycle(ls, disq),
+          product: null,
+          createdAt: (ct.properties?.createdate || '').slice(0, 10),
+          stageDate: (ct.properties?.notes_last_updated || ct.properties?.createdate || '').slice(0, 10),
+          owner: ct.properties?.hubspot_owner_id || null,
+          ownerName: ct.properties?.ownerName || null,
+          dealOwnerName: ct.properties?.dealOwnerName || null,
+          nextMeetingTime: ct.properties?.next_meeting_time || null,
+        };
+      });
+      const syncData = {
+        totalLeads: total,
+        converted,
+        convRate: total > 0 ? parseFloat(((converted / total) * 100).toFixed(1)) : 0,
+        lastSync: today,
+        source: 'HubSpot CRM (auto)',
+        leads,
+      };
+      await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${aff.id}`, {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ sync_data: syncData }),
+      });
+      console.log(`[daily-sync] ✓ ${aff.hs_affiliate_id}: ${total} leads`);
+    } catch (e) {
+      console.error(`[daily-sync] ✗ ${aff.hs_affiliate_id}:`, e.message);
+    }
+  }
+  console.log('[daily-sync] Done.');
+}
+
+// Schedule: every day at 10:00 UTC (07:00 BRT)
+cron.schedule('0 10 * * *', runDailySync, { timezone: 'UTC' });
 
 // shared helper — creates one short link
 async function shortioCreate({ originalUrl, slug, title }) {
