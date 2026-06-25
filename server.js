@@ -46,12 +46,13 @@ app.get('/api/hubspot/sync', async (req, res) => {
 
     // 2. fetch owners list to resolve IDs → names
     let ownerMap = {};
+    let ownersFetchStatus = null;
     try {
       const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
         headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
       });
       const ownersBody = await ownersRes.text();
-      console.log('[owners] status:', ownersRes.status, '| body:', ownersBody.slice(0, 500));
+      ownersFetchStatus = { status: ownersRes.status, body: ownersBody.slice(0, 300) };
       if (ownersRes.ok) {
         const ownersData = JSON.parse(ownersBody);
         (ownersData.results || []).forEach(o => {
@@ -59,7 +60,7 @@ app.get('/api/hubspot/sync', async (req, res) => {
         });
       }
     } catch (e) {
-      console.warn('HubSpot owners fetch error:', e.message);
+      ownersFetchStatus = { status: 'exception', body: e.message };
     }
 
     // 3. fetch deal associations in batch, then resolve deal owners
@@ -116,6 +117,7 @@ app.get('/api/hubspot/sync', async (req, res) => {
 
     const _debug = {
       ownersFound: Object.keys(ownerMap).length,
+      ownersFetchStatus,
       ownerMapSample: Object.entries(ownerMap).slice(0, 3).map(([id, name]) => ({ id, name })),
       contactSample: contacts.slice(0, 3).map(c => ({
         id: c.id,
