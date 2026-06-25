@@ -50,8 +50,10 @@ app.get('/api/hubspot/sync', async (req, res) => {
       const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
         headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
       });
+      const ownersBody = await ownersRes.text();
+      console.log('[owners] status:', ownersRes.status, '| body:', ownersBody.slice(0, 500));
       if (ownersRes.ok) {
-        const ownersData = await ownersRes.json();
+        const ownersData = JSON.parse(ownersBody);
         (ownersData.results || []).forEach(o => {
           ownerMap[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || String(o.id);
         });
