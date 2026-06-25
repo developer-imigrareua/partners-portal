@@ -112,7 +112,18 @@ app.get('/api/hubspot/sync', async (req, res) => {
       },
     }));
 
-    res.json({ ...data, results: enrichedResults });
+    const _debug = {
+      ownersFound: Object.keys(ownerMap).length,
+      ownerMapSample: Object.entries(ownerMap).slice(0, 3).map(([id, name]) => ({ id, name })),
+      contactSample: contacts.slice(0, 3).map(c => ({
+        id: c.id,
+        hubspot_owner_id: c.properties?.hubspot_owner_id,
+        resolvedOwnerName: ownerMap[c.properties?.hubspot_owner_id] || null,
+      })),
+    };
+    console.log('[sync debug]', JSON.stringify(_debug));
+
+    res.json({ ...data, results: enrichedResults, _debug });
   } catch (err) {
     console.error('HubSpot sync error:', err.message);
     res.status(500).json({ error: err.message });

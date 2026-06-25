@@ -926,6 +926,7 @@ async function syncHubSpot(affId){
     if(!res.ok) throw new Error(`Erro ${res.status}`);
     const data=await res.json();
     if(data.error) throw new Error(data.error);
+    console.log('[sync debug]', data._debug);
     const contacts=data.results||[];
     const total=contacts.length;
     const converted=contacts.filter(ct=>{ const ls=(ct.properties?.lifecyclestage||'').toLowerCase(); return ls==='customer'||ls==='evangelist'; }).length;
