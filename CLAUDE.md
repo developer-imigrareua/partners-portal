@@ -12,6 +12,8 @@ server.js       Express — proxy seguro para HubSpot, Short.io e Supabase (chav
 .env            Variáveis de ambiente (não commitado)
 .env.example    Template das variáveis necessárias
 Dockerfile      Build para deploy no EasyPanel (VPS)
+db/             SQL aplicado no Supabase (RLS, policies, gatilho)
+test/           Testes de persistência — `npm test`, sem dependências
 ```
 
 ## Deploy
@@ -74,6 +76,29 @@ CREATE TABLE IF NOT EXISTS public.link_forms (
 );
 ```
 
+## Segurança — RLS (aplicado em 15/09/2026)
+
+`users` e `bonif_models` estavam **sem RLS**: como a anon key fica em texto puro
+no `index.html`, qualquer pessoa lia a tabela de usuários inteira sem login. Foi
+fechado. O SQL completo e comentado está em `db/rls-policies.sql`.
+
+- `public.is_admin()` — `SECURITY DEFINER`, para evitar recursão (policy de
+  `users` consultando `users`).
+- 6 policies, todas `TO authenticated`: afiliado lê/altera só a própria linha,
+  admin todas. **Não existe policy de DELETE** — ninguém apaga linha de `users`
+  pelo portal, nem admin. Proposital.
+- Gatilho `users_guard_admin_columns` — RLS é por linha, não por coluna. Sem ele
+  o afiliado poderia mandar `status='active'` ou `role='admin'` em si mesmo.
+  A função é **SECURITY INVOKER de propósito**: como DEFINER, o `current_user`
+  viraria o dono e a checagem de servidor daria sempre verdadeiro.
+- `service_role` ignora RLS por natureza no Supabase — o cron e os `/api/*`
+  seguem funcionando sem policy nenhuma. Prova: `link_forms` tem RLS ligado e
+  zero policies, e o `/api/link-forms` lê normalmente.
+
+Havia policies antigas criadas antes e nunca ativadas. A `service role bypass`
+estava como `TO public USING (true) FOR ALL` em `users` e `bonif_models` — como
+policies se somam, ela tornaria o RLS inócuo. Foi removida. **Não recriar.**
+
 ## Padrões do frontend (index.html)
 
 ### Mapeamento Supabase ↔ JS
@@ -89,11 +114,47 @@ let linkFormsCache = []    // formulários de link (carregados de /api/link-form
 let currentUser = null     // usuário logado
 ```
 
+### Persistência: `saveUsers` / `saveModels`
+Gravam **apenas as linhas e colunas que mudaram**, comparando com uma baseline
+capturada no `loadData()`. Antes era `upsert` da tabela inteira a cada alteração,
+o que com RLS passa a ser rejeitado (o afiliado só pode a própria linha) e
+falhava em silêncio. Falha de escrita agora avisa por toast e não avança a
+baseline, então o retry regrava. **Nunca voltar para upsert de tudo.**
+
+### Responsividade (mobile)
+Não há Tailwind — os designs do Superdesign foram traduzidos para o CSS próprio.
+Breakpoint principal: `@media (max-width:900px)`.
+
+- `.only-desktop` / `.only-mobile` — tabela e cards são gerados **na mesma
+  passada** e alternados por CSS, sem detecção de viewport em JS. Redimensionar
+  a janela funciona.
+- `rotularTabelas()` + `MutationObserver` — marca cada `<td>` com o texto do seu
+  cabeçalho (`data-rotulo`) e o CSS reempilha a tabela como cartão. Usado nas 7
+  páginas do admin: o DOM não é reescrito, então nenhuma coluna ou botão se perde.
+- Gaveta lateral (`#sidebar` + `#sb-backdrop`) para o admin; tab bar inferior
+  (`#tabbar`) para o afiliado, cujas 4 páginas cabem em 4 abas. O admin tem 7.
+- `.filtros-mobile` — as faixas de pills viram dropdown no mobile. Rolagem
+  lateral escondida quebrava o layout (item flex com `min-width:auto` não
+  encolhe, e `#main-area` tem `overflow-y:auto`, o que promove o eixo x a scroll).
+- `.topbar` é `sticky` no mobile — ela vive dentro do `#main-area`, que é quem
+  rola, e como o título do `.page-header` fica oculto, sairia de vista levando
+  a única identificação da página junto.
+- Campos com `font-size:16px` no mobile: abaixo disso o iOS dá zoom ao focar.
+- Vários grids vêm de `style` inline no JS, então as regras mobile precisam de
+  `!important` para vencê-los.
+
 ### getLinkForms()
 Retorna `linkFormsCache` se populado, senão usa o array `AFF_LINK_FORMS` hardcoded. Sempre usar esta função — nunca `AFF_LINK_FORMS` diretamente.
 
 ### Normalização de `base_url` → `url`
 Ao carregar forms da API, mapear: `forms.map(f => ({ ...f, url: f.url || f.base_url }))`. Necessário porque o banco usa `base_url` mas o código de matching usa `f.url`.
+
+## Testes
+
+`npm test` roda `test/persistencia.js` — 27 casos sobre `saveUsers`/`saveModels`,
+extraídos do próprio `index.html` com Supabase mockado, sem rede e sem
+dependências. Cobrem os 10 pontos de chamada, o caso multi-linha, e o caminho de
+falha com retry. Rodar antes de mexer em persistência.
 
 ## Endpoints do servidor (server.js)
 
@@ -133,6 +194,17 @@ Ao carregar forms da API, mapear: `forms.map(f => ({ ...f, url: f.url || f.base_
 3. Status muda para `active` + links criados automaticamente no Short.io via `create-bulk`
 4. Afiliado acessa o portal e vê seus links prontos
 
+## Limitações conhecidas
+
+- **`product` é sempre `null`** no sync (`server.js` e o sync manual). Logo
+  `calcLeadBonif` sempre cai no tier `'Padrão'`, e as colunas por visto dos
+  modelos de bonificação (EB-2 NIW, EB-1A, O-1, E-2, L-1A) **não têm efeito
+  nenhum**. É assim desde o primeiro commit de produção. Para ligar, é preciso
+  saber qual propriedade do HubSpot guarda o tipo de visto.
+- **`deleteModel()` não tem ponto de chamada** — não existe botão de excluir
+  modelo na interface. Se for ligado algum dia, note que ele remove o modelo do
+  array local mas **não apaga a linha no banco**: o modelo reaparece no reload.
+
 ## O que não fazer
 
 - Não alterar a porta 3000 — outras aplicações na VPS dependem do mapeamento atual
@@ -140,3 +212,13 @@ Ao carregar forms da API, mapear: `forms.map(f => ({ ...f, url: f.url || f.base_
 - Não expor chaves de API no frontend — todo acesso a HubSpot, Short.io e Supabase service key passa pelo servidor
 - Não usar `AFF_LINK_FORMS` diretamente — usar sempre `getLinkForms()`
 - Não salvar `sync_data` com dados fictícios — campo deve conter apenas dados reais do HubSpot ou ser `null`
+- **Não reintroduzir `express.static`** no `server.js` — ele servia publicamente
+  `server.js`, `package.json`, `audit.jsonl` e `outputs/*` (com dados reais de
+  lead). O `index.html` não referencia nenhum arquivo local: tudo vem de CDN, e
+  o catch-all já responde todas as rotas.
+- **Não recriar a policy `service role bypass`** — o service role já ignora RLS.
+- **Não versionar `audit.jsonl`, `outputs/` nem as pastas de sessão do `.claude/`**
+  — já estão no `.gitignore`; rastreado caiu de 27 MB para 380 KB.
+- Não reintroduzir o array `LEADS` nem o `LINK_FORMS` duplicado — eram código
+  morto, o primeiro com 50 registros reais de lead e o segundo com IDs
+  divergentes dos que estão em uso.
