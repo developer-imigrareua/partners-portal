@@ -5,7 +5,12 @@ const cron = require('node-cron');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+
+// NAO servir o diretorio do projeto como estatico. express.static(__dirname)
+// expunha publicamente server.js, package.json, audit.jsonl e outputs/*
+// (este ultimo com dados reais de leads). O index.html nao referencia
+// nenhum arquivo local — fontes, Chart.js e Supabase vem de CDN — entao
+// o catch-all no fim do arquivo ja cobre todas as rotas.
 
 // ── HubSpot helpers ──────────────────────────────────────
 
