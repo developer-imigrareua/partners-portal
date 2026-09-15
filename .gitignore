@@ -1,2 +1,11 @@
 node_modules/
 .env
+
+# Transcripts e saídas de sessões de agente — não são artefatos do projeto.
+# Continuam no disco, apenas deixam de ser versionados.
+audit.jsonl
+.audit-key
+outputs/
+.claude/projects/
+.claude/backups/
+.claude/tasks/

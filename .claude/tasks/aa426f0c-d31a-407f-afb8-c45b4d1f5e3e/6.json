@@ -1,9 +1,0 @@
-{
-  "id": "6",
-  "subject": "Tela de login (afiliado + admin)",
-  "description": "Login com email/senha, detecção de role, link para cadastro",
-  "activeForm": "Construindo tela de login",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

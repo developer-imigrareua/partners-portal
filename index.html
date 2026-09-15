@@ -238,6 +238,7 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 
 @media (max-width:900px){
   .shell-app{height:100dvh}
+  #sidebar .sb-logo{padding-top:calc(16px + env(safe-area-inset-top,0px))}
   /* Sidebar sai do fluxo e vira gaveta deslizante */
   #sidebar{position:fixed;top:0;left:0;bottom:0;height:100dvh;transform:translateX(-100%);transition:transform .22s ease;z-index:120;box-shadow:0 0 40px rgba(0,0,0,.4)}
   #sidebar.open{transform:translateX(0)}
@@ -247,7 +248,14 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   .sem-gaveta .sb-toggle{display:none!important}
 
   #main-area{width:100%;min-width:0}
-  .topbar{padding:10px 14px;gap:10px;justify-content:flex-start}
+  /* O topbar vive dentro do #main-area, que e quem rola — entao ele saia de
+     vista ao rolar. Como no mobile ele e o UNICO lugar com o titulo (o do
+     page-header fica oculto), a pagina ficava sem identificacao. Fixo no topo.
+     O env() cobre a Dynamic Island / notch quando houver viewport-fit=cover. */
+  .topbar{padding:10px 14px;gap:10px;justify-content:flex-start;
+    position:sticky;top:0;z-index:90;
+    padding-top:calc(10px + env(safe-area-inset-top,0px));
+    box-shadow:0 1px 0 var(--s200),0 4px 12px rgba(13,37,93,.04)}
   /* titulo aparecia duplicado (topbar + page-header). No mobile fica so um: */
   .topbar-sub{display:none}
   .page-header .page-title{display:none}
@@ -1016,7 +1024,7 @@ function filterAdminPeriod(leads){
     return true;
   });
 }
-function getAffLeads(a){ return a.id==='aff-1'?LEADS:(a.syncData?.leads??[]); }
+function getAffLeads(a){ return a.syncData?.leads??[]; }
 
 function renderAdminOverview(c){
   setTopbar('Visão Geral','Painel analítico — rede de afiliados ImigrarEUA');
@@ -1349,61 +1357,6 @@ function deleteModel(id){
   navigate('admin-bonif-models'); toast('Modelo excluído.');
 }
 
-// ═══════════════════════════════════════════════════════
-// LEADS DATA (Leticia Ferrari - hardcoded rich dataset)
-// ═══════════════════════════════════════════════════════
-const LEADS=[
-  {id:"209952239135",name:"Romulo Q.**",stage:"Convertido",createdAt:"2026-03-18",stageDate:"2026-03-24",product:"EB-2 NIW",owner:"Breno F."},
-  {id:"205673203113",name:"Andreia S.**",stage:"Não Convertido",createdAt:"2026-02-26",stageDate:"2026-02-26",product:null},
-  {id:"197257431867",name:"Camila F.J.**",stage:"Não Convertido",createdAt:"2026-01-29",stageDate:"2026-02-06",product:"E-2"},
-  {id:"192738144618",name:"Arnaldo C.P.J.**",stage:"Convertido",createdAt:"2026-01-13",stageDate:"2023-02-08",product:"EB-2 NIW",owner:"Lívia L."},
-  {id:"176239125666",name:"Pedro C.P.**",stage:"Não Convertido",createdAt:"2025-11-18",stageDate:"2025-11-18",product:null},
-  {id:"176062475819",name:"Ana R.O.**",stage:"Convertido",createdAt:"2025-11-17",stageDate:"2025-11-21",product:"EB-1A"},
-  {id:"170724496702",name:"Felipe M.D.L.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
-  {id:"170725110644",name:"Morgana J.Z.**",stage:"Não Convertido",createdAt:"2025-10-31",stageDate:"2025-10-31",product:null},
-  {id:"165910539780",name:"Camila G.**",stage:"Não Convertido",createdAt:"2025-10-21",stageDate:"2025-10-28",product:"O-1"},
-  {id:"160141296992",name:"Jorge C.F.**",stage:"Não Convertido",createdAt:"2025-10-01",stageDate:"2025-10-01",product:null},
-  {id:"157662396846",name:"Francilande M.P.S.S.**",stage:"Convertido",createdAt:"2025-09-23",stageDate:"2022-11-28",product:"EB-2 NIW"},
-  {id:"153848528403",name:"Miriam M.**",stage:"Não Convertido",createdAt:"2025-09-08",stageDate:"2025-09-08",product:null},
-  {id:"152677600114",name:"Stéffany O.**",stage:"Não Convertido",createdAt:"2025-09-03",stageDate:"2025-09-03",product:null},
-  {id:"148494395236",name:"Thiago M.**",stage:"Convertido",createdAt:"2025-08-19",stageDate:"2025-08-21",product:"EB-2 NIW"},
-  {id:"139223239462",name:"Uarlem J.D.F.O.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
-  {id:"139213151000",name:"Sandro R.**",stage:"Convertido",createdAt:"2025-07-18",stageDate:"2025-07-24",product:"EB-2 NIW"},
-  {id:"129008024867",name:"Wendel A.**",stage:"Não Convertido",createdAt:"2025-06-12",stageDate:"2025-06-12",product:null},
-  {id:"123189484298",name:"Rafael N.**",stage:"Convertido",createdAt:"2025-05-21",stageDate:"2022-11-07",product:"EB-2 NIW"},
-  {id:"105053610777",name:"Samuel P.**",stage:"Convertido",createdAt:"2025-03-10",stageDate:"2025-03-10",product:"EB-2 NIW"},
-  {id:"102607372471",name:"Giuseppe A.**",stage:"Convertido",createdAt:"2025-02-27",stageDate:"2025-02-27",product:"E-2"},
-  {id:"99238309027",name:"Carlos E.V.S.**",stage:"Convertido",createdAt:"2025-02-13",stageDate:"2025-02-13",product:"EB-1A"},
-  {id:"91855412802",name:"Paulo C.D.S.C.J.**",stage:"Convertido",createdAt:"2025-01-15",stageDate:"2025-01-16",product:"EB-2 NIW"},
-  {id:"81132684462",name:"Timothy T.O.**",stage:"Convertido",createdAt:"2024-11-29",stageDate:"2024-12-03",product:"EB-2 NIW"},
-  {id:"80590289941",name:"Alexandre P.D.S.**",stage:"Convertido",createdAt:"2024-11-27",stageDate:"2024-11-27",product:"EB-1A"},
-  {id:"76995103410",name:"Rogeria C.**",stage:"Convertido",createdAt:"2024-11-12",stageDate:"2024-11-12",product:"EB-2 NIW"},
-  {id:"75270511997",name:"Ricardo D.**",stage:"Convertido",createdAt:"2024-11-05",stageDate:"2024-11-08",product:"EB-2 NIW"},
-  {id:"71697372198",name:"Roberto C.**",stage:"Convertido",createdAt:"2024-10-24",stageDate:"2024-10-31",product:"EB-2 NIW"},
-  {id:"57444274500",name:"Renata L.**",stage:"Convertido",createdAt:"2024-09-12",stageDate:"2023-12-10",product:null},
-  {id:"51868510231",name:"Angelica S.**",stage:"Convertido",createdAt:"2024-08-26",stageDate:"2024-08-28",product:"EB-2 NIW"},
-  {id:"46730169617",name:"Daniel L.**",stage:"Convertido",createdAt:"2024-08-08",stageDate:"2024-08-01",product:"EB-2 NIW"},
-  {id:"43318753929",name:"Ana P.G.**",stage:"Convertido",createdAt:"2024-07-28",stageDate:"2024-08-01",product:"EB-2 NIW"},
-  {id:"37937282110",name:"Viviane K.**",stage:"Convertido",createdAt:"2024-07-10",stageDate:"2023-05-08",product:"EB-2 NIW"},
-  {id:"37513246030",name:"Ricardo G.**",stage:"Convertido",createdAt:"2024-07-09",stageDate:"2024-07-09",product:"EB-2 NIW"},
-  {id:"35614660473",name:"Patricia M.Q.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-13",product:"EB-2 NIW"},
-  {id:"35634229117",name:"André L.A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-09-04",product:"EB-2 NIW"},
-  {id:"35642532431",name:"Gisele M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-22",product:"EB-2 NIW"},
-  {id:"35642532162",name:"Teógenes P.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2026-01-11",product:"O-1"},
-  {id:"35631139077",name:"Milene D.Á.M.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-01-12",product:"EB-2 NIW"},
-  {id:"35632850949",name:"Vitor S.C.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-11-02",product:"EB-2 NIW"},
-  {id:"35633428352",name:"Thaís B.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-19",product:"EB-2 NIW"},
-  {id:"35634209877",name:"Cleider L.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-23",product:"EB-2 NIW"},
-  {id:"35641292701",name:"Marcos R.V.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-07",product:"EB-2 NIW"},
-  {id:"35616746005",name:"Jakeline C.V.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-09",product:"EB-2 NIW"},
-  {id:"35629388320",name:"Eli O.S.D.F.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
-  {id:"35628702749",name:"Guilherme G.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-30",product:"EB-2 NIW"},
-  {id:"35633633133",name:"João B.D.S.N.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-06-14",product:"EB-2 NIW"},
-  {id:"35631395594",name:"Rafael D.O.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-08-08",product:"EB-2 NIW"},
-  {id:"35631135564",name:"Lucas M.M.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2023-05-10",product:"EB-2 NIW"},
-  {id:"35633017346",name:"Alberto S.K.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-02",product:"EB-2 NIW"},
-  {id:"35631417381",name:"Vinícius A.**",stage:"Convertido",createdAt:"2024-07-03",stageDate:"2024-04-23",product:"EB-2 NIW"},
-];
 
 // ═══════════════════════════════════════════════════════
 // BONIF CALC
@@ -2122,7 +2075,7 @@ function renderAffDashboard(c){
   setTopbar('Dashboard',`Afiliado: ${u.email}`);
   const showBonif=hasPolicy(u);
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
-  const leads=u.id==='aff-1'?LEADS:(u.syncData?.leads??null);
+  const leads=u.syncData?.leads??null;
   if(!leads){
     const defStages=model.products?.['Padrão']?.stages??{};
     let acc=0;
@@ -2179,7 +2132,7 @@ function renderAffPipeline(c){
   setTopbar('Pipeline de Leads','Todos os seus leads e estágios do funil');
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
   const showBonif=hasPolicy(u);
-  const allLeads=u.id==='aff-1'?LEADS:(u.syncData?.leads??[]);
+  const allLeads=u.syncData?.leads??[];
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   function getFiltered(){
     let leads=filterByPeriod(allLeads,affPeriod);
@@ -2259,17 +2212,6 @@ window.setPipelineSortValue=function(v){
 window.setPipelineSearch=function(val){affSearch=val;const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
 window.setPipelineSort=function(col){if(affSortCol===col) affSortDir=affSortDir==='asc'?'desc':'asc';else{affSortCol=col;affSortDir=col==='createdAt'||col==='lastUpdate'?'desc':'asc';}const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
 
-// ═══════════════════════════════════════════════════════
-// PAGE: Affiliate Links
-// ═══════════════════════════════════════════════════════
-const LINK_FORMS=[
-  {id:'contact',label:'Contato Geral',icon:'📋',platform:'HubSpot',url:'https://share.hsforms.com/12hi7RRqbSjO_J2khC6wPqgrnxd7'},
-  {id:'fb',label:'Facebook Lead',icon:'📘',platform:'HubSpot',url:'https://share.hsforms.com/1Y-9WTeoGTHODm2-aerOyDgrnxd7'},
-  {id:'eb23',label:'EB-2 / EB-3',icon:'🇺🇸',platform:'HubSpot',url:'https://share.hsforms.com/1pWgVKSF7SWKdpAmcEdkbmgrnxd7'},
-  {id:'eb1o1',label:'EB-1A / O-1',icon:'🌟',platform:'HubSpot',url:'https://share.hsforms.com/2LDtlx4vqTzi7YW6l0h-CRArnxd7'},
-  {id:'workvisa',label:'Work Visa',icon:'💼',platform:'HubSpot',url:'https://share.hsforms.com/1piif7-DrSOmNxN2UHK3JEgrnxd7'},
-  {id:'typeform',label:'EB-1A + EB-2 NIW',icon:'📝',platform:'Typeform',url:'https://99l4c7jw78n.pro.typeform.com/to/Iie2l4oF'},
-];
 function buildUTMLink(baseUrl,affiliateName,affiliateType){
   const params=new URLSearchParams({utm_source:'general',utm_medium:'affiliate',utm_campaign:'analise-liv',utm_term:'affiliate-audience',utm_content:'direct-message',utm_affiliatetype:affiliateType||'external',utm_affiliatename:affiliateName||'afiliado'});
   return`${baseUrl}?${params.toString()}`;
