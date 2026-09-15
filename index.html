@@ -708,6 +708,18 @@ function saveModels(models) {
 
 function getLinkForms(){ return linkFormsCache.length ? linkFormsCache : AFF_LINK_FORMS; }
 
+// Formulários que valem para um afiliado: os globais mais os que o incluem.
+// Sem a coluna scope no banco, tudo é tratado como global — o comportamento
+// de hoje — então isto funciona antes e depois da migração.
+function formsParaAfiliado(user){
+  const id=String(user?.id||''), hs=String(user?.hsAffiliateId||'');
+  return getLinkForms().filter(f=>{
+    if((f.scope||'all')!=='selected') return true;
+    const alvos=(Array.isArray(f.affiliate_ids)?f.affiliate_ids:[]).map(String);
+    return alvos.includes(id)||alvos.includes(hs);
+  });
+}
+
 async function loadData() {
   const [{ data: users }, { data: models }] = await Promise.all([
     sb.from('users').select('*'),
@@ -1475,7 +1487,7 @@ async function renderAdminAffLinks(c){
             <div style="padding:12px 18px;background:#f9fafb;display:flex;justify-content:flex-end;gap:8px">
               <button class="btn btn-outline-blue btn-sm" onclick="event.stopPropagation();loadAffLinksRow('${a.id}','${esc(a.hsAffiliateId||'')}')">🔄 Atualizar</button>
               ${a.hsAffiliateId
-                ?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();bulkCreateAffLinks('${a.id}','${esc(a.hsAffiliateId)}','${esc(a.name)}','${esc(a.affiliateType||'external')}')">⚡ Criar todos</button>`
+                ?`<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();novoLinkCustomizado('${a.id}','${esc(a.name)}')">✨ Link customizado</button> <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();bulkCreateAffLinks('${a.id}','${esc(a.hsAffiliateId)}','${esc(a.name)}','${esc(a.affiliateType||'external')}')">⚡ Criar todos</button>`
                 :'<span style="font-size:11px;color:#dc2626;align-self:center">⚠ Configure o hsId no perfil do afiliado</span>'}
             </div>
             <div id="alp-body-${a.id}" style="padding:0 18px 18px">
@@ -1550,7 +1562,7 @@ async function loadAffLinksRow(affId, hsId){
     });
     const aff=getUsers().find(u=>u.id===affId);
     const cfg=aff?.linksConfig||{};
-    const rows=getLinkForms().map((f,i)=>{
+    const rows=formsParaAfiliado(getUsers().find(u=>u.id===affId)).map((f,i)=>{
       const ex=byId[f.id];
       const slug=ex?.path||`${hsId}-${f.id}`;
       const state=cfg[slug]||{};
@@ -1772,7 +1784,7 @@ async function bulkCreateAffLinks(affId, hsId, affName, affType){
   const btn=document.querySelector(`#alp-${affId} .btn-primary`);
   if(btn){btn.disabled=true;btn.textContent='Criando…';}
   try{
-    const r=await fetch('/api/shortio/create-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hsId,affiliateName:affName,affiliateType:affType})});
+    const r=await fetch('/api/shortio/create-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hsId,affiliateName:affName,affiliateType:affType,userId:affId})});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||'Erro');
     const ok=d.results.filter(x=>x.ok).length;
@@ -1838,21 +1850,41 @@ window.renderAdminLinkForms=renderAdminLinkForms;
 // O JSON do formulário era embutido no atributo onclick; a primeira aspa
 // dupla interna encerrava o atributo e o clique não fazia nada. Agora passa
 // só o id e a busca acontece no cache.
+window.alternarEscopoFormulario=function(){
+  const sel=document.getElementById('lfm-scope');
+  const wrap=document.getElementById('lfm-afiliados-wrap');
+  if(sel&&wrap) wrap.style.display = sel.value==='selected' ? 'block' : 'none';
+};
+// Abre o modal já travado num único afiliado — o caminho de "link customizado".
+window.novoLinkCustomizado=function(affId, affNome){
+  openLinkFormModal(null, { scope:'selected', affiliate_ids:[affId] });
+  const t=document.querySelector('#lfm-modal .modal-title, #lfm-modal [style*="font-size:16px"]');
+  toast('Novo link customizado para '+affNome);
+};
+
 window.editarFormulario=function(id){
   const f=getLinkForms().find(x=>String(x.id)===String(id));
   if(!f){ toast('Formulário não encontrado. Atualize a página.'); return; }
   openLinkFormModal(JSON.stringify(f));
 };
 
-function openLinkFormModal(jsonStr){
+function openLinkFormModal(jsonStr, padroes){
   document.getElementById('lfm-modal')?.remove();
   let editing=null;
   try{ if(jsonStr) editing=JSON.parse(jsonStr); }catch(e){}
 
-  const f=editing||{};
-  let utmSource=f.utm_source||'general', utmMedium=f.utm_medium||'affiliate',
-      utmCampaign=f.utm_campaign||'analise-liv', utmTerm=f.utm_term||'affiliate-audience',
-      utmContent=f.utm_content||'direct-message';
+  const f=Object.assign({}, editing||{}, padroes||{});
+  // As UTMs moram em default_utms (jsonb); antes eram lidas de colunas soltas
+  // que não existem, então o modal nunca mostrava o que estava salvo.
+  const du=f.default_utms||{};
+  let utmSource=du.utm_source||f.utm_source||'general',
+      utmMedium=du.utm_medium||f.utm_medium||'affiliate',
+      utmCampaign=du.utm_campaign||f.utm_campaign||'analise-liv',
+      utmTerm=du.utm_term||f.utm_term||'affiliate-audience',
+      utmContent=du.utm_content||f.utm_content||'direct-message';
+  const escopoAtual=f.scope||'all';
+  const alvosAtuais=Array.isArray(f.affiliate_ids)?f.affiliate_ids.map(String):[];
+  const afiliados=getAffiliates().filter(a=>a.status==='active');
 
   const modal=document.createElement('div');
   modal.id='lfm-modal';
@@ -1891,7 +1923,7 @@ function openLinkFormModal(jsonStr){
         </div>
         <div class="form-group">
           <label class="form-label">URL base do formulário</label>
-          <input class="form-input" id="lfm-url" value="${esc(f.url||'')}" placeholder="https://share.hsforms.com/…" oninput="updateLfmPreview()">
+          <input class="form-input" id="lfm-url" value="${esc(f.url||f.base_url||'')}" placeholder="https://share.hsforms.com/…" oninput="updateLfmPreview()">
         </div>
         <div style="font-size:11px;font-weight:700;color:var(--s500);letter-spacing:.05em;margin:16px 0 8px">PARÂMETROS UTM</div>
         <div class="form-grid2" style="margin-bottom:12px">
@@ -1920,6 +1952,22 @@ function openLinkFormModal(jsonStr){
         </div>
         <div style="font-size:11px;color:var(--s400);background:var(--s50);border:1px solid var(--s200);border-radius:8px;padding:8px 12px;margin-bottom:16px">
           💡 <strong>utm_affiliatetype</strong> e <strong>utm_affiliatename</strong> são preenchidos automaticamente por afiliado
+        </div>
+        <div class="form-group">
+          <label class="form-label">Aplicar a</label>
+          <select class="form-input" id="lfm-scope" onchange="alternarEscopoFormulario()">
+            <option value="all" ${escopoAtual!=='selected'?'selected':''}>Todos os afiliados</option>
+            <option value="selected" ${escopoAtual==='selected'?'selected':''}>Afiliados específicos</option>
+          </select>
+        </div>
+        <div class="form-group" id="lfm-afiliados-wrap" style="display:${escopoAtual==='selected'?'block':'none'}">
+          <label class="form-label">Quais afiliados</label>
+          <div style="max-height:170px;overflow-y:auto;border:1.5px solid var(--s200);border-radius:12px;padding:8px">
+            ${afiliados.length?afiliados.map(a=>`<label style="display:flex;align-items:center;gap:9px;padding:6px 4px;cursor:pointer;font-size:13px">
+              <input type="checkbox" class="lfm-aff" value="${a.id}" ${alvosAtuais.includes(String(a.id))?'checked':''} style="width:15px;height:15px;cursor:pointer">
+              <span>${esc(a.name)}</span><span style="color:var(--s400);font-size:11px">${esc(a.hsAffiliateId||'')}</span>
+            </label>`).join(''):'<div style="font-size:12px;color:var(--s400);padding:6px">Nenhum afiliado ativo.</div>'}
+          </div>
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="lfm-active" ${f.active===false?'':'checked'} style="width:16px;height:16px;cursor:pointer">
@@ -1967,17 +2015,29 @@ async function saveLinkForm(editingId){
   const id=document.getElementById('lfm-id')?.value.trim();
   const label=document.getElementById('lfm-label')?.value.trim();
   if(!id||!label){ toast('Preencha ID e Nome'); return; }
+  const base=document.getElementById('lfm-url')?.value.trim()||'';
+  if(!base){ toast('Informe a URL base do formulário'); return; }
+  const escopo=document.getElementById('lfm-scope')?.value||'all';
+  const alvos=[...document.querySelectorAll('.lfm-aff:checked')].map(x=>x.value);
+  if(escopo==='selected' && !alvos.length){ toast('Escolha ao menos um afiliado'); return; }
+  // O payload mandava url/utm_* como colunas. Elas não existem: o banco tem
+  // base_url e default_utms (jsonb). O PostgREST devolvia 400 PGRST204, então
+  // criar ou editar formulário nunca funcionou.
   const payload={
     id, label,
     icon:  document.getElementById('lfm-icon')?.value.trim()||'🔗',
     platform: document.getElementById('lfm-platform')?.value||'HubSpot',
-    url:   document.getElementById('lfm-url')?.value.trim()||'',
-    utm_source:   document.getElementById('lfm-utm-source')?.value.trim()||'',
-    utm_medium:   document.getElementById('lfm-utm-medium')?.value.trim()||'',
-    utm_campaign: document.getElementById('lfm-utm-campaign')?.value.trim()||'',
-    utm_term:     document.getElementById('lfm-utm-term')?.value.trim()||'',
-    utm_content:  document.getElementById('lfm-utm-content')?.value.trim()||'',
+    base_url: base,
+    default_utms: {
+      utm_source:   document.getElementById('lfm-utm-source')?.value.trim()||'',
+      utm_medium:   document.getElementById('lfm-utm-medium')?.value.trim()||'',
+      utm_campaign: document.getElementById('lfm-utm-campaign')?.value.trim()||'',
+      utm_term:     document.getElementById('lfm-utm-term')?.value.trim()||'',
+      utm_content:  document.getElementById('lfm-utm-content')?.value.trim()||'',
+    },
     active: document.getElementById('lfm-active')?.checked!==false,
+    scope: escopo,
+    affiliate_ids: escopo==='selected'?alvos:[],
   };
   if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   try{
@@ -2319,7 +2379,7 @@ function renderAffLinksList(){
   }
 
   const q=_affLinksBusca.trim().toLowerCase();
-  const forms=getLinkForms().filter(f=>!q
+  const forms=formsParaAfiliado(currentUser).filter(f=>!q
     ||(f.label||'').toLowerCase().includes(q)
     ||(f.platform||'').toLowerCase().includes(q));
 
@@ -2455,7 +2515,7 @@ async function approveAff(id){
   // auto-create short.io links in background
   if(u.hsAffiliateId){
     fetch('/api/shortio/create-bulk',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({hsId:u.hsAffiliateId,affiliateName:u.name,affiliateType:u.affiliateType||'external'})
+      body:JSON.stringify({hsId:u.hsAffiliateId,affiliateName:u.name,affiliateType:u.affiliateType||'external',userId:u.id})
     }).then(r=>r.json()).then(d=>{
       const ok=(d.results||[]).filter(x=>x.ok).length;
       toast(`🔗 ${ok} links criados no Short.io para ${u.name}.`);

@@ -269,6 +269,29 @@ function supabaseHeaders() {
   };
 }
 
+// Reenvia o corpo sem as colunas opcionais quando o Postgres ainda não as tem.
+// Assim o portal funciona antes e depois da migração de escopo, sem janela de
+// quebra: se scope/affiliate_ids não existem, o formulário nasce global.
+const COLUNAS_OPCIONAIS = ['scope', 'affiliate_ids'];
+
+async function gravarLinkForm(url, method, body) {
+  const enviar = (corpo) => fetch(url, { method, headers: supabaseHeaders(), body: JSON.stringify(corpo) });
+  let r = await enviar(body);
+  if (r.status === 400) {
+    const texto = await r.text();
+    const faltante = COLUNAS_OPCIONAIS.find(c => texto.includes(`'${c}' column`));
+    if (faltante) {
+      console.warn(`link-forms: coluna ${faltante} ainda não existe — regravando sem as colunas de escopo`);
+      const limpo = { ...body };
+      COLUNAS_OPCIONAIS.forEach(c => delete limpo[c]);
+      r = await enviar(limpo);
+    } else {
+      return { r, data: JSON.parse(texto || '{}') };
+    }
+  }
+  return { r, data: await r.json() };
+}
+
 // link_forms CRUD
 app.get('/api/link-forms', async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
@@ -290,12 +313,7 @@ app.post('/api/link-forms', async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms`, {
-      method: 'POST',
-      headers: supabaseHeaders(),
-      body: JSON.stringify(req.body),
-    });
-    const data = await r.json();
+    const { r, data } = await gravarLinkForm(`${SUPABASE_URL}/rest/v1/link_forms`, 'POST', req.body);
     if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
     res.status(201).json(Array.isArray(data) ? data[0] : data);
   } catch (err) {
@@ -308,12 +326,7 @@ app.patch('/api/link-forms/:id', async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/link_forms?id=eq.${req.params.id}`, {
-      method: 'PATCH',
-      headers: supabaseHeaders(),
-      body: JSON.stringify(req.body),
-    });
-    const data = await r.json();
+    const { r, data } = await gravarLinkForm(`${SUPABASE_URL}/rest/v1/link_forms?id=eq.${req.params.id}`, 'PATCH', req.body);
     if (!r.ok) throw new Error(data.message || `HTTP ${r.status}`);
     res.json(Array.isArray(data) ? data[0] : data);
   } catch (err) {
@@ -344,7 +357,7 @@ app.delete('/api/link-forms/:id', async (req, res) => {
 
 // short.io — bulk-create all 6 standard links for an affiliate
 app.post('/api/shortio/create-bulk', async (req, res) => {
-  const { hsId, affiliateName, affiliateType } = req.body;
+  const { hsId, affiliateName, affiliateType, userId } = req.body;
   if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
   if (!process.env.SHORTIO_API_KEY) return res.status(500).json({ error: 'Short.io não configurado' });
 
@@ -358,7 +371,14 @@ app.post('/api/shortio/create-bulk', async (req, res) => {
       });
       if (r.ok) {
         const rows = await r.json();
-        if (Array.isArray(rows) && rows.length) activeForms = rows;
+        // Um formulário com escopo 'selected' só vale para os afiliados listados.
+        // Sem a coluna scope, tudo é global — o comportamento anterior.
+        const noEscopo = (f) => {
+          if ((f.scope || 'all') !== 'selected') return true;
+          const alvos = (Array.isArray(f.affiliate_ids) ? f.affiliate_ids : []).map(String);
+          return alvos.includes(String(hsId)) || (userId && alvos.includes(String(userId)));
+        };
+        if (Array.isArray(rows) && rows.length) activeForms = rows.filter(noEscopo);
       }
     }
   } catch (e) {
