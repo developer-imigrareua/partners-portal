@@ -1,6 +1,6 @@
 {
   "name": "partners-portal",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ImigrarEUA Partner Portal",
   "main": "server.js",
   "scripts": {
