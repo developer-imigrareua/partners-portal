@@ -1627,11 +1627,11 @@ function openEditLinkModal(affId, hsId, formId, linkId, currentUrl){
         <div class="form-group" style="margin:0">
           <label class="form-label">URL base do formulário</label>
           <select class="form-input" id="eml-base" onchange="updateEditModalPreview()">
-            ${getLinkForms().map(f=>`<option value="${f.url}" ${baseUrl===f.url||currentUrl.includes(f.url)?'selected':''}>${f.icon} ${f.label}</option>`).join('')}
-            <option value="custom" ${!getLinkForms().some(f=>currentUrl.includes(f.url))?'selected':''}>🔗 URL personalizada</option>
+            ${getLinkForms().map(f=>{const b=f.url||f.base_url||'';return b?`<option value="${b}" ${baseUrl===b||currentUrl.includes(b)?'selected':''}>${f.icon} ${f.label}</option>`:'';}).join('')}
+            <option value="custom" ${!getLinkForms().some(f=>{const b=f.url||f.base_url;return !!b&&currentUrl.includes(b);})?'selected':''}>🔗 URL personalizada</option>
           </select>
         </div>
-        <div id="eml-custom-wrap" style="margin-top:10px;${!getLinkForms().some(f=>currentUrl.includes(f.url))?'':'display:none'}">
+        <div id="eml-custom-wrap" style="margin-top:10px;${!getLinkForms().some(f=>{const b=f.url||f.base_url;return !!b&&currentUrl.includes(b);})?'':'display:none'}">
           <input class="form-input" id="eml-custom-url" value="${esc(baseUrl)}" placeholder="https://…" oninput="updateEditModalPreview()">
         </div>
       </div>
@@ -1690,6 +1690,13 @@ async function saveEditedLink(affId, hsId, linkId){
   if(btn){btn.disabled=true;btn.textContent='Salvando…';}
   const preview=document.getElementById('eml-preview')?.textContent;
   if(!preview){if(btn){btn.disabled=false;btn.textContent='Salvar alterações';} return;}
+  // Trava: o modal já gravou "undefined?utm_..." em links reais quando o
+  // formulário vinha sem base_url. Nenhum destino inválido passa daqui.
+  if(!/^https?:\/\/[^/?#]+\./i.test(preview)||/^https?:\/\/undefined/i.test(preview)){
+    toast('Destino inválido — escolha um formulário ou informe uma URL completa.');
+    if(btn){btn.disabled=false;btn.textContent='Salvar alterações';}
+    return;
+  }
   try{
     const r=await fetch('/api/shortio/update',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({linkId,originalUrl:preview})});
     const d=await r.json();
