@@ -19,6 +19,7 @@ com quais links e sob qual política de bonificação.
 | [Segurança](05-seguranca.md) | Autenticação, RLS, o que nunca deve ser feito |
 | [Log de correções](06-log-de-correcoes/README.md) | Histórico de incidentes e correções, com causa raiz |
 | [Limitações conhecidas](07-limitacoes-conhecidas.md) | O que não funciona hoje, e por quê |
+| [Pendências](08-pendencias.md) | Fila de trabalho: o que falta decidir e fazer |
 
 ## Para quem está chegando agora
 
