@@ -17,7 +17,7 @@ Dockerfile      Build para deploy no EasyPanel (VPS)
 ## Deploy
 
 - **Plataforma:** EasyPanel na VPS própria, fonte GitHub (`developer-imigrareua/partners-portal`, branch `master`)
-- **Domínio:** `partners.imigrareua.com` via Traefik (HTTPS automático)
+- **Domínio:** `partner.imigrareua.com` via Traefik (HTTPS automático)
 - **Porta interna:** 3000 (não mudar — outras aplicações rodam na VPS)
 - **Redeploy:** automático a cada push no `master`
 
