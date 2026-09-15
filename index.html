@@ -159,6 +159,7 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 @keyframes spin{to{transform:rotate(360deg)}}
 /* ── Period selector ── */
 .period-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.period-btns{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .period-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--s200);background:#fff;font-size:12px;font-weight:500;color:var(--s600);cursor:pointer;transition:all .12s;white-space:nowrap}
 .period-btn:hover{background:var(--s50);border-color:var(--s300)}
 .period-btn.active{background:#0D255D;color:#fff;border-color:#0D255D;font-weight:700}
@@ -182,6 +183,44 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 /* ── Contact id chip ── */
 .contact-id{font-size:10px;color:var(--s400);font-family:monospace;margin-top:2px}
 
+/* ── Helpers de visibilidade por viewport ── */
+.only-mobile{display:none}
+
+/* ── Cards de lead (pipeline no mobile) ── */
+.lead-cards{display:flex;flex-direction:column;gap:12px}
+.lead-card{background:#fff;border:1px solid var(--s100);border-radius:16px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+.lead-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.lead-card-name{font-size:15px;font-weight:700;color:var(--s900);line-height:1.25}
+.lead-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:9px;font-size:11px;font-weight:700;white-space:nowrap}
+.lead-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--s100)}
+.lead-card-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);margin-bottom:3px}
+.lead-card-val{font-size:13px;font-weight:600;color:var(--s700)}
+
+/* ── Barra de ordenação (substitui as colunas clicáveis no mobile) ── */
+.sort-bar{align-items:center;gap:8px;margin-bottom:14px}
+.sort-bar label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);white-space:nowrap}
+.sort-bar select{flex:1;border:1.5px solid var(--s200);border-radius:10px;padding:9px 10px;font-size:13px;font-family:'Poppins',sans-serif;background:#fff;color:var(--s700)}
+
+/* ── Cards de link (Meus Links no mobile) ── */
+.link-cards{display:flex;flex-direction:column;gap:12px}
+.link-card{background:#fff;border:1px solid var(--s100);border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.link-card.indisponivel{opacity:.55}
+.link-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.link-card-id{display:flex;align-items:center;gap:10px;min-width:0}
+.link-card-ico{width:40px;height:40px;background:var(--s50);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.link-card-nome{font-size:14px;font-weight:700;color:var(--s900);line-height:1.2}
+.link-card-url{background:var(--s50);border:1px solid var(--s100);border-radius:11px;padding:11px 12px}
+.link-card-url code{font-size:12px;color:var(--s500);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-contador{font-size:10px;font-weight:700;background:#e0eefa;color:#1B75BC;padding:3px 9px;border-radius:999px;letter-spacing:.04em}
+.aviso-utm{margin-top:18px;background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:14px;display:flex;gap:10px;font-size:12px;color:#92400e;line-height:1.5}
+
+/* ── Tab bar inferior (só afiliado, só mobile) ── */
+#tabbar{display:none}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--s400);font-family:'Poppins',sans-serif;padding:0}
+.tab-item.active{color:var(--blue)}
+.tab-ico{font-size:17px;line-height:1}
+.tab-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
 /* ══════════════════ RESPONSIVO ══════════════════ */
 /* Hamburguer e backdrop: invisiveis no desktop, so existem na gaveta */
 .sb-toggle{display:none;background:none;border:1.5px solid var(--s200);border-radius:10px;width:38px;height:38px;font-size:17px;line-height:1;color:var(--s600);cursor:pointer;flex-shrink:0;align-items:center;justify-content:center}
@@ -198,6 +237,10 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 
   #main-area{width:100%;min-width:0}
   .topbar{padding:10px 14px;gap:10px;justify-content:flex-start}
+  /* titulo aparecia duplicado (topbar + page-header). No mobile fica so um: */
+  .topbar-sub{display:none}
+  .page-header .page-title{display:none}
+  .page-header{margin-bottom:14px}
   .topbar-title{font-size:16px}
   .content{padding:16px 14px}
 
@@ -220,6 +263,22 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 
   .stage-dist-label{min-width:0;text-align:left;white-space:normal}
   .search-wrap{max-width:none;width:100%}
+
+  /* Superdesign: cards no lugar de tabela */
+  .only-desktop{display:none!important}
+  .only-mobile{display:block}
+  .sort-bar{display:flex}
+  #tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:62px;background:#fff;border-top:1px solid var(--s200);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+  .content{padding-bottom:86px}
+  /* o painel some no mobile: os cards ficam sobre o fundo da página */
+  #pipeline-table-wrap,#aff-links-panel{background:none;border:none;box-shadow:none;overflow:visible}
+  #pipeline-table-wrap>.panel-bd,#aff-links-panel>.panel-bd{padding:0}
+  /* faixas de filtro rolam na horizontal em vez de quebrar em 4 linhas */
+  .period-bar{flex-direction:column;align-items:stretch;gap:12px}
+  .period-btns,.pipeline-filters{display:flex;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;padding-bottom:4px}
+  .period-btns::-webkit-scrollbar,.pipeline-filters::-webkit-scrollbar{display:none}
+  .period-btns>*,.pipeline-filters>*{flex-shrink:0}
+  .search-input{height:44px}
 
   .modal-overlay{padding:12px}
   .modal{padding:20px;max-height:92dvh}
@@ -352,6 +411,7 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
     </div>
     <div class="content" id="app-content"></div>
   </div>
+  <nav id="tabbar"></nav>
 </div>
 
 <!-- Modal de Modelo de Bonificação -->
@@ -671,6 +731,7 @@ function enterApp() {
   document.getElementById('auth-shell').style.display = 'none';
   document.getElementById('app-shell').style.display = 'flex';
   buildSidebar();
+  buildTabbar();
   navigate(currentUser.role === 'admin' ? 'admin-overview' : 'aff-dashboard');
 }
 function showView(id) {
@@ -794,6 +855,18 @@ function buildSidebar(){
   document.getElementById('sb-nav').innerHTML=nav;
 }
 
+// Tab bar inferior: só para afiliado (4 páginas cabem em 4 abas).
+// O admin tem 7 páginas e continua na gaveta lateral.
+function buildTabbar(){
+  const tb=document.getElementById('tabbar');
+  if(!tb) return;
+  if(!currentUser||currentUser.role!=='affiliate'){ tb.innerHTML=''; tb.style.display='none'; return; }
+  tb.style.display='';
+  tb.innerHTML=[['aff-dashboard','📊','Painel'],['aff-pipeline','🎯','Leads'],
+                ['aff-links','🔗','Links'],['aff-profile','👤','Perfil']]
+    .map(([p,ic,lb])=>`<button class="tab-item" data-page="${p}" onclick="navigate('${p}')"><span class="tab-ico">${ic}</span><span class="tab-lbl">${lb}</span></button>`).join('');
+}
+
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
@@ -811,6 +884,8 @@ function navigate(page){
   closeSidebar();   // no mobile, escolher um item fecha a gaveta
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.querySelector(`.sb-item[data-page="${page}"]`)?.classList.add('active');
+  document.querySelectorAll('.tab-item').forEach(i=>i.classList.remove('active'));
+  document.querySelector(`.tab-item[data-page="${page}"]`)?.classList.add('active');
   if(leadsChart){leadsChart.destroy();leadsChart=null;}
   if(evoChart){evoChart.destroy();evoChart=null;}
   if(stageChart){stageChart.destroy();stageChart=null;}
@@ -1293,7 +1368,7 @@ function buildEvolutionBuckets(leads){
   return{labels:keys.map(k=>{const[y,m]=k.split('-');return new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}),data:keys.map(k=>buckets[k])};
 }
 function renderPeriodBar(activePage,extraHtml=''){
-  return`<div class="period-bar">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}${extraHtml}</div>`;
+  return`<div class="period-bar"><div class="period-btns">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}</div>${extraHtml}</div>`;
 }
 const STAGE_COLORS={'Lead Recebido':'#64748b','Em Atendimento':'#3b82f6','Reunião Agendada':'#8b5cf6','Oportunidade':'#f59e0b','Convertido':'#059669','Não Convertido':'#94a3b8'};
 function mapLifecycle(ls,disqDate){
@@ -2025,19 +2100,49 @@ function renderAffPipeline(c){
   }
   function sortIcon(col){if(affSortCol!==col) return`<span style="color:var(--s300);margin-left:3px">⇅</span>`;return affSortDir==='asc'?`<span style="color:var(--blue);margin-left:3px">↑</span>`:`<span style="color:var(--blue);margin-left:3px">↓</span>`;}
   function thSort(col,label,extra=''){return`<th style="cursor:pointer;user-select:none${extra?';'+extra:''}" onclick="setPipelineSort('${col}')">${label}${sortIcon(col)}</th>`;}
+  function sortBarHtml(){
+    const opcoes=[['createdAt:desc','Mais recentes'],['createdAt:asc','Mais antigos'],
+                  ['lastUpdate:desc','Movimentação recente'],['name:asc','Nome (A–Z)'],['stage:asc','Etapa']];
+    const atual=`${affSortCol}:${affSortDir}`;
+    return`<div class="sort-bar only-mobile"><label>Ordenar</label><select onchange="setPipelineSortValue(this.value)">${
+      opcoes.map(([v,t])=>`<option value="${v}"${v===atual?' selected':''}>${t}</option>`).join('')}</select></div>`;
+  }
   function renderTable(){
     const leads=getFiltered();
     if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
-    return`<table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>
-    ${leads.map(l=>{
+    const linhas=leads.map(l=>{
       const bonif=calcLeadBonif(l,model);
       const sc=STAGE_COLORS[l.stage]||'var(--s400)';
       const lastUpdate=l.stageDate||l.createdAt;
       const responsavel=l.dealOwnerName||l.ownerName||(l.owner&&isNaN(Number(l.owner))?l.owner:null);
       const responsavelDisplay=(()=>{if(responsavel==='Marketing LIV'){if(l.stage==='Não Convertido')return'<span class="text-muted text-sm">—</span>';if(l.stage==='Lead Recebido')return'<span class="text-muted text-sm" style="font-style:italic">Aguardando distribuição</span>';}return responsavel?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${responsavel}</div>`:'<span class="text-muted text-sm">—</span>';})();
       const nmtFmt=(()=>{const r=l.nextMeetingTime;if(!r)return null;return fmtDate(/^\d{10,}$/.test(r)?new Date(parseInt(r)).toISOString().slice(0,10):r.slice(0,10));})();
-      return`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td>${nmtFmt&&l.stage==='Reunião Agendada'?`<td><div style="font-size:12px;font-weight:500;color:#8b5cf6">📅 Próxima Reunião marcada para ${nmtFmt}</div></td>`:`<td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td>`}<td>${responsavelDisplay}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
-    }).join('')}</tbody></table>`;
+      const scBg=sc.charAt(0)==='#'?sc+'1a':'var(--s100)';
+      const tr=`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td>${nmtFmt&&l.stage==='Reunião Agendada'?`<td><div style="font-size:12px;font-weight:500;color:#8b5cf6">📅 Próxima Reunião marcada para ${nmtFmt}</div></td>`:`<td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td>`}<td>${responsavelDisplay}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
+      const ultMov=nmtFmt&&l.stage==='Reunião Agendada'
+        ? `<span style="color:#8b5cf6">📅 ${nmtFmt}</span>`
+        : fmtDate(lastUpdate);
+      const card=`<div class="lead-card">
+        <div class="lead-card-top">
+          <div style="min-width:0">
+            <div class="lead-card-name">${l.name}</div>
+            <div class="contact-id">#${l.id||'—'}</div>
+          </div>
+          <span class="lead-badge" style="color:${sc};background:${scBg}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span>
+        </div>
+        <div class="lead-card-grid">
+          <div><div class="lead-card-lbl">Criado em</div><div class="lead-card-val">${l.createdAt?fmtDate(l.createdAt):'—'}</div></div>
+          <div><div class="lead-card-lbl">Últ. Movim.</div><div class="lead-card-val">${ultMov}</div></div>
+        </div>
+        <div class="lead-card-grid">
+          <div><div class="lead-card-lbl">Responsável</div><div class="lead-card-val">${responsavelDisplay}</div></div>
+          ${showBonif?`<div><div class="lead-card-lbl">Bonificação</div><div class="lead-card-val" style="color:#059669;font-weight:700">${fmt(bonif)}</div></div>`:''}
+        </div>
+      </div>`;
+      return{tr,card};
+    });
+    return`<div class="only-desktop"><table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>${linhas.map(x=>x.tr).join('')}</tbody></table></div>`
+         + `<div class="only-mobile lead-cards">${linhas.map(x=>x.card).join('')}</div>`;
   }
   const periodLeads=filterByPeriod(allLeads,affPeriod);
   const counts={'Todos':periodLeads.length};
@@ -2045,11 +2150,17 @@ function renderAffPipeline(c){
   const searchHtml=`<div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="pipeline-search" placeholder="Buscar por nome ou ID…" value="${esc(affSearch)}" oninput="setPipelineSearch(this.value)"></div>`;
   c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período · Modelo: ${model.name}</div></div>
   ${renderPeriodBar('aff-pipeline',searchHtml)}
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
+  <div class="pipeline-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
+  ${sortBarHtml()}
   <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>`;
   window._pipelineRenderTable=renderTable;
 }
 window.setStageFilter=function(stage){affStageFilter=stage;document.querySelectorAll('.pipeline-filter').forEach(b=>{b.classList.toggle('btn-primary',b.dataset.stage===stage);b.classList.toggle('btn-ghost',b.dataset.stage!==stage);});const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
+window.setPipelineSortValue=function(v){
+  const[c,d]=v.split(':'); affSortCol=c; affSortDir=d;
+  const wrap=document.getElementById('pipeline-table-wrap');
+  if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();
+};
 window.setPipelineSearch=function(val){affSearch=val;const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
 window.setPipelineSort=function(col){if(affSortCol===col) affSortDir=affSortDir==='asc'?'desc':'asc';else{affSortCol=col;affSortDir=col==='createdAt'||col==='lastUpdate'?'desc':'asc';}const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
 
@@ -2078,9 +2189,13 @@ async function renderAffLinks(c){
       <div class="page-sub">Links personalizados com rastreamento completo via <strong>to.imigrareua.com</strong></div>
     </div>
     ${!hsId?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px">⚠️ Seu identificador HubSpot não foi configurado. Fale com o time ImigrarEUA.</div>`:''}
-    <div class="panel">
+    <div class="search-wrap" style="max-width:none;margin-bottom:16px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" placeholder="Buscar por formulário…" oninput="setAffLinksSearch(this.value)">
+    </div>
+    <div class="panel" id="aff-links-panel">
       <div class="panel-hd">
-        <div class="panel-title">Seus links de indicação</div>
+        <div class="panel-title">Seus links de indicação <span class="link-contador" id="aff-links-count">—</span></div>
         <button class="btn btn-outline-blue btn-sm" onclick="reloadAffOwnLinks()">🔄 Atualizar</button>
       </div>
       <div class="panel-bd" id="aff-own-links-wrap">
@@ -2090,6 +2205,10 @@ async function renderAffLinks(c){
   reloadAffOwnLinks();
 }
 
+let _affLinksData=null, _affLinksBusca='';
+
+window.setAffLinksSearch=function(v){ _affLinksBusca=v; renderAffLinksList(); };
+
 async function reloadAffOwnLinks(){
   const u=currentUser;
   const hsId=u.hsAffiliateId||'';
@@ -2098,7 +2217,7 @@ async function reloadAffOwnLinks(){
   if(!hsId){wrap.innerHTML='<div style="padding:16px;font-size:13px;color:#92400e">Sem identificador configurado.</div>';return;}
   wrap.innerHTML='<div style="text-align:center;padding:24px;color:var(--s400);font-size:13px">Carregando…</div>';
   try{
-    const r=await fetch(`/api/shortio/links?affiliateId=${encodeURIComponent(hsId)}`);
+    const r=await fetch('/api/shortio/links?affiliateId='+encodeURIComponent(hsId));
     const data=await r.json();
     if(data.error) throw new Error(data.error);
     const items=Array.isArray(data.links)?data.links:Array.isArray(data)?data:[];
@@ -2107,43 +2226,75 @@ async function reloadAffOwnLinks(){
     items.forEach(lk=>{
       const form=matchLinkToForm(lk,hsId);
       if(!form) return;
-      const slug=lk.path||`${hsId}-${form.id}`;
+      const slug=lk.path||(hsId+'-'+form.id);
       const state=cfg[slug]||{};
-      if(state.deleted||state.hidden) return; // admin oculted or deleted
-      if(!byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||`https://to.imigrareua.com/${lk.path}`};
+      if(state.deleted||state.hidden) return;   // admin ocultou ou removeu
+      if(!byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||('https://to.imigrareua.com/'+lk.path)};
     });
-    const hasAny=Object.keys(byId).length>0;
-    if(!hasAny){
-      wrap.innerHTML=`<div style="text-align:center;padding:32px;color:var(--s400)">
-        <div style="font-size:32px;margin-bottom:8px">🔗</div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">Nenhum link criado ainda</div>
-        <div style="font-size:13px">O time ImigrarEUA irá criar seus links em breve.</div>
-      </div>`;
-      return;
-    }
-    const rows=getLinkForms().map((f,i)=>{
-      const lk=byId[f.id];
-      if(!lk) return `<tr style="opacity:.45">
-        <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
-        <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
-        <td colspan="2"><span style="font-size:12px;color:var(--s400)">— ainda não disponível</span></td>
-      </tr>`;
-      return `<tr>
-        <td><span style="font-size:15px">${f.icon}</span> <strong style="font-size:13px">${f.label}</strong></td>
-        <td><span class="tag ${f.platform==='Typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${f.platform}</span></td>
-        <td><code id="aol-${i}" style="font-size:13px;font-weight:700;color:#1B75BC">${esc(lk.shortUrl)}</code></td>
-        <td style="text-align:right;white-space:nowrap">
-          <button class="btn btn-outline-blue btn-xs" onclick="copyText('aol-${i}',this)">📋 Copiar</button>
-        </td>
-      </tr>`;
-    }).join('');
-    wrap.innerHTML=`<table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Seu link</th><th style="text-align:right">Ação</th></tr></thead><tbody>${rows}</tbody></table>
-    <div style="margin-top:12px;padding:10px 14px;background:var(--s50);border-radius:8px;font-size:11px;color:var(--s500)">
-      💡 Todos os links já incluem seus parâmetros UTM — <strong>utm_affiliatename=${esc(hsId)}</strong>
-    </div>`;
+    _affLinksData={byId,hsId};
+    renderAffLinksList();
   }catch(e){
-    wrap.innerHTML=`<div style="padding:14px;font-size:13px;color:#dc2626">Erro ao carregar links: ${esc(e.message)}</div>`;
+    wrap.innerHTML='<div style="padding:14px;font-size:13px;color:#dc2626">Erro ao carregar links: '+esc(e.message)+'</div>';
   }
+}
+
+// Monta tabela (desktop) e cards (mobile) a partir do cache, aplicando a busca.
+function renderAffLinksList(){
+  const wrap=document.getElementById('aff-own-links-wrap');
+  if(!wrap||!_affLinksData) return;
+  const byId=_affLinksData.byId, hsId=_affLinksData.hsId;
+  const total=Object.keys(byId).length;
+  const badge=document.getElementById('aff-links-count');
+  if(badge) badge.textContent=total+' '+(total===1?'LINK':'LINKS');
+
+  if(!total){
+    wrap.innerHTML='<div style="text-align:center;padding:32px;color:var(--s400)">'+
+      '<div style="font-size:32px;margin-bottom:8px">🔗</div>'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:4px">Nenhum link criado ainda</div>'+
+      '<div style="font-size:13px">O time ImigrarEUA irá criar seus links em breve.</div></div>';
+    return;
+  }
+
+  const q=_affLinksBusca.trim().toLowerCase();
+  const forms=getLinkForms().filter(f=>!q
+    ||(f.label||'').toLowerCase().includes(q)
+    ||(f.platform||'').toLowerCase().includes(q));
+
+  if(!forms.length){
+    wrap.innerHTML='<div class="empty-state"><div class="icon">🔍</div><p>Nenhum formulário encontrado para “'+esc(_affLinksBusca)+'”.</p></div>';
+    return;
+  }
+
+  const itens=forms.map((f,i)=>{
+    const lk=byId[f.id];
+    const tagCls=f.platform==='Typeform'?'tag-purple':'tag-blue';
+    if(!lk) return {
+      tr:'<tr style="opacity:.45"><td><span style="font-size:15px">'+f.icon+'</span> <strong style="font-size:13px">'+f.label+'</strong></td>'+
+         '<td><span class="tag '+tagCls+'" style="font-size:10px">'+f.platform+'</span></td>'+
+         '<td colspan="2"><span style="font-size:12px;color:var(--s400)">— ainda não disponível</span></td></tr>',
+      card:'<div class="link-card indisponivel"><div class="link-card-top"><div class="link-card-id">'+
+           '<div class="link-card-ico">'+f.icon+'</div><div><div class="link-card-nome">'+f.label+'</div>'+
+           '<span class="tag '+tagCls+'" style="font-size:9px;margin-top:3px;display:inline-block">'+f.platform+'</span></div></div></div>'+
+           '<div class="link-card-url"><code>— ainda não disponível</code></div></div>'
+    };
+    return {
+      tr:'<tr><td><span style="font-size:15px">'+f.icon+'</span> <strong style="font-size:13px">'+f.label+'</strong></td>'+
+         '<td><span class="tag '+tagCls+'" style="font-size:10px">'+f.platform+'</span></td>'+
+         '<td><code id="aol-d-'+i+'" style="font-size:13px;font-weight:700;color:#1B75BC">'+esc(lk.shortUrl)+'</code></td>'+
+         '<td style="text-align:right;white-space:nowrap"><button class="btn btn-outline-blue btn-xs" onclick="copyText(\'aol-d-'+i+'\',this)">📋 Copiar</button></td></tr>',
+      card:'<div class="link-card"><div class="link-card-top"><div class="link-card-id">'+
+           '<div class="link-card-ico">'+f.icon+'</div><div style="min-width:0"><div class="link-card-nome">'+f.label+'</div>'+
+           '<span class="tag '+tagCls+'" style="font-size:9px;margin-top:3px;display:inline-block">'+f.platform+'</span></div></div>'+
+           '<button class="btn btn-primary btn-sm" onclick="copyText(\'aol-m-'+i+'\',this)">📋 Copiar</button></div>'+
+           '<div class="link-card-url"><code id="aol-m-'+i+'">'+esc(lk.shortUrl)+'</code></div></div>'
+    };
+  });
+
+  wrap.innerHTML=
+    '<div class="only-desktop"><table class="table"><thead><tr><th>Formulário</th><th>Plataforma</th><th>Seu link</th><th style="text-align:right">Ação</th></tr></thead><tbody>'+
+      itens.map(x=>x.tr).join('')+'</tbody></table></div>'+
+    '<div class="only-mobile link-cards">'+itens.map(x=>x.card).join('')+'</div>'+
+    '<div class="aviso-utm"><span style="flex-shrink:0">💡</span><div>Todos os links já incluem seus parâmetros UTM — <strong>utm_affiliatename='+esc(hsId)+'</strong></div></div>';
 }
 window.reloadAffOwnLinks=reloadAffOwnLinks;
 
