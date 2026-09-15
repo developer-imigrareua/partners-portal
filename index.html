@@ -224,6 +224,12 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .tab-ico{font-size:17px;line-height:1}
 .tab-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 
+/* ── Tabela reempilhada como cartão (mobile) ─────────────────────
+   Não reescreve nada: o mesmo DOM da tabela é re-layoutado, e cada
+   célula exibe o texto do seu próprio cabeçalho via data-rotulo.
+   Assim nenhuma coluna nem botão pode se perder no caminho. */
+/* (as regras efetivas ficam dentro do @media abaixo) */
+
 /* ══════════════════ RESPONSIVO ══════════════════ */
 /* Hamburguer e backdrop: invisiveis no desktop, so existem na gaveta */
 .sb-toggle{display:none;background:none;border:1.5px solid var(--s200);border-radius:10px;width:38px;height:38px;font-size:17px;line-height:1;color:var(--s600);cursor:pointer;flex-shrink:0;align-items:center;justify-content:center}
@@ -292,6 +298,28 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   .search-input{height:44px}
   /* < 16px faz o iOS dar zoom ao focar o campo; 16px evita o pulo */
   .search-input,.filtro-campo select,.filtro-campo input,.form-input{font-size:16px}
+
+  /* Tabela vira pilha de cartões. O min-width que forçava rolagem
+     horizontal é anulado aqui. */
+  .tabela-cartao{min-width:0!important;display:block;width:100%}
+  .tabela-cartao thead{display:none}
+  .tabela-cartao tbody,.tabela-cartao tfoot{display:block;width:100%}
+  .tabela-cartao tbody>tr{display:block;background:#fff;border:1px solid var(--s100);border-radius:14px;
+    padding:10px 14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(13,37,93,.05)}
+  .tabela-cartao tbody>tr:hover{background:#fff}
+  .tabela-cartao td{display:flex;justify-content:space-between;align-items:center;gap:14px;
+    border:none!important;padding:7px 0!important;text-align:left!important;font-size:13px}
+  .tabela-cartao td+td{border-top:1px solid var(--s100)!important}
+  .tabela-cartao td::before{content:attr(data-rotulo);font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--s400);flex-shrink:0;white-space:nowrap}
+  .tabela-cartao td:not([data-rotulo])::before{content:none}
+  /* linha de detalhe do acordeão e linhas de estado vazio ocupam o cartão inteiro */
+  .tabela-cartao td[colspan]{display:block;padding:0!important}
+  .tabela-cartao tr:has(>td[colspan]){padding:0;border:none;box-shadow:none;background:none}
+  .tabela-cartao tfoot tr{display:block;background:var(--s50);border-radius:14px;padding:10px 14px}
+  /* célula com botões: eles descem para a própria linha e ocupam a largura */
+  .tabela-cartao td.celula-acoes{flex-wrap:wrap;justify-content:flex-start}
+  .tabela-cartao td.celula-acoes .btn{flex:1;min-width:120px}
 
   .modal-overlay{padding:12px}
   .modal{padding:20px;max-height:92dvh}
@@ -745,6 +773,7 @@ function enterApp() {
   document.getElementById('app-shell').style.display = 'flex';
   buildSidebar();
   buildTabbar();
+  observarTabelas();
   navigate(currentUser.role === 'admin' ? 'admin-overview' : 'aff-dashboard');
 }
 function showView(id) {
@@ -882,6 +911,37 @@ function buildTabbar(){
     .map(([p,ic,lb])=>`<button class="tab-item" data-page="${p}" onclick="navigate('${p}')"><span class="tab-ico">${ic}</span><span class="tab-lbl">${lb}</span></button>`).join('');
 }
 
+// Marca cada célula com o texto do cabeçalho da sua coluna, para que o
+// CSS possa reempilhar a tabela como cartão no mobile sem perder nada.
+// Roda sobre o DOM já pronto — nenhuma tabela é reescrita.
+function rotularTabelas(raiz){
+  (raiz||document).querySelectorAll('table.table').forEach(t=>{
+    const rotulos=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+    if(!rotulos.length) return;
+    t.classList.add('tabela-cartao');
+    t.querySelectorAll('tbody > tr').forEach(tr=>{
+      [...tr.children].forEach((td,i)=>{
+        if(td.hasAttribute('colspan')) return;          // linha de detalhe / estado vazio
+        const r=rotulos[i];
+        if(r) td.setAttribute('data-rotulo',r); else td.removeAttribute('data-rotulo');
+        // coluna de ações: rotulada como tal, ou sem cabeçalho mas contendo botões
+        if((r&&/^(ações|ação)$/i.test(r))||(!r&&td.querySelector('button'))) td.classList.add('celula-acoes');
+      });
+    });
+  });
+}
+// As tabelas do admin são injetadas em momentos diferentes (render direto,
+// renderAffRows, fetches assíncronos). O observador cobre todos sem que eu
+// precise achar cada ponto de injeção.
+let obsTabelas=null;
+function observarTabelas(){
+  const alvo=document.getElementById('app-content');
+  if(!alvo||obsTabelas) return;
+  rotularTabelas(alvo);
+  obsTabelas=new MutationObserver(()=>rotularTabelas(alvo));
+  obsTabelas.observe(alvo,{childList:true,subtree:true});   // só childList: setAttribute não re-dispara
+}
+
 // ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
@@ -1001,12 +1061,18 @@ function renderAdminOverview(c){
         <div><div class="page-title">Visão Geral</div><div class="page-sub">Painel analítico da rede de afiliados ImigrarEUA</div></div>
       </div>
     </div>
-    <div class="period-bar" style="margin-bottom:20px">
+    <div class="period-bar only-desktop" style="margin-bottom:20px">
       ${adminPeriodBtns.map(([k,l])=>`<button class="period-btn${adminPeriod===k?' active':''}" onclick="setAdminPeriod('${k}')">${l}</button>`).join('')}
       <button class="period-btn${adminPeriod==='custom'?' active':''}" onclick="setAdminPeriod('custom')">Personalizado</button>
       ${adminPeriod==='custom'?`<input type="date" class="period-date-input" value="${adminCustomStart}" onchange="adminCustomStart=this.value;renderPage('admin-overview')">
       <span style="color:var(--s400);font-size:12px">até</span>
       <input type="date" class="period-date-input" value="${adminCustomEnd}" onchange="adminCustomEnd=this.value;renderPage('admin-overview')">`:''}
+    </div>
+    <div class="filtros-mobile only-mobile">
+      <div class="filtro-campo largo"><label>Período</label><select onchange="setAdminPeriod(this.value)">${
+        adminPeriodBtns.concat([['custom','Personalizado']]).map(([k,l])=>`<option value="${k}"${adminPeriod===k?' selected':''}>${l}</option>`).join('')
+      }</select></div>
+      ${adminPeriod==='custom'?`<div class="filtro-campo"><label>De</label><input type="date" value="${adminCustomStart}" onchange="adminCustomStart=this.value;renderPage('admin-overview')"></div><div class="filtro-campo"><label>Até</label><input type="date" value="${adminCustomEnd}" onchange="adminCustomEnd=this.value;renderPage('admin-overview')"></div>`:''}
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
       ${[
