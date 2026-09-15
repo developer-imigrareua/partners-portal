@@ -367,7 +367,15 @@ app.post('/api/shortio/create-bulk', async (req, res) => {
 
   const results = [];
   for (const form of activeForms) {
-    const originalUrl = buildUTMUrl(form.url, hsId, affiliateType);
+    // As linhas vindas do Supabase trazem base_url; o array local traz url.
+    // Usar só form.url gerava "https://undefined?utm_..." em todo link criado
+    // desde 85011f2 (17/06/2026). A normalização existia só no frontend.
+    const baseUrl = form.url || form.base_url;
+    if (!baseUrl) {
+      results.push({ formId: form.id, label: form.label, ok: false, error: 'formulário sem base_url' });
+      continue;
+    }
+    const originalUrl = buildUTMUrl(baseUrl, hsId, affiliateType);
     const slug  = `${hsId}-${form.id}`;
     const title = `${affiliateName || hsId} — ${form.label}`;
     try {

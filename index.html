@@ -1511,11 +1511,19 @@ window.toggleAffAccordion=toggleAffAccordion;
 function matchLinkToForm(lk, hsId){
   const p=lk.path||'';
   const orig=lk.originalURL||'';
-  // match by canonical slug first, then by base URL in originalURL
-  return getLinkForms().find(f=>
-    p===`${hsId}-${f.id}` ||
-    (orig.includes(f.url) && orig.includes(`utm_affiliatename=${hsId}`))
-  );
+  const forms=getLinkForms();
+  // 1) O slug canônico é a fonte confiável e tem prioridade sobre qualquer
+  //    heurística de URL — antes o .find podia casar pela URL num formulário
+  //    anterior da lista e nunca chegar ao slug correto.
+  const porSlug=forms.find(f=>p===`${hsId}-${f.id}`);
+  if(porSlug) return porSlug;
+  // 2) Só então tenta pela URL base. Base vazia NUNCA casa: com f.url
+  //    undefined, orig.includes(undefined) virava includes("undefined") e
+  //    casava com os links quebrados que apontavam para https://undefined.
+  return forms.find(f=>{
+    const base=f.url||f.base_url;
+    return !!base && orig.includes(base) && orig.includes(`utm_affiliatename=${hsId}`);
+  });
 }
 
 async function loadAffLinksRow(affId, hsId){
@@ -1784,7 +1792,9 @@ async function renderAdminLinkForms(c){
   let forms=[];
   try{
     const r=await fetch('/api/link-forms');
-    if(r.ok){ forms=await r.json(); linkFormsCache=forms; }
+    // Sem normalizar base_url→url aqui, o cache global ficava com f.url
+    // undefined e contaminava matchLinkToForm em todo o portal.
+    if(r.ok){ forms=(await r.json()).map(f=>({...f,url:f.url||f.base_url})); linkFormsCache=forms; }
   }catch(e){}
   if(!forms.length) forms=AFF_LINK_FORMS;
 
@@ -1805,10 +1815,10 @@ async function renderAdminLinkForms(c){
               <td style="font-size:20px;text-align:center">${f.icon||'🔗'}</td>
               <td><strong style="font-size:13px">${esc(f.label)}</strong><div style="font-size:11px;color:var(--s400)">${esc(f.id)}</div></td>
               <td><span class="tag ${(f.platform||'').toLowerCase()==='typeform'?'tag-purple':'tag-blue'}" style="font-size:10px">${esc(f.platform||'HubSpot')}</span></td>
-              <td style="max-width:220px;font-size:11px;color:var(--s500);word-break:break-all">${esc(f.url||'')}</td>
+              <td style="max-width:220px;font-size:11px;color:var(--s500);word-break:break-all">${esc(f.url||f.base_url||'—')}</td>
               <td>${f.active===false?'<span style="font-size:11px;font-weight:600;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:99px">Inativo</span>':'<span style="font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;padding:2px 8px;border-radius:99px">Ativo</span>'}</td>
               <td style="text-align:right;white-space:nowrap">
-                <button class="btn btn-ghost btn-xs" onclick="openLinkFormModal(${JSON.stringify(JSON.stringify(f))})">✏️ Editar</button>
+                <button class="btn btn-ghost btn-xs" onclick="editarFormulario('${f.id}')">✏️ Editar</button>
                 <button class="btn btn-ghost btn-xs" style="color:${f.active===false?'#16a34a':'#dc2626'}" onclick="toggleLinkFormActive('${f.id||f._id||f.rowid}',${f.active===false})">${f.active===false?'✅ Ativar':'🚫 Desativar'}</button>
               </td>
             </tr>`).join('')}
@@ -1817,6 +1827,15 @@ async function renderAdminLinkForms(c){
     </div>`;
 }
 window.renderAdminLinkForms=renderAdminLinkForms;
+
+// O JSON do formulário era embutido no atributo onclick; a primeira aspa
+// dupla interna encerrava o atributo e o clique não fazia nada. Agora passa
+// só o id e a busca acontece no cache.
+window.editarFormulario=function(id){
+  const f=getLinkForms().find(x=>String(x.id)===String(id));
+  if(!f){ toast('Formulário não encontrado. Atualize a página.'); return; }
+  openLinkFormModal(JSON.stringify(f));
+};
 
 function openLinkFormModal(jsonStr){
   document.getElementById('lfm-modal')?.remove();
