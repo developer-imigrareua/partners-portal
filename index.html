@@ -201,7 +201,8 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .filtro-campo{display:flex;flex-direction:column;gap:5px;min-width:0}
 .filtro-campo label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400)}
 .filtro-campo select{width:100%;border:1.5px solid var(--s200);border-radius:10px;padding:10px 30px 10px 11px;font-size:13px;font-weight:500;font-family:'Poppins',sans-serif;background:#fff;color:var(--s700);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
-.filtro-campo select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,117,188,.12)}
+.filtro-campo input{width:100%;border:1.5px solid var(--s200);border-radius:10px;padding:10px 11px;font-size:13px;font-weight:500;font-family:'Poppins',sans-serif;background:#fff;color:var(--s700)}
+.filtro-campo select:focus,.filtro-campo input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,117,188,.12)}
 
 /* ── Cards de link (Meus Links no mobile) ── */
 .link-cards{display:flex;flex-direction:column;gap:12px}
@@ -289,6 +290,8 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   .filtros-mobile .filtro-campo.largo{grid-column:1/-1}
   .period-btns{min-width:0}
   .search-input{height:44px}
+  /* < 16px faz o iOS dar zoom ao focar o campo; 16px evita o pulo */
+  .search-input,.filtro-campo select,.filtro-campo input,.form-input{font-size:16px}
 
   .modal-overlay{padding:12px}
   .modal{padding:20px;max-height:92dvh}
@@ -1380,11 +1383,21 @@ function buildEvolutionBuckets(leads){
   return{labels:keys.map(k=>{const[y,m]=k.split('-');return new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}),data:keys.map(k=>buckets[k])};
 }
 function renderPeriodBar(activePage,extraHtml='',camposMobile=''){
-  return`<div class="period-bar"><div class="period-btns only-desktop">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}</div>${extraHtml}</div>
+  const custom = affPeriod==='custom';
+  // As datas ficavam dentro de .period-btns, que é only-desktop — no mobile
+  // escolher "Personalizado" não mostrava nada. Agora saem de lá.
+  const datasDesktop = custom
+    ? `<span class="only-desktop" style="display:inline-flex;align-items:center;gap:6px"><input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')"></span>`
+    : '';
+  const datasMobile = custom
+    ? `<div class="filtro-campo"><label>De</label><input type="date" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"></div>`
+    + `<div class="filtro-campo"><label>Até</label><input type="date" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')"></div>`
+    : '';
+  return`<div class="period-bar"><div class="period-btns only-desktop">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${custom?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button></div>${datasDesktop}${extraHtml}</div>
   <div class="filtros-mobile only-mobile">
-    <div class="filtro-campo${camposMobile?'':' largo'}"><label>Período</label><select onchange="setPeriod(this.value,'${activePage}')">${
+    <div class="filtro-campo${camposMobile&&!custom?'':' largo'}"><label>Período</label><select onchange="setPeriod(this.value,'${activePage}')">${
       PERIODS.concat([['custom','Personalizado']]).map(([k,l])=>`<option value="${k}"${affPeriod===k?' selected':''}>${l}</option>`).join('')
-    }</select></div>${camposMobile}</div>`;
+    }</select></div>${datasMobile}${camposMobile}</div>`;
 }
 const STAGE_COLORS={'Lead Recebido':'#64748b','Em Atendimento':'#3b82f6','Reunião Agendada':'#8b5cf6','Oportunidade':'#f59e0b','Convertido':'#059669','Não Convertido':'#94a3b8'};
 function mapLifecycle(ls,disqDate){
