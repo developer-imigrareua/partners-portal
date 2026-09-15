@@ -196,10 +196,12 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .lead-card-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);margin-bottom:3px}
 .lead-card-val{font-size:13px;font-weight:600;color:var(--s700)}
 
-/* ── Barra de ordenação (substitui as colunas clicáveis no mobile) ── */
-.sort-bar{align-items:center;gap:8px;margin-bottom:14px}
-.sort-bar label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400);white-space:nowrap}
-.sort-bar select{flex:1;border:1.5px solid var(--s200);border-radius:10px;padding:9px 10px;font-size:13px;font-family:'Poppins',sans-serif;background:#fff;color:var(--s700)}
+/* ── Filtros em dropdown (mobile): substituem as faixas roláveis ── */
+.filtros-mobile{display:none}
+.filtro-campo{display:flex;flex-direction:column;gap:5px;min-width:0}
+.filtro-campo label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--s400)}
+.filtro-campo select{width:100%;border:1.5px solid var(--s200);border-radius:10px;padding:10px 30px 10px 11px;font-size:13px;font-weight:500;font-family:'Poppins',sans-serif;background:#fff;color:var(--s700);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.filtro-campo select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,117,188,.12)}
 
 /* ── Cards de link (Meus Links no mobile) ── */
 .link-cards{display:flex;flex-direction:column;gap:12px}
@@ -234,6 +236,8 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   #sidebar.open{transform:translateX(0)}
   #sb-backdrop.show{display:block}
   .sb-toggle{display:inline-flex}
+  /* afiliado navega pela tab bar; o ☰ só faz sentido para o admin (7 páginas) */
+  .sem-gaveta .sb-toggle{display:none!important}
 
   #main-area{width:100%;min-width:0}
   .topbar{padding:10px 14px;gap:10px;justify-content:flex-start}
@@ -267,17 +271,23 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   /* Superdesign: cards no lugar de tabela */
   .only-desktop{display:none!important}
   .only-mobile{display:block}
-  .sort-bar{display:flex}
+  /* vem DEPOIS do .only-mobile de propósito: aquele display:block anulava
+     o flex e, sem flex, o gap entre os cards não valia nada */
+  .lead-cards,.link-cards{display:flex;flex-direction:column;gap:14px}
   #tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;height:62px;background:#fff;border-top:1px solid var(--s200);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-  .content{padding-bottom:86px}
+  .content{padding-bottom:92px}
+  .lead-cards,.link-cards{padding-bottom:4px}
+  .aviso-utm{margin-bottom:8px}
   /* o painel some no mobile: os cards ficam sobre o fundo da página */
   #pipeline-table-wrap,#aff-links-panel{background:none;border:none;box-shadow:none;overflow:visible}
   #pipeline-table-wrap>.panel-bd,#aff-links-panel>.panel-bd{padding:0}
   /* faixas de filtro rolam na horizontal em vez de quebrar em 4 linhas */
   .period-bar{flex-direction:column;align-items:stretch;gap:12px}
-  .period-btns,.pipeline-filters{display:flex;flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;padding-bottom:4px}
-  .period-btns::-webkit-scrollbar,.pipeline-filters::-webkit-scrollbar{display:none}
-  .period-btns>*,.pipeline-filters>*{flex-shrink:0}
+  /* As faixas de pills davam rolagem lateral escondida — e, sendo item flex
+     com min-width:auto, empurravam a página inteira. No mobile viram dropdown. */
+  .filtros-mobile{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .filtros-mobile .filtro-campo.largo{grid-column:1/-1}
+  .period-btns{min-width:0}
   .search-input{height:44px}
 
   .modal-overlay{padding:12px}
@@ -286,7 +296,7 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 }
 
 @media (max-width:480px){
-  .content{padding:12px 10px}
+  .content{padding:12px 10px 92px}   /* o 3o valor preserva o espaço da tab bar */
   .kpi-value{font-size:20px}
   .page-title{font-size:18px}
   .banner-rate{font-size:26px}
@@ -860,8 +870,10 @@ function buildSidebar(){
 function buildTabbar(){
   const tb=document.getElementById('tabbar');
   if(!tb) return;
-  if(!currentUser||currentUser.role!=='affiliate'){ tb.innerHTML=''; tb.style.display='none'; return; }
+  const shell=document.getElementById('app-shell');
+  if(!currentUser||currentUser.role!=='affiliate'){ tb.innerHTML=''; tb.style.display='none'; shell?.classList.remove('sem-gaveta'); return; }
   tb.style.display='';
+  document.getElementById('app-shell')?.classList.add('sem-gaveta');
   tb.innerHTML=[['aff-dashboard','📊','Painel'],['aff-pipeline','🎯','Leads'],
                 ['aff-links','🔗','Links'],['aff-profile','👤','Perfil']]
     .map(([p,ic,lb])=>`<button class="tab-item" data-page="${p}" onclick="navigate('${p}')"><span class="tab-ico">${ic}</span><span class="tab-lbl">${lb}</span></button>`).join('');
@@ -1367,8 +1379,12 @@ function buildEvolutionBuckets(leads){
   const keys=Object.keys(buckets).sort();
   return{labels:keys.map(k=>{const[y,m]=k.split('-');return new Date(+y,+m-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});}),data:keys.map(k=>buckets[k])};
 }
-function renderPeriodBar(activePage,extraHtml=''){
-  return`<div class="period-bar"><div class="period-btns">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}</div>${extraHtml}</div>`;
+function renderPeriodBar(activePage,extraHtml='',camposMobile=''){
+  return`<div class="period-bar"><div class="period-btns only-desktop">${PERIODS.map(([k,l])=>`<button class="period-btn${affPeriod===k?' active':''}" onclick="setPeriod('${k}','${activePage}')">${l}</button>`).join('')}<button class="period-btn${affPeriod==='custom'?' active':''}" onclick="setPeriod('custom','${activePage}')">Personalizado</button>${affPeriod==='custom'?`<input type="date" class="period-date-input" value="${affCustomStart}" onchange="setCustomDate('start',this.value,'${activePage}')"> <span style="color:var(--s400);font-size:12px">–</span> <input type="date" class="period-date-input" value="${affCustomEnd}" onchange="setCustomDate('end',this.value,'${activePage}')">`:``}</div>${extraHtml}</div>
+  <div class="filtros-mobile only-mobile">
+    <div class="filtro-campo${camposMobile?'':' largo'}"><label>Período</label><select onchange="setPeriod(this.value,'${activePage}')">${
+      PERIODS.concat([['custom','Personalizado']]).map(([k,l])=>`<option value="${k}"${affPeriod===k?' selected':''}>${l}</option>`).join('')
+    }</select></div>${camposMobile}</div>`;
 }
 const STAGE_COLORS={'Lead Recebido':'#64748b','Em Atendimento':'#3b82f6','Reunião Agendada':'#8b5cf6','Oportunidade':'#f59e0b','Convertido':'#059669','Não Convertido':'#94a3b8'};
 function mapLifecycle(ls,disqDate){
@@ -2100,13 +2116,6 @@ function renderAffPipeline(c){
   }
   function sortIcon(col){if(affSortCol!==col) return`<span style="color:var(--s300);margin-left:3px">⇅</span>`;return affSortDir==='asc'?`<span style="color:var(--blue);margin-left:3px">↑</span>`:`<span style="color:var(--blue);margin-left:3px">↓</span>`;}
   function thSort(col,label,extra=''){return`<th style="cursor:pointer;user-select:none${extra?';'+extra:''}" onclick="setPipelineSort('${col}')">${label}${sortIcon(col)}</th>`;}
-  function sortBarHtml(){
-    const opcoes=[['createdAt:desc','Mais recentes'],['createdAt:asc','Mais antigos'],
-                  ['lastUpdate:desc','Movimentação recente'],['name:asc','Nome (A–Z)'],['stage:asc','Etapa']];
-    const atual=`${affSortCol}:${affSortDir}`;
-    return`<div class="sort-bar only-mobile"><label>Ordenar</label><select onchange="setPipelineSortValue(this.value)">${
-      opcoes.map(([v,t])=>`<option value="${v}"${v===atual?' selected':''}>${t}</option>`).join('')}</select></div>`;
-  }
   function renderTable(){
     const leads=getFiltered();
     if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
@@ -2147,11 +2156,18 @@ function renderAffPipeline(c){
   const periodLeads=filterByPeriod(allLeads,affPeriod);
   const counts={'Todos':periodLeads.length};
   periodLeads.forEach(l=>{counts[l.stage]=(counts[l.stage]||0)+1;});
+  const camposMobile=
+    `<div class="filtro-campo"><label>Etapa</label><select onchange="setStageFilter(this.value)">${
+      ['Todos',...STAGES,'Não Convertido'].map(st=>`<option value="${st}"${affStageFilter===st?' selected':''}>${st} (${counts[st]||0})</option>`).join('')
+    }</select></div>`
+  + `<div class="filtro-campo largo"><label>Ordenar</label><select onchange="setPipelineSortValue(this.value)">${
+      [['createdAt:desc','Mais recentes'],['createdAt:asc','Mais antigos'],['lastUpdate:desc','Movimentação recente'],['name:asc','Nome (A–Z)'],['stage:asc','Etapa']]
+        .map(([v,t])=>`<option value="${v}"${v===`${affSortCol}:${affSortDir}`?' selected':''}>${t}</option>`).join('')
+    }</select></div>`;
   const searchHtml=`<div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="pipeline-search" placeholder="Buscar por nome ou ID…" value="${esc(affSearch)}" oninput="setPipelineSearch(this.value)"></div>`;
   c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período · Modelo: ${model.name}</div></div>
-  ${renderPeriodBar('aff-pipeline',searchHtml)}
-  <div class="pipeline-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
-  ${sortBarHtml()}
+  ${renderPeriodBar('aff-pipeline',searchHtml,camposMobile)}
+  <div class="pipeline-filters only-desktop" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
   <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>`;
   window._pipelineRenderTable=renderTable;
 }
@@ -2331,7 +2347,7 @@ function renderAffProfile(c){
       <div class="form-group"><label class="form-label">Canal de divulgação</label>
         <select class="form-input" id="prof-channel">${['Instagram / TikTok / YouTube','Blog ou site','Indicação direta (network pessoal)','WhatsApp / Grupos','LinkedIn','Outro'].map(ch=>`<option${u.channel===ch?' selected':''}>${ch}</option>`).join('')}</select>
       </div>
-      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px"><button class="btn btn-primary" onclick="saveProfile()">Salvar alterações</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="doLogout()">↩ Sair da conta</button><button class="btn btn-primary" onclick="saveProfile()">Salvar alterações</button></div>
     </div></div>
   </div>`;
 }
