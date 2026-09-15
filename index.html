@@ -438,17 +438,110 @@ const hasPolicy     = u => !!(u && u.bonifModelId) && modelsCache.some(m => m.id
 const getAffiliates = () => usersCache.filter(u => u.role === 'affiliate');
 const getPending    = () => getAffiliates().filter(u => u.status === 'pending');
 
-// Fire-and-forget upsert – keeps cache in sync with Supabase
+// Espelho do que já está gravado no banco: id → JSON da row.
+// Serve para descobrir QUAIS linhas mudaram e gravar somente essas.
+let usersBaseline = new Map();
+
+function snapshotUsers(users) {
+  usersBaseline = new Map((users || [])
+    .filter(u => u && u.id)
+    .map(u => [u.id, JSON.stringify(userToRow(u))]));
+}
+// Marca uma linha como já persistida (usada após insert/refresh pontual).
+function markUserSaved(u) {
+  if (u && u.id) usersBaseline.set(u.id, JSON.stringify(userToRow(u)));
+}
+// Campos que diferem da baseline. Nunca inclui 'id' (vai no .eq, não no payload).
+function diffUserRow(baseStr, nextRow) {
+  const base = baseStr ? JSON.parse(baseStr) : null;
+  const patch = {};
+  for (const k of Object.keys(nextRow)) {
+    if (k === 'id') continue;
+    if (JSON.stringify(nextRow[k]) !== JSON.stringify(base ? base[k] : undefined)) patch[k] = nextRow[k];
+  }
+  return patch;
+}
+
+// Persiste apenas as linhas efetivamente alteradas, uma a uma, via
+// UPDATE ... WHERE id = <id>. Antes isto era um upsert da tabela inteira,
+// o que reescrevia todos os usuários a cada alteração (last-write-wins
+// global) e era pré-requisito para ligar RLS sem quebrar o portal.
+// Assinatura preservada de propósito: os call sites seguem passando o array.
 function saveUsers(users) {
   usersCache = users;
-  sb.from('users').upsert(users.map(userToRow), { onConflict: 'id' })
-    .then(() => {}).catch(e => console.error('saveUsers:', e));
+  const pending = [];
+  for (const u of users || []) {
+    if (!u || !u.id) continue;
+    const nextRow = userToRow(u);
+    const nextStr = JSON.stringify(nextRow);
+    if (usersBaseline.get(u.id) === nextStr) continue;          // nada mudou
+    const patch = diffUserRow(usersBaseline.get(u.id), nextRow);
+    if (!Object.keys(patch).length) continue;
+    pending.push({ id: u.id, patch, nextStr });
+  }
+  if (!pending.length) return Promise.resolve({ saved: 0, failed: 0 });
+  return (async () => {
+    let saved = 0, failed = 0;
+    for (const job of pending) {
+      try {
+        const { error } = await sb.from('users').update(job.patch).eq('id', job.id);
+        if (error) throw error;
+        usersBaseline.set(job.id, job.nextStr);                  // baseline só avança em sucesso
+        saved++;
+      } catch (e) {
+        console.error('saveUsers:', job.id, Object.keys(job.patch).join(','), e);
+        failed++;
+      }
+    }
+    // Antes a falha era silenciosa: o usuário via "salvo" e nada era gravado.
+    if (failed) toast(`⚠️ Falha ao salvar ${failed} registro(s). Recarregue a página e tente de novo.`);
+    return { saved, failed };
+  })();
 }
+// Espelho do que já está gravado em bonif_models: id → JSON da row.
+let modelsBaseline = new Map();
+
+function modelToRow(m) {
+  return { id: m.id, name: m.name, description: m.description || null, tiers: m.products || {} };
+}
+function snapshotModels(models) {
+  modelsBaseline = new Map((models || [])
+    .filter(m => m && m.id)
+    .map(m => [m.id, JSON.stringify(modelToRow(m))]));
+}
+
+// Grava só os modelos alterados, um a um. Continua sendo upsert (e não
+// update) porque modelo novo precisa ser inserido, e o seed de
+// standard/premium no loadData depende disso.
+// Atenção: remover um modelo do array NÃO apaga a linha do banco — esse
+// comportamento é o mesmo de antes e está documentado como bug pendente.
 function saveModels(models) {
   modelsCache = models;
-  sb.from('bonif_models')
-    .upsert(models.map(m => ({ id: m.id, name: m.name, description: m.description || null, tiers: m.products || {} })), { onConflict: 'id' })
-    .then(() => {}).catch(e => console.error('saveModels:', e));
+  const pending = [];
+  for (const m of models || []) {
+    if (!m || !m.id) continue;
+    const row = modelToRow(m);
+    const str = JSON.stringify(row);
+    if (modelsBaseline.get(m.id) === str) continue;          // nada mudou
+    pending.push({ id: m.id, row, str });
+  }
+  if (!pending.length) return Promise.resolve({ saved: 0, failed: 0 });
+  return (async () => {
+    let saved = 0, failed = 0;
+    for (const job of pending) {
+      try {
+        const { error } = await sb.from('bonif_models').upsert(job.row, { onConflict: 'id' });
+        if (error) throw error;
+        modelsBaseline.set(job.id, job.str);                 // baseline só avança em sucesso
+        saved++;
+      } catch (e) {
+        console.error('saveModels:', job.id, e);
+        failed++;
+      }
+    }
+    if (failed) toast(`⚠️ Falha ao salvar ${failed} modelo(s). Recarregue a página e tente de novo.`);
+    return { saved, failed };
+  })();
 }
 
 function getLinkForms(){ return linkFormsCache.length ? linkFormsCache : AFF_LINK_FORMS; }
@@ -459,7 +552,10 @@ async function loadData() {
     sb.from('bonif_models').select('*'),
   ]);
   usersCache = (users || []).map(mapUser);
-  modelsCache = (models || []).length ? models.map(mapModel) : [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
+  snapshotUsers(usersCache);
+  const dbModels = (models || []).map(mapModel);
+  modelsCache = dbModels.length ? dbModels : [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
+  snapshotModels(dbModels);   // baseline = o que realmente veio do banco
   // seed default models if missing
   if (!modelsCache.find(m => m.id === 'standard')) {
     modelsCache = [DEFAULT_BONIF_MODEL, PREMIUM_BONIF_MODEL];
@@ -586,6 +682,7 @@ async function doRegister() {
     if (ie) { err.textContent='Erro ao criar perfil. Tente novamente.'; err.style.display='block'; return; }
     currentUser = mapUser(inserted);
     usersCache.push(currentUser);
+    markUserSaved(currentUser);
     enterAuth('v-pending');
   } finally {
     if (btn) { btn.disabled=false; btn.textContent='Enviar solicitação'; }
