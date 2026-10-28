@@ -2358,7 +2358,7 @@ async function reloadAffOwnLinks(){
       // Mesmo critério do admin (loadAffLinksRow): vale o PRIMEIRO link que casa
       // com o formulário. Antes o filtro rodava antes do dedupe, então com dois
       // links no mesmo formulário o admin ocultava um e o afiliado via o outro.
-      if(byId[form.id]) return;
+      if(form.id in byId) return;
       const slug=lk.path||(hsId+'-'+form.id);
       const state=cfg[slug]||{};
       byId[form.id]=(state.deleted||state.hidden)?null:{shortUrl:lk.shortURL||('https://to.imigrareua.com/'+lk.path)};
@@ -2389,7 +2389,9 @@ function renderAffLinksList(){
   }
 
   const q=_affLinksBusca.trim().toLowerCase();
-  const forms=formsParaAfiliado(currentUser).filter(f=>!q
+  // Só aparece o que está ativo: formulário sem link, oculto ou removido pelo
+  // admin some da lista, em vez de virar linha "ainda não disponível".
+  const forms=formsParaAfiliado(currentUser).filter(f=>!!byId[f.id]).filter(f=>!q
     ||(f.label||'').toLowerCase().includes(q)
     ||(f.platform||'').toLowerCase().includes(q));
 
