@@ -481,6 +481,18 @@ app.patch('/api/shortio/update', async (req, res) => {
   }
 });
 
+// Fila por afiliado: a atualização é ler → alterar → gravar o JSON inteiro.
+// Dois cliques seguidos do admin (ocultar vários links) rodavam em paralelo,
+// liam a mesma config e o último PATCH apagava a alteração do primeiro.
+const linksConfigFila = new Map();
+function naFila(userId, tarefa) {
+  const anterior = linksConfigFila.get(userId) || Promise.resolve();
+  const atual = anterior.catch(() => {}).then(tarefa);
+  linksConfigFila.set(userId, atual);
+  atual.finally(() => { if (linksConfigFila.get(userId) === atual) linksConfigFila.delete(userId); }).catch(() => {});
+  return atual;
+}
+
 // Update links_config for an affiliate (hide/delete a link from their view)
 app.patch('/api/affiliate/:userId/links-config', async (req, res) => {
   const { userId } = req.params;
@@ -492,12 +504,14 @@ app.patch('/api/affiliate/:userId/links-config', async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
 
   try {
+    const current = await naFila(userId, async () => {
     // fetch current links_config
     const getRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=links_config`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     });
     const rows = await getRes.json();
-    const current = rows?.[0]?.links_config || {};
+    if (!getRes.ok || !rows?.length) throw new Error(`Afiliado não encontrado (${getRes.status})`);
+    const current = rows[0].links_config || {};
 
     // apply action
     if (action === 'hide')    current[slug] = { ...current[slug], hidden: true };
@@ -514,6 +528,8 @@ app.patch('/api/affiliate/:userId/links-config', async (req, res) => {
       body: JSON.stringify({ links_config: current }),
     });
     if (!patchRes.ok) throw new Error(`Supabase ${patchRes.status}`);
+    return current;
+    });
     res.json({ ok: true, links_config: current });
   } catch (err) {
     console.error('links-config error:', err.message);

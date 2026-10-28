@@ -2344,16 +2344,26 @@ async function reloadAffOwnLinks(){
     const data=await r.json();
     if(data.error) throw new Error(data.error);
     const items=Array.isArray(data.links)?data.links:Array.isArray(data)?data:[];
+    // currentUser.linksConfig vem do login e fica velho: o que o admin oculta
+    // depois só valeria no próximo login. Relê do banco a cada carga.
+    try{
+      const {data:row,error}=await sb.from('users').select('links_config').eq('id',currentUser.id).single();
+      if(!error&&row) currentUser.linksConfig=row.links_config||{};
+    }catch(e){ /* sem rede para o banco: usa o que já tem */ }
     const cfg=currentUser.linksConfig||{};
     const byId={};
     items.forEach(lk=>{
       const form=matchLinkToForm(lk,hsId);
       if(!form) return;
+      // Mesmo critério do admin (loadAffLinksRow): vale o PRIMEIRO link que casa
+      // com o formulário. Antes o filtro rodava antes do dedupe, então com dois
+      // links no mesmo formulário o admin ocultava um e o afiliado via o outro.
+      if(byId[form.id]) return;
       const slug=lk.path||(hsId+'-'+form.id);
       const state=cfg[slug]||{};
-      if(state.deleted||state.hidden) return;   // admin ocultou ou removeu
-      if(!byId[form.id]) byId[form.id]={shortUrl:lk.shortURL||('https://to.imigrareua.com/'+lk.path)};
+      byId[form.id]=(state.deleted||state.hidden)?null:{shortUrl:lk.shortURL||('https://to.imigrareua.com/'+lk.path)};
     });
+    Object.keys(byId).forEach(k=>{ if(!byId[k]) delete byId[k]; });   // admin ocultou ou removeu
     _affLinksData={byId,hsId};
     renderAffLinksList();
   }catch(e){
