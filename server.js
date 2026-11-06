@@ -30,100 +30,161 @@ function obfuscateName(n) {
   return rest ? `${parts[0]} ${rest}` : `${parts[0]}**`;
 }
 
-// Fetches and enriches contacts for a given affiliate hsId
-async function fetchHubSpotContacts(hsId) {
-  const HUBSPOT_KEY = process.env.HUBSPOT_API_KEY;
+// ── Base de leads do parceiro ────────────────────────────
+//
+// O portal mostra a base de LEADS (objeto Lead do HubSpot), não de contatos.
+// Um lead pertence ao parceiro quando last_utm_affiliatename = hsId.
+// Cada lead traz o contato associado só para nome, dono e as datas em que o
+// contato entrou em cada estágio do lifecycle (usadas na bonificação).
 
-  // 1. fetch contacts
-  const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filterGroups: [{ filters: [{ propertyName: 'referred_by', operator: 'EQ', value: hsId }] }],
-      properties: [
-        'firstname', 'lastname', 'lifecyclestage',
-        'hs_latest_disqualified_lead_date', 'createdate',
-        'hubspot_owner_id', 'notes_last_updated', 'next_meeting_time',
-      ],
-      limit: 200,
-    }),
+const HS_BASE = 'https://api.hubapi.com';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function hsRequest(path, { method = 'GET', body } = {}) {
+  const r = await fetch(HS_BASE + path, {
+    method,
+    headers: { Authorization: `Bearer ${process.env.HUBSPOT_API_KEY}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
   });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`HubSpot ${response.status}: ${text}`);
-  }
-  const data = await response.json();
-  const contacts = data.results || [];
+  if (!r.ok) throw new Error(`HubSpot ${r.status} em ${path}: ${await r.text()}`);
+  return r.json();
+}
 
-  // 2. fetch owners map
+const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+
+// Etapas do portal e a propriedade de data de entrada correspondente no contato.
+const STAGE_DATE_PROPS = [
+  ['Em Atendimento',   'hs_v2_date_entered_marketingqualifiedlead'],
+  ['Reunião Agendada', 'hs_v2_date_entered_salesqualifiedlead'],
+  ['Oportunidade',     'hs_v2_date_entered_opportunity'],
+  ['Convertido',       'hs_v2_date_entered_customer'],
+];
+
+// Regra: contato que já existia no CRM antes da indicação não conta.
+// O lead é elegível se a primeira origem do contato é o próprio parceiro, ou
+// se o contato foi criado no máximo JANELA_DIAS antes do lead (fluxo normal do
+// Visa Match / formulários, em que o contato nasce pouco antes do lead).
+const JANELA_DIAS = 7;
+function checkEligibility(hsId, leadCreatedAt, contact) {
+  const p = contact?.properties || {};
+  if (!contact) return { eligible: false, reason: 'Lead sem contato associado' };
+  if ((p.original_utm_affiliatename || '').toLowerCase() === hsId.toLowerCase()) return { eligible: true, reason: null };
+  const created = new Date(p.createdate), lead = new Date(leadCreatedAt);
+  if (!isNaN(created) && !isNaN(lead) && (lead - created) <= JANELA_DIAS * 864e5) return { eligible: true, reason: null };
+  return { eligible: false, reason: 'Contato já existia no CRM antes da indicação' };
+}
+
+async function fetchHubSpotLeads(hsId) {
+  // 1. leads do parceiro, paginado (o limite de 200 por página é da API)
+  const raw = [];
+  let after;
+  do {
+    const body = {
+      filterGroups: [{ filters: [{ propertyName: 'last_utm_affiliatename', operator: 'EQ', value: hsId }] }],
+      properties: ['hs_lead_name', 'hs_createdate', 'hs_pipeline_stage'],
+      sorts: [{ propertyName: 'hs_createdate', direction: 'ASCENDING' }],
+      limit: 200,
+    };
+    if (after) body.after = after;
+    const page = await hsRequest('/crm/v3/objects/leads/search', { method: 'POST', body });
+    raw.push(...(page.results || []));
+    after = page.paging?.next?.after;
+    if (after) await sleep(250); // search API: ~5 req/s
+  } while (after);
+
+  // 2. lead -> contato
+  const leadToContact = {};
+  for (const part of chunk(raw.map(l => ({ id: l.id })), 1000)) {
+    const r = await hsRequest('/crm/v4/associations/leads/contacts/batch/read', { method: 'POST', body: { inputs: part } });
+    (r.results || []).forEach(a => { if (a.to?.length) leadToContact[a.from.id] = String(a.to[0].toObjectId); });
+  }
+
+  // 3. contatos
+  const contactIds = [...new Set(Object.values(leadToContact))];
+  const contacts = {};
+  for (const part of chunk(contactIds, 100)) {
+    const r = await hsRequest('/crm/v3/objects/contacts/batch/read', {
+      method: 'POST',
+      body: {
+        inputs: part.map(id => ({ id })),
+        properties: ['firstname', 'lastname', 'lifecyclestage', 'createdate', 'original_utm_affiliatename',
+          'hs_latest_disqualified_lead_date', 'hubspot_owner_id', 'notes_last_updated', 'next_meeting_time',
+          ...STAGE_DATE_PROPS.map(([, prop]) => prop)],
+      },
+    });
+    (r.results || []).forEach(c => { contacts[c.id] = c; });
+  }
+
+  // 4. donos (contato e deal)
   let ownerMap = {};
   try {
-    const ownersRes = await fetch('https://api.hubapi.com/crm/v3/owners?limit=100', {
-      headers: { Authorization: `Bearer ${HUBSPOT_KEY}` },
+    const o = await hsRequest('/crm/v3/owners?limit=100');
+    (o.results || []).forEach(x => { ownerMap[x.id] = [x.firstName, x.lastName].filter(Boolean).join(' ') || x.email || String(x.id); });
+  } catch (e) { console.warn('HubSpot owners fetch error:', e.message); }
+
+  const dealOwnerMap = {};
+  try {
+    const contactToDeal = {};
+    for (const part of chunk(contactIds.map(id => ({ id })), 1000)) {
+      const r = await hsRequest('/crm/v4/associations/contacts/deals/batch/read', { method: 'POST', body: { inputs: part } });
+      (r.results || []).forEach(a => { if (a.to?.length) contactToDeal[a.from.id] = String(a.to[0].toObjectId); });
+    }
+    const dealIds = [...new Set(Object.values(contactToDeal))];
+    const dealOwner = {};
+    for (const part of chunk(dealIds, 100)) {
+      const r = await hsRequest('/crm/v3/objects/deals/batch/read', { method: 'POST', body: { inputs: part.map(id => ({ id })), properties: ['hubspot_owner_id'] } });
+      (r.results || []).forEach(d => { dealOwner[d.id] = d.properties?.hubspot_owner_id; });
+    }
+    Object.entries(contactToDeal).forEach(([cid, did]) => { const oid = dealOwner[did]; if (oid) dealOwnerMap[cid] = ownerMap[oid] || oid; });
+  } catch (e) { console.warn('HubSpot deal owners fetch error:', e.message); }
+
+  // 5. normaliza
+  return raw.map(l => {
+    const contactId = leadToContact[l.id] || null;
+    const ct = contactId ? contacts[contactId] : null;
+    const p = ct?.properties || {};
+    const createdAt = (l.properties?.hs_createdate || '').slice(0, 10);
+    // data em que o lead atingiu cada etapa (nunca antes da criação do lead)
+    const reached = { 'Lead Recebido': createdAt };
+    STAGE_DATE_PROPS.forEach(([stage, prop]) => {
+      const d = (p[prop] || '').slice(0, 10);
+      if (d) reached[stage] = d < createdAt ? createdAt : d;
     });
-    if (ownersRes.ok) {
-      const ownersData = await ownersRes.json();
-      (ownersData.results || []).forEach(o => {
-        ownerMap[o.id] = [o.firstName, o.lastName].filter(Boolean).join(' ') || o.email || String(o.id);
-      });
-    }
-  } catch (e) {
-    console.warn('HubSpot owners fetch error:', e.message);
-  }
+    const { eligible, reason } = checkEligibility(hsId, l.properties?.hs_createdate, ct);
+    const ls = (p.lifecyclestage || '').toLowerCase();
+    return {
+      id: l.id,
+      contactId,
+      name: obfuscateName((p.firstname || '') + (p.lastname ? ' ' + p.lastname : '')),
+      stage: mapLifecycle(ls, p.hs_latest_disqualified_lead_date),
+      reached,
+      eligible,
+      ineligibleReason: reason,
+      product: null,
+      createdAt,
+      contactCreatedAt: (p.createdate || '').slice(0, 10),
+      stageDate: (p.notes_last_updated || l.properties?.hs_createdate || '').slice(0, 10),
+      owner: p.hubspot_owner_id || null,
+      ownerName: ownerMap[p.hubspot_owner_id] || null,
+      dealOwnerName: dealOwnerMap[contactId] || null,
+      nextMeetingTime: p.next_meeting_time || null,
+    };
+  });
+}
 
-  // 3. fetch deal associations → deal owners
-  let dealOwnerMap = {};
-  if (contacts.length > 0) {
-    try {
-      const assocRes = await fetch('https://api.hubapi.com/crm/v4/associations/contacts/deals/batch/read', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: contacts.map(c => ({ id: c.id })) }),
-      });
-      if (assocRes.ok) {
-        const assocData = await assocRes.json();
-        const contactToDeal = {};
-        const dealIds = [];
-        (assocData.results || []).forEach(r => {
-          if (r.to && r.to.length) {
-            const dealId = String(r.to[0].toObjectId || r.to[0].id);
-            contactToDeal[r.from.id] = dealId;
-            if (!dealIds.includes(dealId)) dealIds.push(dealId);
-          }
-        });
-        if (dealIds.length) {
-          const dealsRes = await fetch('https://api.hubapi.com/crm/v3/objects/deals/batch/read', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${HUBSPOT_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ inputs: dealIds.map(id => ({ id })), properties: ['hubspot_owner_id'] }),
-          });
-          if (dealsRes.ok) {
-            const dealsData = await dealsRes.json();
-            const dealOwnerIdMap = {};
-            (dealsData.results || []).forEach(d => { dealOwnerIdMap[d.id] = d.properties?.hubspot_owner_id; });
-            Object.entries(contactToDeal).forEach(([contactId, dealId]) => {
-              const ownerId = dealOwnerIdMap[dealId];
-              if (ownerId) dealOwnerMap[contactId] = ownerMap[ownerId] || ownerId;
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('HubSpot deal associations fetch error:', e.message);
-    }
-  }
-
-  // 4. enrich contacts
+async function buildSyncData(hsId, source) {
+  const leads = await fetchHubSpotLeads(hsId);
+  const valid = leads.filter(l => l.eligible);
+  const converted = valid.filter(l => l.reached['Convertido']).length;
   return {
-    data,
-    enrichedResults: contacts.map(c => ({
-      ...c,
-      properties: {
-        ...c.properties,
-        ownerName: ownerMap[c.properties?.hubspot_owner_id] || null,
-        dealOwnerName: dealOwnerMap[c.id] || null,
-      },
-    })),
+    version: 2,
+    totalLeads: valid.length,
+    excludedLeads: leads.length - valid.length,
+    converted,
+    convRate: valid.length > 0 ? parseFloat(((converted / valid.length) * 100).toFixed(1)) : 0,
+    lastSync: new Date().toISOString().slice(0, 10),
+    source,
+    leads,
   };
 }
 
@@ -133,8 +194,7 @@ app.get('/api/hubspot/sync', async (req, res) => {
   if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
   if (!process.env.HUBSPOT_API_KEY) return res.status(500).json({ error: 'HubSpot não configurado no servidor' });
   try {
-    const { data, enrichedResults } = await fetchHubSpotContacts(hsId);
-    res.json({ ...data, results: enrichedResults });
+    res.json({ syncData: await buildSyncData(hsId, 'HubSpot CRM') });
   } catch (err) {
     console.error('HubSpot sync error:', err.message);
     res.status(500).json({ error: err.message });
@@ -151,7 +211,6 @@ async function runDailySync() {
   }
   console.log('[daily-sync] Starting daily affiliate sync...');
 
-  // Fetch active affiliates with a HubSpot ID
   let affiliates = [];
   try {
     const r = await fetch(
@@ -166,40 +225,9 @@ async function runDailySync() {
   }
 
   console.log(`[daily-sync] Syncing ${affiliates.length} affiliate(s)...`);
-  const today = new Date().toISOString().slice(0, 10);
-
   for (const aff of affiliates) {
     try {
-      const { enrichedResults: contacts } = await fetchHubSpotContacts(aff.hs_affiliate_id);
-      const total = contacts.length;
-      const converted = contacts.filter(c => {
-        const ls = (c.properties?.lifecyclestage || '').toLowerCase();
-        return ls === 'customer' || ls === 'evangelist';
-      }).length;
-      const leads = contacts.map(ct => {
-        const ls = (ct.properties?.lifecyclestage || '').toLowerCase();
-        const disq = ct.properties?.hs_latest_disqualified_lead_date;
-        return {
-          id: ct.id,
-          name: obfuscateName((ct.properties?.firstname || '') + (ct.properties?.lastname ? ' ' + ct.properties.lastname : '')),
-          stage: mapLifecycle(ls, disq),
-          product: null,
-          createdAt: (ct.properties?.createdate || '').slice(0, 10),
-          stageDate: (ct.properties?.notes_last_updated || ct.properties?.createdate || '').slice(0, 10),
-          owner: ct.properties?.hubspot_owner_id || null,
-          ownerName: ct.properties?.ownerName || null,
-          dealOwnerName: ct.properties?.dealOwnerName || null,
-          nextMeetingTime: ct.properties?.next_meeting_time || null,
-        };
-      });
-      const syncData = {
-        totalLeads: total,
-        converted,
-        convRate: total > 0 ? parseFloat(((converted / total) * 100).toFixed(1)) : 0,
-        lastSync: today,
-        source: 'HubSpot CRM (auto)',
-        leads,
-      };
+      const syncData = await buildSyncData(aff.hs_affiliate_id, 'HubSpot CRM (auto)');
       await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${aff.id}`, {
         method: 'PATCH',
         headers: {
@@ -210,7 +238,7 @@ async function runDailySync() {
         },
         body: JSON.stringify({ sync_data: syncData }),
       });
-      console.log(`[daily-sync] ✓ ${aff.hs_affiliate_id}: ${total} leads`);
+      console.log(`[daily-sync] ✓ ${aff.hs_affiliate_id}: ${syncData.totalLeads} leads válidos (${syncData.excludedLeads} fora da regra)`);
     } catch (e) {
       console.error(`[daily-sync] ✗ ${aff.hs_affiliate_id}:`, e.message);
     }

@@ -6,6 +6,45 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.2.0] — 2026-11-06
+
+O portal passa a mostrar a **base de leads** do parceiro, e não mais contatos,
+com a bonificação calculada pela etapa atingida em cada mês. Exige que o token
+do HubSpot tenha o escopo `crm.objects.leads.read`.
+
+### Corrigido
+
+- **Fonte dos números:** a sincronização buscava contatos por `referred_by`. Agora
+  busca objetos Lead por `last_utm_affiliatename`, que é o critério de pagamento
+  do Partner Program.
+- **Corte em 200:** a busca no HubSpot não paginava. Parceiros com mais de 200
+  registros viam um recorte aleatório. Agora pagina até o fim.
+- **Colunas MQL e SQL deslocadas:** a coluna MQL contava quem estava em Reunião
+  Agendada ou além, e a SQL quem estava em Oportunidade ou além. Agora contam os
+  leads que atingiram Em Atendimento e Reunião Agendada no período.
+- **Bonificação pela etapa atual:** um lead desqualificado depois de virar MQL
+  voltava a valer só a primeira etapa, e o valor mudava conforme o estágio de
+  hoje. Agora cada etapa vale no mês em que foi atingida (data de entrada no
+  lifecycle do contato), e um lead que avança num mês seguinte gera só o
+  incremento naquele mês.
+- **Contato pré-existente:** leads de contatos que já existiam no CRM antes da
+  indicação não contam. Regra: conta se a primeira origem do contato
+  (`original_utm_affiliatename`) é o parceiro, ou se o contato foi criado até 7
+  dias antes do lead. Os leads fora da regra ficam no cache com
+  `eligible: false` e o motivo, mas não aparecem nem somam.
+- **Modelo vazio:** parceiro sem modelo atribuído aparecia com "—" e o cálculo
+  usava o Padrão sem avisar. A tabela agora mostra "Padrão (automático)".
+
+### Alterado
+
+- `/api/hubspot/sync` devolve `{ syncData }` já normalizado pelo servidor. O
+  sync manual e o diário usam o mesmo código (antes a lógica estava duplicada no
+  `index.html`).
+- Cache antigo (`sync_data` sem `version: 2`) continua sendo lido com a regra
+  anterior até a próxima sincronização.
+
+---
+
 ## [1.1.0] — 2026-09-15
 
 Rodada de correções de segurança, suporte a celular e conserto dos links de

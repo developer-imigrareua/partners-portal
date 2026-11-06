@@ -1036,7 +1036,11 @@ function filterAdminPeriod(leads){
     return true;
   });
 }
-function getAffLeads(a){ return a.syncData?.leads??[]; }
+// Base de leads válida do parceiro: só leads elegíveis (regra do contato
+// pré-existente aplicada no servidor). Caches antigos sem o campo continuam
+// aparecendo até a próxima sincronização.
+function validLeads(list){ return (list||[]).filter(l=>l.eligible!==false); }
+function getAffLeads(a){ return validLeads(a.syncData?.leads); }
 
 function renderAdminOverview(c){
   setTopbar('Visão Geral','Painel analítico — rede de afiliados ImigrarEUA');
@@ -1048,12 +1052,15 @@ function renderAdminOverview(c){
     const model=getModels().find(m=>m.id===a.bonifModelId)||DEFAULT_BONIF_MODEL;
     const allLeads=getAffLeads(a);
     const leads=filterAdminPeriod(allLeads);
-    const converted=leads.filter(l=>l.stage==='Convertido').length;
+    const{start:pS,end:pE}=getAdminDateRange();
+    const hit=st=>allLeads.filter(l=>reachedInPeriod(l,st,pS,pE)).length;
+    const converted=hit('Convertido');
     const inProg=leads.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
-    const bonif=leads.reduce((s,l)=>s+calcLeadBonif(l,model),0);
-    const bonifConv=leads.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
-    const mql=leads.filter(l=>['Reunião Agendada','Oportunidade','Convertido'].includes(l.stage)).length;
-    const sql=leads.filter(l=>['Oportunidade','Convertido'].includes(l.stage)).length;
+    // Bonificação do período: inclui leads de meses anteriores que avançaram agora.
+    const bonif=allLeads.reduce((s,l)=>s+calcLeadBonifPeriod(l,model,pS,pE),0);
+    const bonifConv=allLeads.filter(l=>reachedInPeriod(l,'Convertido',pS,pE)).reduce((s,l)=>s+calcLeadBonifPeriod(l,model,pS,pE),0);
+    const mql=hit('Em Atendimento');
+    const sql=hit('Reunião Agendada');
     const rate=leads.length>0?((converted/leads.length)*100).toFixed(1):'0.0';
     return{a,leads,converted,mql,sql,inProg,bonif,bonifConv,rate:parseFloat(rate)};
   }).sort((a,b)=>b.leads.length-a.leads.length);
@@ -1115,7 +1122,7 @@ function renderAdminOverview(c){
           const model=getModels().find(m=>m.id===a.bonifModelId);
           const barW=affMetrics[0].leads.length>0?Math.round(leads.length/affMetrics[0].leads.length*100):0;
           return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><div><div style="font-weight:600;font-size:13px">${a.name}</div><div style="height:4px;background:var(--s100);border-radius:2px;margin-top:4px;width:80px"><div style="height:100%;width:${barW}%;background:#1B75BC;border-radius:2px"></div></div></div></div></td>
-          <td><span class="tag tag-blue" style="font-size:10px">${model?.name||'—'}</span></td>
+          <td><span class="tag tag-blue" style="font-size:10px" title="${model?'':'Sem modelo atribuído: o cálculo usa o modelo Padrão'}">${model?.name||'Padrão (automático)'}</span></td>
           <td style="text-align:right;font-weight:600">${leads.length}</td>
           <td style="text-align:right;color:#7c3aed;font-weight:600">${mql||'—'}</td>
           <td style="text-align:right;color:#1B75BC;font-weight:600">${sql||'—'}</td>
@@ -1263,17 +1270,9 @@ async function syncHubSpot(affId){
     if(!res.ok) throw new Error(`Erro ${res.status}`);
     const data=await res.json();
     if(data.error) throw new Error(data.error);
-    const contacts=data.results||[];
-    const total=contacts.length;
-    const converted=contacts.filter(ct=>{ const ls=(ct.properties?.lifecyclestage||'').toLowerCase(); return ls==='customer'||ls==='evangelist'; }).length;
-    const convRate=total>0?((converted/total)*100).toFixed(1):'0.0';
-    const today=new Date().toISOString().slice(0,10);
-    const leads=contacts.map(ct=>{
-      const ls=(ct.properties?.lifecyclestage||'').toLowerCase();
-      const disq=ct.properties?.hs_latest_disqualified_lead_date;
-      return{id:ct.id,name:obfuscateName((ct.properties?.firstname||'')+(ct.properties?.lastname?' '+ct.properties.lastname:'')),stage:mapLifecycle(ls,disq),product:null,createdAt:(ct.properties?.createdate||'').slice(0,10),stageDate:(ct.properties?.notes_last_updated||ct.properties?.createdate||'').slice(0,10),owner:ct.properties?.hubspot_owner_id||null,ownerName:ct.properties?.ownerName||null,dealOwnerName:ct.properties?.dealOwnerName||null,nextMeetingTime:ct.properties?.next_meeting_time||null};
-    });
-    const syncData={totalLeads:total,converted,convRate:parseFloat(convRate),lastSync:today,source:'HubSpot CRM',leads};
+    const syncData=data.syncData;
+    if(!syncData) throw new Error('Resposta do servidor sem syncData');
+    const total=syncData.totalLeads, converted=syncData.converted;
     const users=getUsers(); const u=users.find(x=>x.id===affId);
     if(u){ u.syncData=syncData; saveUsers(users); }
     if(resultEl) resultEl.innerHTML=renderSyncResult(syncData);
@@ -1373,7 +1372,40 @@ function deleteModel(id){
 // ═══════════════════════════════════════════════════════
 // BONIF CALC
 // ═══════════════════════════════════════════════════════
+const BONIF_FLOW=["Lead Recebido","Em Atendimento","Reunião Agendada","Oportunidade","Convertido"];
+function stageValues(lead,model){
+  const m=model||getModels().find(x=>x.id==='standard')||DEFAULT_BONIF_MODEL;
+  const prod=lead.product&&m.products?.[lead.product]?lead.product:'Padrão';
+  return m.products?.[prod]?.stages??m.products?.['Padrão']?.stages??{};
+}
+function toDay(d){ if(!d) return null; return typeof d==='string'?d.slice(0,10):d.toISOString().slice(0,10); }
+// Etapa atingida (lead.reached) ou, em cache antigo, a etapa atual.
+function reachedStages(lead){
+  if(lead.reached) return lead.reached;
+  const eff=lead.stage==="Não Convertido"?"Lead Recebido":lead.stage;
+  const idx=BONIF_FLOW.indexOf(eff); const out={};
+  BONIF_FLOW.slice(0,idx+1).forEach(s=>out[s]=lead.createdAt||null);
+  return out;
+}
+// Quanto o lead rendeu dentro do período: soma o incremento de cada etapa
+// atingida entre start e end. Sem período, soma tudo o que já foi atingido.
+function calcLeadBonifPeriod(lead,model,start,end){
+  if(lead.eligible===false) return 0;
+  const vals=stageValues(lead,model), r=reachedStages(lead);
+  const s=toDay(start), e=toDay(end);
+  return BONIF_FLOW.reduce((acc,st)=>{
+    const d=r[st]; if(!d) return acc;
+    if(s&&d<s) return acc; if(e&&d>e) return acc;
+    return acc+(Number(vals[st])||0);
+  },0);
+}
+function reachedInPeriod(lead,stage,start,end){
+  const d=reachedStages(lead)[stage]; if(!d) return false;
+  const s=toDay(start), e=toDay(end);
+  return !(s&&d<s) && !(e&&d>e);
+}
 function calcLeadBonif(lead,model){
+  if(lead.reached) return calcLeadBonifPeriod(lead,model,null,null);
   const m=model||getModels().find(x=>x.id==='standard')||DEFAULT_BONIF_MODEL;
   const prod=lead.product&&m.products?.[lead.product]?lead.product:'Padrão';
   const stages=m.products?.[prod]?.stages??m.products?.['Padrão']?.stages??{};
@@ -2161,7 +2193,7 @@ function renderAffDashboard(c){
   setTopbar('Dashboard',`Afiliado: ${u.email}`);
   const showBonif=hasPolicy(u);
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
-  const leads=u.syncData?.leads??null;
+  const leads=u.syncData?.leads?validLeads(u.syncData.leads):null;
   if(!leads){
     const defStages=model.products?.['Padrão']?.stages??{};
     let acc=0;
@@ -2178,7 +2210,8 @@ function renderAffDashboard(c){
   const notConv=filtered.filter(l=>l.stage==='Não Convertido').length;
   const inProgress=filtered.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
   const convRate=filtered.length>0?((converted/filtered.length)*100).toFixed(1):'0.0';
-  const commTotal=filtered.reduce((s,l)=>s+calcLeadBonif(l,model),0);
+  const{start:aS,end:aE}=getDateRange(affPeriod);
+  const commTotal=leads.reduce((s,l)=>s+calcLeadBonifPeriod(l,model,aS,aE),0);
   const commConv=filtered.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
   const commNC=filtered.filter(l=>l.stage==='Não Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
   const evo=buildEvolutionBuckets(filtered);
@@ -2218,7 +2251,7 @@ function renderAffPipeline(c){
   setTopbar('Pipeline de Leads','Todos os seus leads e estágios do funil');
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
   const showBonif=hasPolicy(u);
-  const allLeads=u.syncData?.leads??[];
+  const allLeads=validLeads(u.syncData?.leads);
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   function getFiltered(){
     let leads=filterByPeriod(allLeads,affPeriod);
