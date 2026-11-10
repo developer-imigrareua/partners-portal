@@ -2481,7 +2481,8 @@ async function renderDesempenho(c,userId){
   if(!c.isConnected) return;
   if(!desempenhoMes) desempenhoMes=d.mes;
   const $=d.mostraValores, R=d.resumo, M=mesCurto(d.mes), fimBR=fmtDate(d.fim).slice(0,5);
-  const opcoes=(d.meses.length?d.meses:[d.mes]).map(m=>`<option value="${m}"${m===d.mes?' selected':''}>${mesLabel(m)}${m===d.padrao?' (último fechado)':''}${m>d.padrao?' (parcial)':''}</option>`).join('');
+  const listaMeses=d.meses.includes(d.mes)?d.meses:[...d.meses,d.mes].sort().reverse();
+  const opcoes=listaMeses.map(m=>`<option value="${m}"${m===d.mes?' selected':''}>${mesLabel(m)}${m===d.padrao?' (último fechado)':''}${m>d.padrao?' (parcial)':''}</option>`).join('');
   const sel=`<div class="dsp-mes"><label>Mês</label><select onchange="desempenhoMes=this.value;renderPage('aff-desempenho')">${opcoes}</select></div>`;
 
   const hero=`<div class="dsp-hero">
