@@ -31,7 +31,16 @@ do HubSpot tenha o escopo `crm.objects.leads.read`.
   indicação não contam. Regra: conta se a primeira origem do contato
   (`original_utm_affiliatename`) é o parceiro, ou se o contato foi criado até 7
   dias antes do lead. Os leads fora da regra ficam no cache com
-  `eligible: false` e o motivo, mas não aparecem nem somam.
+  `eligible: false` e o motivo, fora da contagem e da bonificação.
+- **Leads que já eram da casa ficam visíveis, à parte** (pedido do comercial,
+  10/11/2026): o Pipeline do afiliado ganha o painel "Leads que já estavam na
+  nossa base", com data e desde quando o contato está no CRM; o Dashboard mostra
+  "+N já na base (não contam)"; a Visão Geral do admin mostra o mesmo número sob
+  a coluna Leads, com a lista ao clicar.
+- **Etapa pulada no CRM:** um lead que chega a SQL sem ter passado por MQL
+  rendia US$ 23 em vez de US$ 28. Pular etapa é erro de operação do CRM
+  (decisão do comercial, 10/11/2026), então as etapas anteriores sem data passam
+  a contar na data da etapa seguinte. Vale para qualquer etapa pulada.
 - **Modelo vazio:** parceiro sem modelo atribuído aparecia com "—" e o cálculo
   usava o Padrão sem avisar. A tabela agora mostra "Padrão (automático)".
 

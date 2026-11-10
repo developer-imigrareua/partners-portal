@@ -72,6 +72,24 @@ const M = new Function('global', helpers + base + '\nreturn { fetchHubSpotLeads,
   const legado = { stage: 'Reunião Agendada', createdAt: '2026-10-10' };
   check('cache antigo sem reached ainda calcula', F.calcLeadBonif(legado, model) === 28);
   check('Date ou string como período', F.calcLeadBonifPeriod(L.L1, model, new Date('2026-10-01T00:00:00Z'), new Date('2026-10-31T23:00:00Z')) === 3);
+  // Pular o MQL é erro de operação do CRM: o SQL conta o MQL junto (US$ 28)
+  const pulou = { eligible: true, createdAt: '2026-10-26', reached: { 'Lead Recebido': '2026-10-26', 'Reunião Agendada': '2026-10-28' } };
+  check('SQL sem data de MQL rende US$ 28', F.calcLeadBonifPeriod(pulou, model, ...out) === 28, String(F.calcLeadBonifPeriod(pulou, model, ...out)));
+  check('SQL sem data de MQL conta como MQL no mês do SQL', F.reachedInPeriod(pulou, 'Em Atendimento', ...out));
+  const pulouNov = { eligible: true, createdAt: '2026-10-20', reached: { 'Lead Recebido': '2026-10-20', 'Reunião Agendada': '2026-11-03' } };
+  check('lead de outubro que vira SQL direto em novembro: 3 em out, 25 em nov', F.calcLeadBonifPeriod(pulouNov, model, ...out) === 3 && F.calcLeadBonifPeriod(pulouNov, model, ...nov) === 25);
+  const pulouOpp = { eligible: true, createdAt: '2026-10-20', reached: { 'Lead Recebido': '2026-10-20', 'Em Atendimento': '2026-10-21', 'Oportunidade': '2026-10-25' } };
+  check('Oportunidade sem SQL conta o SQL (US$ 78)', F.calcLeadBonifPeriod(pulouOpp, model, ...out) === 78);
+  check('não altera o objeto do lead', !('Em Atendimento' in pulou.reached));
+
+  // ── front: leads que já estavam na base ──────────────
+  console.log('Leads já na base (front)');
+  const base2 = trecho(web, 'function validLeads(', 'function renderAdminOverview(');
+  const fmtDate = s => { if (!s) return '—'; const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
+  const B = new Function('fmtDate', base2 + '\nreturn { validLeads, leadsNaBase, motivoNaBase };')(fmtDate);
+  check('separa válidos e já na base', B.validLeads(sd.leads).length === 249 && B.leadsNaBase(sd.leads).length === 1);
+  check('motivo mostra desde quando o contato está no CRM', B.motivoNaBase(L.L0).includes('05/11/2024'), B.motivoNaBase(L.L0));
+  check('cache antigo sem o campo não vai para a base', B.leadsNaBase([{ id: 'x' }]).length === 0);
 
   console.log(`\n${passou} passaram, ${falhou} falharam\n`);
   process.exit(falhou ? 1 : 0);

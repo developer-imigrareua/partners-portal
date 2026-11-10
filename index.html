@@ -1040,6 +1040,29 @@ function filterAdminPeriod(leads){
 // pré-existente aplicada no servidor). Caches antigos sem o campo continuam
 // aparecendo até a próxima sincronização.
 function validLeads(list){ return (list||[]).filter(l=>l.eligible!==false); }
+// Leads que entraram pelo link mas o contato já era da casa: aparecem à parte,
+// fora da contagem e da bonificação.
+function leadsNaBase(list){ return (list||[]).filter(l=>l.eligible===false); }
+function motivoNaBase(l){
+  const desde=l.contactCreatedAt?` (no CRM desde ${fmtDate(l.contactCreatedAt)})`:'';
+  return (l.ineligibleReason||'Contato já existia no CRM antes da indicação')+desde;
+}
+// Tabela (desktop) + cartões (mobile) dos leads já na base.
+function renderNaBasePanel(lista,titulo){
+  if(!lista.length) return '';
+  const linhas=lista.slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  return`<div class="panel" style="margin-top:16px">
+    <div class="panel-hd"><div><div class="panel-title">🔁 ${titulo} (${lista.length})</div>
+    <div style="font-size:12px;color:var(--s500);margin-top:2px">Entraram pelo link, mas o contato já existia no CRM antes da indicação. Não entram na contagem de leads nem na bonificação.</div></div></div>
+    <div class="only-desktop"><table class="table"><thead><tr><th>Lead / ID</th><th>Entrou pelo link em</th><th>Motivo</th></tr></thead><tbody>${
+      linhas.map(l=>`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td class="text-muted text-sm">${fmtDate(l.createdAt)}</td><td class="text-muted text-sm">${motivoNaBase(l)}</td></tr>`).join('')
+    }</tbody></table></div>
+    <div class="only-mobile lead-cards">${
+      linhas.map(l=>`<div class="lead-card"><div class="lead-card-top"><div style="min-width:0"><div class="lead-card-name">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></div></div>
+        <div class="lead-card-grid"><div><div class="lead-card-lbl">Entrou pelo link em</div><div class="lead-card-val">${fmtDate(l.createdAt)}</div></div></div>
+        <div style="font-size:12px;color:var(--s500);margin-top:6px">${motivoNaBase(l)}</div></div>`).join('')
+    }</div></div>`;
+}
 function getAffLeads(a){ return validLeads(a.syncData?.leads); }
 
 function renderAdminOverview(c){
@@ -1052,6 +1075,7 @@ function renderAdminOverview(c){
     const model=getModels().find(m=>m.id===a.bonifModelId)||DEFAULT_BONIF_MODEL;
     const allLeads=getAffLeads(a);
     const leads=filterAdminPeriod(allLeads);
+    const naBase=filterAdminPeriod(leadsNaBase(a.syncData?.leads)).length;
     const{start:pS,end:pE}=getAdminDateRange();
     const hit=st=>allLeads.filter(l=>reachedInPeriod(l,st,pS,pE)).length;
     const converted=hit('Convertido');
@@ -1062,7 +1086,7 @@ function renderAdminOverview(c){
     const mql=hit('Em Atendimento');
     const sql=hit('Reunião Agendada');
     const rate=leads.length>0?((converted/leads.length)*100).toFixed(1):'0.0';
-    return{a,leads,converted,mql,sql,inProg,bonif,bonifConv,rate:parseFloat(rate)};
+    return{a,leads,naBase,converted,mql,sql,inProg,bonif,bonifConv,rate:parseFloat(rate)};
   }).sort((a,b)=>b.leads.length-a.leads.length);
   const totalLeads=affMetrics.reduce((s,m)=>s+m.leads.length,0);
   const totalConv=affMetrics.reduce((s,m)=>s+m.converted,0);
@@ -1118,12 +1142,12 @@ function renderAdminOverview(c){
       <div class="panel-hd"><div class="panel-title">💵 Bonificação por Afiliado</div><div style="text-align:right"><div style="font-size:10px;color:var(--s400);text-transform:uppercase">Bonificação simulada</div><div style="font-size:20px;font-weight:900;color:#059669">${fmt(totalBonif)}</div></div></div>
       <table class="table"><thead><tr><th>Afiliado</th><th>Modelo</th><th style="text-align:right">Leads</th><th style="text-align:right">MQL</th><th style="text-align:right">SQL</th><th style="text-align:right">Conv.</th><th style="text-align:right">Taxa</th><th style="text-align:right">Bonif.</th></tr></thead>
       <tbody>${affMetrics.length===0?`<tr><td colspan="8" class="empty-state">Nenhum dado disponível.</td></tr>`:
-        affMetrics.map(({a,leads,converted,mql,sql,bonif,rate})=>{
+        affMetrics.map(({a,leads,naBase,converted,mql,sql,bonif,rate})=>{
           const model=getModels().find(m=>m.id===a.bonifModelId);
           const barW=affMetrics[0].leads.length>0?Math.round(leads.length/affMetrics[0].leads.length*100):0;
           return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><div><div style="font-weight:600;font-size:13px">${a.name}</div><div style="height:4px;background:var(--s100);border-radius:2px;margin-top:4px;width:80px"><div style="height:100%;width:${barW}%;background:#1B75BC;border-radius:2px"></div></div></div></div></td>
           <td><span class="tag tag-blue" style="font-size:10px" title="${model?'':'Sem modelo atribuído: o cálculo usa o modelo Padrão'}">${model?.name||'Padrão (automático)'}</span></td>
-          <td style="text-align:right;font-weight:600">${leads.length}</td>
+          <td style="text-align:right;font-weight:600">${leads.length}${naBase?`<div style="font-size:10px;font-weight:500;color:var(--s400);cursor:pointer;text-decoration:underline dotted" title="Entraram pelo link, mas o contato já era da casa. Não contam." onclick="showNaBasePopup('${a.id}')">+${naBase} já na base</div>`:''}</td>
           <td style="text-align:right;color:#7c3aed;font-weight:600">${mql||'—'}</td>
           <td style="text-align:right;color:#1B75BC;font-weight:600">${sql||'—'}</td>
           <td style="text-align:right;font-weight:600;color:#059669">${converted}</td>
@@ -1380,8 +1404,18 @@ function stageValues(lead,model){
 }
 function toDay(d){ if(!d) return null; return typeof d==='string'?d.slice(0,10):d.toISOString().slice(0,10); }
 // Etapa atingida (lead.reached) ou, em cache antigo, a etapa atual.
+// Pular etapa é erro de operação do CRM (decisão do comercial, 10/11/2026):
+// quem chegou a uma etapa conta as anteriores que ficaram sem data, na data
+// da etapa seguinte. Ex.: lead que vira SQL sem MQL rende US$ 3+5+20 = 28.
 function reachedStages(lead){
-  if(lead.reached) return lead.reached;
+  if(lead.reached){
+    const r={...lead.reached};
+    for(let i=BONIF_FLOW.length-2;i>=0;i--){
+      const st=BONIF_FLOW[i], next=r[BONIF_FLOW[i+1]];
+      if(!r[st]&&next) r[st]=next;
+    }
+    return r;
+  }
   const eff=lead.stage==="Não Convertido"?"Lead Recebido":lead.stage;
   const idx=BONIF_FLOW.indexOf(eff); const out={};
   BONIF_FLOW.slice(0,idx+1).forEach(s=>out[s]=lead.createdAt||null);
@@ -2206,6 +2240,7 @@ function renderAffDashboard(c){
   }
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const filtered=filterByPeriod(leads,affPeriod);
+  const naBaseDash=filterByPeriod(leadsNaBase(u.syncData.leads),affPeriod).length;
   const converted=filtered.filter(l=>l.stage==='Convertido').length;
   const notConv=filtered.filter(l=>l.stage==='Não Convertido').length;
   const inProgress=filtered.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
@@ -2225,7 +2260,7 @@ function renderAffDashboard(c){
     <div class="page-header" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="page-title">Dashboard</div><div class="page-sub">Afiliado: <code>${u.email}</code>${showBonif?` · Modelo: <strong>${model.name}</strong>`:''} · Sync: ${u.syncData?.lastSync?fmtDate(u.syncData.lastSync):'—'}</div></div></div></div>
     ${renderPeriodBar('aff-dashboard')}
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div></div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div>${naBaseDash?`<div class="kpi-note" title="Entraram pelo seu link, mas o contato já era da casa. Detalhes no Pipeline.">+${naBaseDash} já na base (não contam)</div>`:''}</div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5">✅</div><div class="kpi-label">Convertidos</div><div class="kpi-value">${converted}</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb">📈</div><div class="kpi-label">Em Andamento</div><div class="kpi-value">${inProgress}</div></div>
       ${showBonif?`<div class="kpi-card"><div class="kpi-icon" style="background:#fefce8">💵</div><div class="kpi-label">Bonificação Simulada</div><div class="kpi-value sm">${fmt(commTotal)}</div><div class="kpi-note">Modelo: ${model.name}</div></div>`:`<div class="kpi-card"><div class="kpi-icon" style="background:#eef2ff">🎯</div><div class="kpi-label">Taxa de Conversão</div><div class="kpi-value">${convRate}%</div></div>`}
@@ -2305,6 +2340,7 @@ function renderAffPipeline(c){
          + `<div class="only-mobile lead-cards">${linhas.map(x=>x.card).join('')}</div>`;
   }
   const periodLeads=filterByPeriod(allLeads,affPeriod);
+  const periodNaBase=filterByPeriod(leadsNaBase(u.syncData?.leads),affPeriod);
   const counts={'Todos':periodLeads.length};
   periodLeads.forEach(l=>{counts[l.stage]=(counts[l.stage]||0)+1;});
   const camposMobile=
@@ -2316,10 +2352,11 @@ function renderAffPipeline(c){
         .map(([v,t])=>`<option value="${v}"${v===`${affSortCol}:${affSortDir}`?' selected':''}>${t}</option>`).join('')
     }</select></div>`;
   const searchHtml=`<div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="pipeline-search" placeholder="Buscar por nome ou ID…" value="${esc(affSearch)}" oninput="setPipelineSearch(this.value)"></div>`;
-  c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período · Modelo: ${model.name}</div></div>
+  c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período${periodNaBase.length?` · ${periodNaBase.length} já na base (não contam)`:''} · Modelo: ${model.name}</div></div>
   ${renderPeriodBar('aff-pipeline',searchHtml,camposMobile)}
   <div class="pipeline-filters only-desktop" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
-  <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>`;
+  <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>
+  ${renderNaBasePanel(periodNaBase,'Leads que já estavam na nossa base')}`;
   window._pipelineRenderTable=renderTable;
 }
 window.setStageFilter=function(stage){affStageFilter=stage;document.querySelectorAll('.pipeline-filter').forEach(b=>{b.classList.toggle('btn-primary',b.dataset.stage===stage);b.classList.toggle('btn-ghost',b.dataset.stage!==stage);});const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
@@ -2536,6 +2573,15 @@ function showLeadsPopup(title,leads){
   else{ body.innerHTML=`<table class="table" style="margin-top:4px"><thead><tr><th>Nome / ID</th><th>Etapa</th><th>Criado em</th><th>Últ. Movimentação</th></tr></thead><tbody>${leads.map(l=>{const sc=STAGE_COLORS[l.stage]||'var(--s400)';return`<tr><td><div style="font-size:12px;font-weight:600">${l.name}</div><div style="font-size:10px;color:var(--s400)">#${l.id||'—'}</div></td><td><span style="font-size:11px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${fmtDate(l.createdAt)}</td><td class="text-muted text-sm">${fmtDate(l.stageDate||l.createdAt)}</td></tr>`;}).join('')}</tbody></table>`; }
   document.getElementById('leads-popup').style.display='flex';
 }
+function showNaBasePopup(affId){
+  const a=getAffiliates().find(x=>String(x.id)===String(affId)); if(!a) return;
+  const lista=filterAdminPeriod(leadsNaBase(a.syncData?.leads));
+  document.getElementById('leads-popup-title').textContent=`🔁 ${a.name}: leads já na base`;
+  document.getElementById('leads-popup-sub').textContent=`${lista.length} lead${lista.length!==1?'s':''} no período, fora da contagem e da bonificação`;
+  document.getElementById('leads-popup-body').innerHTML=renderNaBasePanel(lista,'Leads já na base');
+  document.getElementById('leads-popup').style.display='flex';
+}
+window.showNaBasePopup=showNaBasePopup;
 function closeLeadsPopup(){ document.getElementById('leads-popup').style.display='none'; }
 window.showLeadsPopup=showLeadsPopup;
 window.closeLeadsPopup=closeLeadsPopup;
