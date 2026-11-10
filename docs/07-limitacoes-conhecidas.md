@@ -4,16 +4,11 @@ Coisas que não funcionam hoje. Nenhuma é regressão — todas existem desde an
 das correções de setembro de 2026, e estão aqui para não serem redescobertas com
 susto.
 
-## Endpoints sem autenticação
+## ~~Endpoints sem autenticação~~ — resolvido na 1.3.0
 
-Nenhuma rota `/api/*` verifica quem está chamando. Quem souber a URL consegue
-buscar os leads de qualquer afiliado, criar links ou alterar formulários.
-
-O servidor usa a service key, que ignora RLS — a proteção do banco não cobre
-essa camada.
-
-**Para fechar:** validar o JWT do Supabase em cada rota e checar o papel do
-usuário.
+Toda rota `/api/*` valida o token do Supabase Auth e o papel do usuário
+(`exigirLogin` / `exigirAdmin` no `server.js`). Única rota pública:
+`/api/health`, que só informa se HubSpot e Short.io respondem.
 
 ## Bonificação não varia por tipo de visto
 

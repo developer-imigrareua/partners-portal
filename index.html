@@ -416,6 +416,14 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
   .dsp-linha{grid-template-columns:1fr auto 90px;font-size:12px}
   .dsp-mes,.dsp-mes select{width:100%}
 }
+
+/* ── Ver como parceiro ─────────────────────────────── */
+#vendo-como-bar{display:none;position:fixed;top:0;left:0;right:0;height:44px;z-index:1000;background:var(--pink);color:#fff;align-items:center;justify-content:center;gap:14px;font-size:13px;padding:0 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+#vendo-como-bar button{background:#fff;color:var(--pink);border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+body.vendo-como #vendo-como-bar{display:flex}
+body.vendo-como .shell-app{padding-top:44px;box-sizing:border-box}
+body.vendo-como #sidebar{top:44px}
+@media (max-width:900px){ #vendo-como-bar{font-size:12px;gap:8px;justify-content:space-between} #vendo-como-bar .vc-extra{display:none} }
 </style>
 </head>
 <body>
@@ -515,6 +523,7 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 </div>
 
 <!-- ══ APP SHELL ══ -->
+<div id="vendo-como-bar" role="status"><span>👁 Você está vendo como <b id="vc-nome">—</b><span class="vc-extra"> · somente leitura</span></span><button onclick="sairVerComo()">Sair da visualização</button></div>
 <div id="app-shell" class="shell-app" style="display:none">
   <nav id="sidebar">
     <div class="sb-logo">
@@ -577,6 +586,26 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 const SUPABASE_URL = 'https://kkrhtfpjdlzuebqnyzzy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtrcmh0ZnBqZGx6dWVicW55enp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDA0MDYsImV4cCI6MjA5NzIxNjQwNn0.sfeLDgWy5Bp8NSkO3xu4o4Sai-_XvcVAgpnjhfx7GFo';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Toda chamada a /api/* leva o token da sessão: o servidor valida quem chama
+// (antes nenhuma rota verificava). Na visão "ver como parceiro" qualquer
+// escrita na API é barrada aqui, antes de sair do navegador.
+const fetchOriginal = window.fetch.bind(window);
+window.fetch = async function (input, init) {
+  init = init || {};
+  const url = typeof input === 'string' ? input : (input && input.url) || '';
+  if (!url.startsWith('/api/')) return fetchOriginal(input, init);
+  const metodo = (init.method || 'GET').toUpperCase();
+  if (globalThis.__vendoComo && metodo !== 'GET' && !url.startsWith('/api/admin/ver-como')) {
+    toast('🔒 Visualização somente leitura: nada é gravado como o parceiro.');
+    return new Response(JSON.stringify({ error: 'Somente leitura na visualização como parceiro' }), { status: 423, headers: { 'Content-Type': 'application/json' } });
+  }
+  const headers = new Headers(init.headers || {});
+  if (!headers.has('Authorization')) {
+    try { const { data: { session } } = await sb.auth.getSession(); if (session?.access_token) headers.set('Authorization', 'Bearer ' + session.access_token); } catch (e) { /* sem sessão: o servidor responde 401 */ }
+  }
+  return fetchOriginal(input, { ...init, headers });
+};
 
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
@@ -708,6 +737,7 @@ function diffUserRow(baseStr, nextRow) {
 // global) e era pré-requisito para ligar RLS sem quebrar o portal.
 // Assinatura preservada de propósito: os call sites seguem passando o array.
 function saveUsers(users) {
+  if (globalThis.__vendoComo) { if (typeof toast === 'function') toast('🔒 Visualização somente leitura: nada é gravado como o parceiro.'); return Promise.resolve({ saved: 0, failed: 0 }); }
   usersCache = users;
   const pending = [];
   for (const u of users || []) {
@@ -756,6 +786,7 @@ function snapshotModels(models) {
 // Atenção: remover um modelo do array NÃO apaga a linha do banco — esse
 // comportamento é o mesmo de antes e está documentado como bug pendente.
 function saveModels(models) {
+  if (globalThis.__vendoComo) return Promise.resolve({ saved: 0, failed: 0 });
   modelsCache = models;
   const pending = [];
   for (const m of models || []) {
@@ -944,6 +975,7 @@ async function doRegister() {
 }
 
 async function doLogout() {
+  vendoComo=null; globalThis.__vendoComo=false; document.body.classList.remove('vendo-como');
   await sb.auth.signOut();
   currentUser=null; usersCache=[]; modelsCache=[];
   if(leadsChart){leadsChart.destroy();leadsChart=null;}
@@ -1054,7 +1086,9 @@ function closeSidebar(){
   document.getElementById('sidebar')?.classList.remove('open');
   document.getElementById('sb-backdrop')?.classList.remove('show');
 }
+let paginaAtual=null;
 function navigate(page){
+  paginaAtual=page;
   closeSidebar();   // no mobile, escolher um item fecha a gaveta
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   document.querySelector(`.sb-item[data-page="${page}"]`)?.classList.add('active');
@@ -1086,8 +1120,7 @@ function renderPage(page){
     'aff-pipeline':      ()=>renderAffPipeline(c),
     'aff-links':         ()=>renderAffLinks(c),
     'aff-profile':       ()=>renderAffProfile(c),
-    'aff-desempenho':    ()=>renderDesempenho(c,null),
-    'admin-desempenho':  ()=>renderDesempenho(c,desempenhoPreviewId),
+    'aff-desempenho':    ()=>renderDesempenho(c,vendoComo?currentUser.id:null),
   }[page]||(() => {}))();
 }
 
@@ -1308,7 +1341,7 @@ function renderAffRows(active){
       <td>${model?`<span class="tag tag-blue">${model.name}</span>`:'<span class="text-muted text-sm">—</span>'}</td>
       <td>${a.syncData?.totalLeads??'—'}</td><td>${a.syncData?.converted??'—'}</td>
       <td class="text-muted text-sm">${a.syncData?.lastSync?fmtDate(a.syncData.lastSync):'—'}</td>
-      <td style="text-align:right"><button class="btn btn-outline-blue btn-xs" onclick="toggleAffDetail('${a.id}',event)">⚙ Configurar</button> <button class="btn btn-danger btn-xs" onclick="revokeAff('${a.id}')">Revogar</button></td></tr>
+      <td style="text-align:right;white-space:nowrap"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();verComoParceiro('${a.id}')">👁 Ver como parceiro</button> <button class="btn btn-outline-blue btn-xs" onclick="toggleAffDetail('${a.id}',event)">⚙ Configurar</button> <button class="btn btn-danger btn-xs" onclick="revokeAff('${a.id}')">Revogar</button></td></tr>
       <tr id="detail-row-${a.id}" style="display:${isOpen?'table-row':'none'}"><td colspan="7" style="padding:0"><div class="aff-detail open" id="detail-${a.id}">${renderAffDetailHTML(a)}</div></td></tr>`;
   }).join('');
 }
@@ -1316,7 +1349,8 @@ function renderAffDetailHTML(a){
   const models=getModels();
   const noPolicy=!a.bonifModelId;
   const modelOpts=`<option value=""${noPolicy?' selected':''}>— Sem política (oculto p/ afiliado) —</option>`+models.map(m=>`<option value="${m.id}"${a.bonifModelId===m.id?' selected':''}>${m.name}${m.isPreset?' (preset)':''}</option>`).join('');
-  return`<div class="detail-grid">
+  return`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="verComoParceiro('${a.id}')">👁 Ver como parceiro</button></div>
+  <div class="detail-grid">
     <div><div class="detail-section-title">🔗 Integração HubSpot</div>
       <p class="text-muted text-sm" style="margin-bottom:10px">Informe o identificador do afiliado no HubSpot (<code>referred_by</code>). Ao sincronizar, o sistema buscará os contatos associados.</p>
       <div class="hs-sync-row"><input class="hs-id-input" id="hs-id-${a.id}" placeholder="ex: leticia-ferrari" value="${a.hsAffiliateId||''}">
@@ -1339,7 +1373,7 @@ function renderAffDetailHTML(a){
         <input type="checkbox" style="margin-top:3px" ${a.bonifVisible&&!noPolicy?'checked':''} ${noPolicy?'disabled':''} onchange="setBonifVisible('${a.id}',this.checked)">
         <span><strong>Liberar visualização da bonificação</strong><br><span class="text-muted text-sm">${noPolicy?'Atribua e aplique um modelo de bonificação para poder liberar.':'O parceiro passa a ver os valores em dinheiro na aba "Meu desempenho".'}</span></span>
       </label>
-      <button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="previewDesempenho('${a.id}')">👁 Ver como o parceiro vê</button>
+      <button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="verComoParceiro('${a.id}','aff-desempenho')">👁 Ver "Meu desempenho" como parceiro</button>
     </div>
   </div>`;
 }
@@ -1414,9 +1448,46 @@ function setBonifVisible(affId,on){
   toast(on?`💵 Bonificação liberada para ${u.name} em "Meu desempenho".`:`🔒 Valores ocultos para ${u.name} em "Meu desempenho".`);
 }
 window.setBonifVisible=setBonifVisible;
-let desempenhoPreviewId=null;
-function previewDesempenho(affId){ desempenhoPreviewId=affId; navigate('admin-desempenho'); }
-window.previewDesempenho=previewDesempenho;
+// ── Ver como parceiro ───────────────────────────────────
+// O admin vê o portal com os dados do parceiro (sync_data, links_config,
+// modelo), sem trocar de sessão. O servidor confirma o papel e registra o uso
+// (/api/admin/ver-como). Somente leitura: saveUsers, saveModels e qualquer
+// escrita na API ficam bloqueados enquanto vendoComo está ligado.
+let vendoComo=null;   // { admin, voltar }
+function somenteLeitura(){
+  if(!vendoComo) return false;
+  toast('🔒 Visualização somente leitura: nada é gravado como o parceiro.');
+  return true;
+}
+async function verComoParceiro(affId,pagina){
+  if(vendoComo||currentUser?.role!=='admin') return;
+  const alvo=getUsers().find(u=>u.id===affId&&u.role==='affiliate'&&u.status==='active');
+  if(!alvo){ toast('Parceiro ativo não encontrado.'); return; }
+  try{
+    const r=await fetch('/api/admin/ver-como',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:affId})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||`Erro ${r.status}`);
+  }catch(e){ toast('⚠️ '+e.message); return; }
+  vendoComo={admin:currentUser,voltar:paginaAtual||'admin-affiliates'};
+  globalThis.__vendoComo=true;
+  currentUser=JSON.parse(JSON.stringify(alvo));   // cópia: nada do que a visão fizer toca o cache
+  document.getElementById('vc-nome').textContent=alvo.name;
+  document.body.classList.add('vendo-como');
+  buildSidebar(); buildTabbar();
+  navigate(pagina||'aff-dashboard');
+}
+async function sairVerComo(){
+  if(!vendoComo) return;
+  const { admin, voltar }=vendoComo;
+  vendoComo=null; globalThis.__vendoComo=false;
+  document.body.classList.remove('vendo-como');
+  currentUser=admin;
+  try{ await loadData(); currentUser=getUsers().find(u=>u.id===admin.id)||admin; }catch(e){ /* mantém o cache atual */ }
+  buildSidebar(); buildTabbar();
+  navigate(voltar);
+}
+window.verComoParceiro=verComoParceiro;
+window.sairVerComo=sairVerComo;
 function openNewCustomModel(affId){
   editingBonifModelId=null; editingAffiliateId=affId;
   const u=getUsers().find(x=>x.id===affId);
@@ -2391,19 +2462,19 @@ const usd=v=>'US$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2
 const pctBR=v=>`${Number(v||0).toFixed(1).replace('.',',')}%`;
 const ETAPA_CURTA={'Lead Recebido':'Lead Recebido','Em Atendimento':'Em Atendimento','Reunião Agendada':'Reunião Agendada','Oportunidade':'Oportunidade','Convertido':'Convertido'};
 
-async function renderDesempenho(c,previewId){
-  const titulo=previewId?'Prévia: Meu desempenho':'Meu desempenho';
+async function renderDesempenho(c,userId){
+  const titulo='Meu desempenho';
   setTopbar(titulo,'Resultado do mês no Partner Program');
   c.innerHTML=`<div class="page-header"><div class="page-title">${titulo}</div><div class="page-sub">Calculando… na primeira abertura do mês pode levar até 30 segundos.</div></div><div class="panel"><div class="empty-state"><div class="icon">⏳</div><p>Buscando seus números no CRM.</p></div></div>`;
   let d;
   try{
     const { data:{ session } }=await sb.auth.getSession();
-    const qs=new URLSearchParams(); if(desempenhoMes) qs.set('mes',desempenhoMes); if(previewId) qs.set('userId',previewId);
+    const qs=new URLSearchParams(); if(desempenhoMes) qs.set('mes',desempenhoMes); if(userId) qs.set("userId",userId);
     const r=await fetch('/api/desempenho?'+qs.toString(),{headers:{Authorization:`Bearer ${session?.access_token||''}`}});
     d=await r.json();
     if(!r.ok) throw new Error(d.error||`Erro ${r.status}`);
   }catch(e){
-    c.innerHTML=`<div class="page-header"><div class="page-title">${titulo}</div></div><div class="panel"><div class="empty-state"><div class="icon">⚠️</div><p>${escH(e.message)}</p><button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="renderPage('${previewId?'admin-desempenho':'aff-desempenho'}')">Tentar de novo</button></div></div>`;
+    c.innerHTML=`<div class="page-header"><div class="page-title">${titulo}</div></div><div class="panel"><div class="empty-state"><div class="icon">⚠️</div><p>${escH(e.message)}</p><button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="renderPage('aff-desempenho')">Tentar de novo</button></div></div>`;
     return;
   }
   // a página pode ter sido trocada enquanto carregava
@@ -2411,12 +2482,11 @@ async function renderDesempenho(c,previewId){
   if(!desempenhoMes) desempenhoMes=d.mes;
   const $=d.mostraValores, R=d.resumo, M=mesCurto(d.mes), fimBR=fmtDate(d.fim).slice(0,5);
   const opcoes=(d.meses.length?d.meses:[d.mes]).map(m=>`<option value="${m}"${m===d.mes?' selected':''}>${mesLabel(m)}${m===d.padrao?' (último fechado)':''}${m>d.padrao?' (parcial)':''}</option>`).join('');
-  const sel=`<div class="dsp-mes"><label>Mês</label><select onchange="desempenhoMes=this.value;renderPage('${previewId?'admin-desempenho':'aff-desempenho'}')">${opcoes}</select></div>`;
+  const sel=`<div class="dsp-mes"><label>Mês</label><select onchange="desempenhoMes=this.value;renderPage('aff-desempenho')">${opcoes}</select></div>`;
 
   const hero=`<div class="dsp-hero">
     <div><div class="dsp-eyebrow">Partner Program · ${mesLabel(d.mes)}${d.parcial?' · parcial':''}</div>
       ${$?`<div class="dsp-hero-lbl">Seus ganhos no mês</div><div class="dsp-hero-val">${usd(d.bonificacao.total)}</div>`:`<div class="dsp-hero-lbl">Seu resultado no mês</div><div class="dsp-hero-val">${R.leads} leads</div>`}
-      ${previewId?`<div class="dsp-hero-note">Prévia de ${escH(d.parceiro)} · ${$?'bonificação liberada':'sem valores (bonificação não liberada)'}</div>`:''}
     </div>
     <div class="dsp-hero-kpis"><div><b>${R.leads}</b><span>Leads</span></div><div><b>${R.emAtendimento}</b><span>Em Atendimento</span></div><div><b>${R.reuniao}</b><span>Reuniões</span></div></div>
   </div>`;
@@ -2457,7 +2527,7 @@ async function renderDesempenho(c,previewId){
     <div class="dsp-legenda"><span><i class="voce"></i>Você</span><span><i class="media"></i>Média de todos os leads de ${M}</span></div>
     ${barraT('Lead Recebido para Em Atendimento','qualif')}${barraT('Em Atendimento para Reunião Agendada','mqlSql')}${barraT('Lead Recebido para Reunião Agendada','avanco')}${barraT('Reunião Agendada para Oportunidade','sqlOpp')}</div>`;
 
-  const nomeVoce=previewId?escH(d.parceiro):escH(currentUser?.name||'Você');
+  const nomeVoce=escH(d.parceiro||currentUser?.name||'Você');
   const rk=(tit,sub,r)=>`<div class="dsp-rk"><div class="dsp-rk-t">${tit}</div><div class="dsp-rk-s">${sub}</div>
     ${r.linhas.map(l=>`<div class="dsp-rk-l${l.voce?' voce':''}"><div class="dsp-rk-pos p${l.pos}">${l.pos}</div><div class="dsp-rk-nome">${l.voce?`<b>${nomeVoce}</b> <span>Parceiro</span>`:`${escH(l.rotulo)} <span>${l.tipo==='canal'?'Canal':'Parceiro'}</span>`}</div><div class="dsp-rk-bar"><i style="width:${l.barra}%"></i></div><div class="dsp-rk-v${l.voce?'':' blur'}">${escH(l.valor)}</div></div>`).join('')}
     ${r.voceForaDoTop?`<div class="dsp-rk-l voce"><div class="dsp-rk-pos">—</div><div class="dsp-rk-nome"><b>${nomeVoce}</b> <span>fora do Top 10</span></div><div class="dsp-rk-bar"></div><div class="dsp-rk-v">${escH(r.voceForaDoTop.valor)}</div></div>`:''}</div>`;
@@ -2488,7 +2558,6 @@ async function renderDesempenho(c,previewId){
     <div><b>Placar</b><p>Mesmo critério para todos. Seus números aparecem exatos; os demais participantes, sem nome e com valores aproximados.</p></div></div></div>`;
 
   c.innerHTML=`<div class="page-header dsp-head"><div><div class="page-title">${titulo}</div><div class="page-sub">${mesLabel(d.mes)}${d.parcial?' · mês em andamento, números parciais':''}</div></div>${sel}</div>
-    ${previewId?`<button class="btn btn-ghost btn-sm" style="margin-bottom:12px" onclick="navigate('admin-affiliates')">← Voltar para Afiliados</button>`:''}
     <div class="dsp">${hero}${resumo}${remun}${placar}${taxasHtml}${rankings}${conquistas}${leadsHtml}${como}</div>`;
 }
 window.renderDesempenho=renderDesempenho;
@@ -2756,6 +2825,7 @@ function renderAffProfile(c){
   </div>`;
 }
 window.handlePhotoUpload=function(input){
+  if(somenteLeitura()) return;
   const file=input.files?.[0]; if(!file) return;
   if(file.size>2*1024*1024){ toast('Foto muito grande. Máximo 2 MB.'); return; }
   const reader=new FileReader();
@@ -2770,6 +2840,7 @@ window.handlePhotoUpload=function(input){
   reader.readAsDataURL(file);
 };
 window.saveProfile=function(){
+  if(somenteLeitura()) return;
   const name=document.getElementById('prof-name')?.value.trim();
   if(!name){ toast('Nome não pode estar vazio.'); return; }
   const users=getUsers(); const u=users.find(x=>x.id===currentUser.id); if(!u) return;

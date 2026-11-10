@@ -160,6 +160,10 @@ falha com retry. Rodar antes de mexer em persistência.
 
 ## Endpoints do servidor (server.js)
 
+Toda rota `/api/*` exige o token do Supabase Auth (`exigirLogin` / `exigirAdmin`),
+exceto `/api/health`. O `window.fetch` do `index.html` anexa o token sozinho.
+Rota nova sem um dos dois middlewares quebra o `test/autenticacao.js`.
+
 | Método | Rota | Função |
 |--------|------|--------|
 | GET | `/api/hubspot/sync?hsId=X` | Busca leads no HubSpot pelo `referred_by=X` |
@@ -173,6 +177,7 @@ falha com retry. Rodar antes de mexer em persistência.
 | PATCH | `/api/link-forms/:id` | Atualiza formulário |
 | DELETE | `/api/link-forms/:id` | Desativa formulário (soft delete) |
 | GET | `/api/health` | Checa conectividade HubSpot + Short.io |
+| POST | `/api/admin/ver-como` | Admin abre a visão de um parceiro; registra em `admin_view_log` |
 | GET | `/api/desempenho?mes=AAAA-MM[&userId=X]` | Aba "Meu desempenho". **Exige token do Supabase Auth.** Placar de terceiros só anonimizado e em faixas |
 | GET | `*` | Serve `index.html` com `Cache-Control: no-store` |
 

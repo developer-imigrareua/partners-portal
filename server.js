@@ -189,7 +189,7 @@ async function buildSyncData(hsId, source) {
 }
 
 // HubSpot sync proxy (protects API key from being exposed in frontend)
-app.get('/api/hubspot/sync', async (req, res) => {
+app.get('/api/hubspot/sync', exigirAdmin, async (req, res) => {
   const { hsId } = req.query;
   if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
   if (!process.env.HUBSPOT_API_KEY) return res.status(500).json({ error: 'HubSpot não configurado no servidor' });
@@ -273,8 +273,20 @@ const ultimoMesFechado = () => {
 };
 
 // Quem está chamando: valida o token do Supabase Auth e lê a linha em users.
+// Cache de 60 s por token para não consultar o Supabase a cada chamada.
+const cacheToken = new Map();
 async function usuarioDaRequisicao(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const c = token && cacheToken.get(token);
+  if (c && Date.now() - c.em < 60e3) return c.usuario;
+  const usuario = await consultarUsuario(token);
+  if (usuario) {
+    if (cacheToken.size > 500) cacheToken.clear();
+    cacheToken.set(token, { em: Date.now(), usuario });
+  }
+  return usuario;
+}
+async function consultarUsuario(token) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
   const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${token}` } });
@@ -287,6 +299,23 @@ async function usuarioDaRequisicao(req) {
   return (await q.json())[0] || null;
 }
 
+// Middlewares das rotas /api/*. Antes nenhuma rota verificava quem chamava
+// (docs/07): quem soubesse a URL buscava leads, criava links ou alterava
+// formulários. Admin passa sempre; afiliado só ativo.
+function exigirLogin(req, res, next) {
+  usuarioDaRequisicao(req).then(u => {
+    if (!u) return res.status(401).json({ error: 'Faça login de novo.' });
+    if (u.role !== 'admin' && u.status !== 'active') return res.status(403).json({ error: 'Conta não ativa' });
+    req.usuario = u; next();
+  }).catch(e => { console.error('auth:', e.message); res.status(500).json({ error: 'Falha ao validar o login' }); });
+}
+function exigirAdmin(req, res, next) {
+  exigirLogin(req, res, () => {
+    if (req.usuario.role !== 'admin') return res.status(403).json({ error: 'Apenas administradores' });
+    next();
+  });
+}
+
 async function lerLinha(tabela, id) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?id=eq.${encodeURIComponent(id)}&select=*`,
@@ -294,6 +323,34 @@ async function lerLinha(tabela, id) {
   if (!r.ok) throw new Error(`Supabase ${r.status} em ${tabela}`);
   return (await r.json())[0] || null;
 }
+
+// POST /api/admin/ver-como { userId }
+// Admin entra na visão de um parceiro. Não troca sessão: o front usa os dados
+// que o admin já lê (sync_data, links_config, modelo). Esta rota só confirma o
+// papel no servidor e grava o registro de uso em admin_view_log.
+app.post('/api/admin/ver-como', exigirAdmin, async (req, res) => {
+  try {
+    const alvo = req.body?.userId ? await lerLinha('users', req.body.userId) : null;
+    if (!alvo || alvo.role !== 'affiliate' || alvo.status !== 'active') return res.status(404).json({ error: 'Parceiro ativo não encontrado' });
+    const registro = {
+      admin_user_id: String(req.usuario.id), admin_email: req.usuario.email || null,
+      partner_user_id: String(alvo.id), partner_name: alvo.name || null,
+      user_agent: (req.headers['user-agent'] || '').slice(0, 300) || null,
+    };
+    // Sempre no log do servidor; na tabela quando ela existe (db/visao-parceiro.sql).
+    console.log(`[ver-como] ${new Date().toISOString()} admin=${registro.admin_email || registro.admin_user_id} parceiro=${registro.partner_name} (${registro.partner_user_id})`);
+    let gravado = false;
+    try {
+      const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/admin_view_log`, { method: 'POST', headers: { ...supabaseHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify(registro) });
+      gravado = r.ok;
+      if (!r.ok) console.warn('[ver-como] tabela admin_view_log indisponível:', r.status, (await r.text()).slice(0, 200));
+    } catch (e) { console.warn('[ver-como] falha ao gravar registro:', e.message); }
+    res.json({ ok: true, registrado: gravado });
+  } catch (err) {
+    console.error('ver-como error:', err.message);
+    res.status(500).json({ error: 'Não foi possível abrir a visão do parceiro' });
+  }
+});
 
 // GET /api/desempenho?mes=AAAA-MM            (parceiro logado: o próprio)
 // GET /api/desempenho?mes=AAAA-MM&userId=X   (admin: prévia de um parceiro)
@@ -453,7 +510,7 @@ async function gravarLinkForm(url, method, body) {
 }
 
 // link_forms CRUD
-app.get('/api/link-forms', async (req, res) => {
+app.get('/api/link-forms', exigirLogin, async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
@@ -469,7 +526,7 @@ app.get('/api/link-forms', async (req, res) => {
   }
 });
 
-app.post('/api/link-forms', async (req, res) => {
+app.post('/api/link-forms', exigirAdmin, async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
@@ -482,7 +539,7 @@ app.post('/api/link-forms', async (req, res) => {
   }
 });
 
-app.patch('/api/link-forms/:id', async (req, res) => {
+app.patch('/api/link-forms/:id', exigirAdmin, async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
@@ -495,7 +552,7 @@ app.patch('/api/link-forms/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/link-forms/:id', async (req, res) => {
+app.delete('/api/link-forms/:id', exigirAdmin, async (req, res) => {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return res.status(500).json({ error: 'Supabase não configurado' });
   try {
@@ -516,7 +573,7 @@ app.delete('/api/link-forms/:id', async (req, res) => {
 });
 
 // short.io — bulk-create all 6 standard links for an affiliate
-app.post('/api/shortio/create-bulk', async (req, res) => {
+app.post('/api/shortio/create-bulk', exigirAdmin, async (req, res) => {
   const { hsId, affiliateName, affiliateType, userId } = req.body;
   if (!hsId) return res.status(400).json({ error: 'hsId obrigatório' });
   if (!process.env.SHORTIO_API_KEY) return res.status(500).json({ error: 'Short.io não configurado' });
@@ -574,7 +631,7 @@ app.post('/api/shortio/create-bulk', async (req, res) => {
 });
 
 // short.io — create a single shortened link
-app.post('/api/shortio/create', async (req, res) => {
+app.post('/api/shortio/create', exigirAdmin, async (req, res) => {
   const { originalUrl, slug, title } = req.body;
   if (!originalUrl) return res.status(400).json({ error: 'originalUrl obrigatório' });
   if (!process.env.SHORTIO_API_KEY || !process.env.SHORTIO_DOMAIN)
@@ -589,11 +646,14 @@ app.post('/api/shortio/create', async (req, res) => {
 });
 
 // short.io — list links for the folder, optionally filtered by affiliateId
-app.get('/api/shortio/links', async (req, res) => {
+app.get('/api/shortio/links', exigirLogin, async (req, res) => {
   const SHORTIO_KEY       = process.env.SHORTIO_API_KEY;
   const SHORTIO_DOMAIN_ID = process.env.SHORTIO_DOMAIN_ID;
   const FOLDER_ID         = process.env.SHORTIO_FOLDER_ID;
   const { affiliateId }   = req.query;
+  // Afiliado só lista os próprios links.
+  if (req.usuario.role !== 'admin' && (affiliateId || '').toLowerCase() !== (req.usuario.hs_affiliate_id || '').toLowerCase())
+    return res.status(403).json({ error: 'Sem permissão para estes links' });
 
   if (!SHORTIO_KEY)       return res.status(500).json({ error: 'SHORTIO_API_KEY não configurado' });
   if (!SHORTIO_DOMAIN_ID) return res.status(500).json({ error: 'SHORTIO_DOMAIN_ID não configurado' });
@@ -615,7 +675,7 @@ app.get('/api/shortio/links', async (req, res) => {
 });
 
 // short.io — update an existing link (change destination URL or title)
-app.patch('/api/shortio/update', async (req, res) => {
+app.patch('/api/shortio/update', exigirAdmin, async (req, res) => {
   const { linkId, originalUrl, title } = req.body;
   if (!linkId) return res.status(400).json({ error: 'linkId obrigatório' });
 
@@ -654,7 +714,7 @@ function naFila(userId, tarefa) {
 }
 
 // Update links_config for an affiliate (hide/delete a link from their view)
-app.patch('/api/affiliate/:userId/links-config', async (req, res) => {
+app.patch('/api/affiliate/:userId/links-config', exigirAdmin, async (req, res) => {
   const { userId } = req.params;
   const { slug, action } = req.body; // action: 'hide' | 'show' | 'delete' | 'restore'
   if (!userId || !slug || !action) return res.status(400).json({ error: 'userId, slug e action obrigatórios' });

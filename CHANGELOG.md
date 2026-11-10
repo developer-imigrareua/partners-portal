@@ -9,7 +9,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [1.3.0] — 2026-11-10
 
 Aba **Meu desempenho** para o parceiro, no formato do Relatório de Partner
-Program. Exige **uma migração no Supabase**: `db/bonif-visivel.sql`.
+Program, "ver como parceiro" para o admin e autenticação nas rotas da API.
+Exige **duas migrações no Supabase**: `db/bonif-visivel.sql` e
+`db/visao-parceiro.sql`.
 
 ### Adicionado
 
@@ -26,6 +28,22 @@ Program. Exige **uma migração no Supabase**: `db/bonif-visivel.sql`.
   Supabase Auth). O parceiro só recebe os próprios dados; o admin passa
   `userId` para a prévia. Sem liberação, a resposta não traz nenhum campo de
   dinheiro (não é só escondido na tela).
+
+- **Ver como parceiro** (Afiliados, na linha e no detalhe): o admin abre o
+  portal com os dados do parceiro, sem trocar de sessão, com a faixa fixa "Você
+  está vendo como …" e o botão "Sair da visualização", que volta para a tela
+  de onde saiu. Somente leitura: `saveUsers`, `saveModels`, perfil, foto e
+  qualquer escrita na API ficam bloqueados; ao sair, o portal recarrega os
+  dados do banco. Cada uso é registrado em `admin_view_log` (e no log do
+  servidor). Exige `db/visao-parceiro.sql`.
+
+### Segurança
+
+- **Rotas `/api/*` exigem login** (fecha "Endpoints sem autenticação" de
+  `docs/07`). O front manda o token do Supabase em toda chamada. Sync do
+  HubSpot, criação e edição de links, `links-config`, alteração de formulários
+  e `ver-como` só para admin; afiliado lista só os próprios links. Continua
+  pública só `/api/health`, que não expõe dados.
 
 ### Regras do placar
 
