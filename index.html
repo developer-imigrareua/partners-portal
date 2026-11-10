@@ -340,6 +340,82 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
   .page-title{font-size:18px}
   .banner-rate{font-size:26px}
 }
+
+/* ── Meu desempenho ─────────────────────────────────── */
+.dsp-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.dsp-mes{display:flex;flex-direction:column;gap:4px}.dsp-mes label{font-size:10px;font-weight:600;color:var(--s400);text-transform:uppercase;letter-spacing:.06em}
+.dsp-mes select{border:1px solid var(--s200);border-radius:10px;padding:8px 12px;font-family:inherit;font-size:13px;background:#fff;min-width:210px}
+.dsp{max-width:980px}
+.dsp-hero{background:radial-gradient(circle at 92% 0%,rgba(249,13,91,.55),transparent 42%),#0b1430;color:#fff;border-radius:20px;padding:26px 28px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.dsp-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#f9a8c4;font-weight:700;margin-bottom:14px}
+.dsp-hero-lbl{font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.08em}
+.dsp-hero-val{font-size:38px;font-weight:800;line-height:1.1;margin-top:4px}
+.dsp-hero-note{font-size:12px;color:#94a3b8;margin-top:8px}
+.dsp-hero-kpis{display:flex;gap:26px}.dsp-hero-kpis div{display:flex;flex-direction:column;align-items:flex-end}
+.dsp-hero-kpis b{font-size:26px;font-weight:800}.dsp-hero-kpis span{font-size:10px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.08em}
+.dsp-sec{background:#fff;border:1px solid var(--s200);border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 2px 8px rgba(13,37,93,.05)}
+.dsp-kicker{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pink)}
+.dsp-h{font-size:20px;font-weight:800;color:var(--blue-dark);margin:4px 0 6px}
+.dsp-p{font-size:13px;color:var(--s500);margin:0 0 14px;line-height:1.55}
+.dsp-mut{color:var(--s400)}
+.dsp-stages{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.dsp-stage{border:1px solid var(--s200);border-radius:12px;padding:14px}
+.dsp-stage-n{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--s400)}
+.dsp-stage-v{font-size:30px;font-weight:800;color:var(--blue-dark);margin:4px 0}.dsp-stage-t{font-size:11px;color:var(--s500)}
+.dsp-card{border:1px solid var(--s200);border-radius:14px;padding:16px 18px}
+.dsp-total-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--s400)}
+.dsp-total{font-size:28px;font-weight:800;color:var(--emerald);margin:2px 0 10px}
+.dsp-linha{display:grid;grid-template-columns:1fr auto 110px;gap:10px;padding:8px 0;border-top:1px solid var(--s100);font-size:13px}.dsp-linha b{text-align:right}
+.dsp-linha-total{font-weight:800}
+.dsp-trilha{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.dsp-passo{background:var(--s50);border-radius:12px;padding:12px;text-align:center}
+.dsp-passo-n{width:24px;height:24px;border-radius:50%;background:var(--pink);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 6px}
+.dsp-passo-t{font-size:12px;font-weight:600}.dsp-passo-v{font-size:15px;font-weight:800;color:var(--emerald);margin-top:2px}
+.dsp-nota{margin-top:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:12px 14px;font-size:12px;color:#9a3412}
+.dsp-placar{display:flex;flex-direction:column;gap:10px}
+.dsp-placa{background:#0b1430;color:#fff;border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:20px}
+.dsp-placa-pos{min-width:84px;text-align:center}
+.dsp-pos{font-size:34px;font-weight:800;line-height:1}.dsp-pos-fora{color:#64748b}
+.dsp-top{display:inline-block;margin-top:6px;background:var(--pink);font-size:9px;font-weight:800;letter-spacing:.1em;padding:2px 8px;border-radius:999px}
+.dsp-top-fora{background:#334155}
+.dsp-placa-t{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#cbd5e1}
+.dsp-placa-d{font-size:14px;margin-top:4px}.dsp-placa-d b{color:#f9a8c4}
+.dsp-legenda{display:flex;gap:16px;font-size:12px;color:var(--s500);margin:4px 0 12px;flex-wrap:wrap}
+.dsp-legenda i,.dsp-taxa-bar i{display:inline-block;border-radius:999px}
+.dsp-legenda i{width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+i.voce{background:var(--pink)}i.media{background:var(--s300)}
+.dsp-taxa{margin-bottom:14px}.dsp-taxa-t{font-size:13px;font-weight:600;margin-bottom:6px}
+.dsp-taxa-l{display:grid;grid-template-columns:1fr 60px;gap:10px;align-items:center;font-size:12px;margin-bottom:4px}
+.dsp-taxa-bar{height:8px;background:var(--s100);border-radius:999px;overflow:hidden}.dsp-taxa-bar i{height:100%;display:block}
+.dsp-rks{display:grid;grid-template-columns:1fr;gap:18px}
+.dsp-rk-t{font-size:15px;font-weight:800;color:var(--blue-dark)}.dsp-rk-s{font-size:12px;color:var(--s500);margin-bottom:8px}
+.dsp-rk-l{display:grid;grid-template-columns:32px 1fr 140px 90px;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;font-size:13px}
+.dsp-rk-l.voce{background:#fdf2f6;outline:1.5px solid var(--pink)}
+.dsp-rk-pos{width:26px;height:26px;border-radius:50%;background:var(--s100);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.dsp-rk-pos.p1{background:#facc15}.dsp-rk-pos.p2{background:#cbd5e1}.dsp-rk-pos.p3{background:#d6a06b}
+.dsp-rk-nome span{font-size:11px;color:var(--s400);margin-left:4px}
+.dsp-rk-bar{height:5px;background:var(--s100);border-radius:999px;overflow:hidden}.dsp-rk-bar i{display:block;height:100%;background:var(--blue);border-radius:999px}
+.dsp-rk-l.voce .dsp-rk-bar i{background:var(--pink)}
+.dsp-rk-v{text-align:right;font-weight:700;white-space:nowrap}.dsp-rk-v.blur{filter:blur(.6px);color:var(--s400);font-weight:500}
+.dsp-badges{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.dsp-badge{display:flex;gap:12px;border:1px dashed var(--s300);border-radius:14px;padding:14px;opacity:.75}
+.dsp-badge.ok{border:1px solid #bbf7d0;background:#f0fdf4;opacity:1}
+.dsp-badge-i{font-size:24px;line-height:1}.dsp-badge-t{font-weight:700;font-size:14px}
+.dsp-badge-s{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--s400);margin:2px 0}.dsp-badge.ok .dsp-badge-s{color:var(--emerald)}
+.dsp-badge-d{font-size:12px;color:var(--s500)}
+.dsp-lead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s100)}
+.dsp-fora{margin-top:16px;background:var(--s50);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--s600);line-height:1.5}
+.dsp-como{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}.dsp-como b{font-size:13px}.dsp-como p{font-size:12px;color:var(--s500);margin:4px 0 0;line-height:1.5}
+@media (max-width:900px){
+  .dsp-hero{padding:20px}.dsp-hero-val{font-size:30px}.dsp-hero-kpis{width:100%;justify-content:space-between}.dsp-hero-kpis div{align-items:flex-start}
+  .dsp-sec{padding:18px 16px}
+  .dsp-stages,.dsp-trilha{grid-template-columns:repeat(2,1fr)}
+  .dsp-badges,.dsp-como{grid-template-columns:1fr}
+  .dsp-placa{gap:14px;padding:14px}.dsp-placa-pos{min-width:64px}.dsp-pos{font-size:28px}
+  .dsp-rk-l{grid-template-columns:28px 1fr auto;gap:8px}.dsp-rk-bar{display:none}
+  .dsp-linha{grid-template-columns:1fr auto 90px;font-size:12px}
+  .dsp-mes,.dsp-mes select{width:100%}
+}
 </style>
 </head>
 <body>
@@ -560,6 +636,7 @@ function mapUser(row) {
     syncData: row.sync_data || null,
     affiliateType: row.affiliate_type || 'external',
     linksConfig: row.links_config || {},
+    bonifVisible: row.bonif_visible === true,
   };
 }
 function mapModel(row) {
@@ -591,6 +668,7 @@ function userToRow(u) {
     sync_data: u.syncData || null,
     affiliate_type: u.affiliateType || 'external',
     links_config: u.linksConfig || {},
+    ...(u.bonifVisible !== undefined ? { bonif_visible: !!u.bonifVisible } : {}),
   };
 }
 
@@ -911,13 +989,14 @@ function buildSidebar(){
     <div class="sb-lbl">Afiliado</div>
     <button class="sb-item" data-page="aff-dashboard"  onclick="navigate('aff-dashboard')"><span>📊</span> Dashboard</button>
     <button class="sb-item" data-page="aff-pipeline"   onclick="navigate('aff-pipeline')"><span>🎯</span> Pipeline de Leads</button>
+    <button class="sb-item" data-page="aff-desempenho" onclick="navigate('aff-desempenho')"><span>🏆</span> Meu desempenho</button>
     <button class="sb-item" data-page="aff-links"      onclick="navigate('aff-links')"><span>🔗</span> Gerador de Links</button>
     <button class="sb-item" data-page="aff-profile"    onclick="navigate('aff-profile')"><span>👤</span> Meu Perfil</button>
   `;
   document.getElementById('sb-nav').innerHTML=nav;
 }
 
-// Tab bar inferior: só para afiliado (4 páginas cabem em 4 abas).
+// Tab bar inferior: só para afiliado (5 páginas cabem em 5 abas).
 // O admin tem 7 páginas e continua na gaveta lateral.
 function buildTabbar(){
   const tb=document.getElementById('tabbar');
@@ -926,7 +1005,7 @@ function buildTabbar(){
   if(!currentUser||currentUser.role!=='affiliate'){ tb.innerHTML=''; tb.style.display='none'; shell?.classList.remove('sem-gaveta'); return; }
   tb.style.display='';
   document.getElementById('app-shell')?.classList.add('sem-gaveta');
-  tb.innerHTML=[['aff-dashboard','📊','Painel'],['aff-pipeline','🎯','Leads'],
+  tb.innerHTML=[['aff-dashboard','📊','Painel'],['aff-pipeline','🎯','Leads'],['aff-desempenho','🏆','Desempenho'],
                 ['aff-links','🔗','Links'],['aff-profile','👤','Perfil']]
     .map(([p,ic,lb])=>`<button class="tab-item" data-page="${p}" onclick="navigate('${p}')"><span class="tab-ico">${ic}</span><span class="tab-lbl">${lb}</span></button>`).join('');
 }
@@ -1007,6 +1086,8 @@ function renderPage(page){
     'aff-pipeline':      ()=>renderAffPipeline(c),
     'aff-links':         ()=>renderAffLinks(c),
     'aff-profile':       ()=>renderAffProfile(c),
+    'aff-desempenho':    ()=>renderDesempenho(c,null),
+    'admin-desempenho':  ()=>renderDesempenho(c,desempenhoPreviewId),
   }[page]||(() => {}))();
 }
 
@@ -1253,6 +1334,12 @@ function renderAffDetailHTML(a){
         <button class="btn btn-primary btn-sm" onclick="assignModel('${a.id}')">Aplicar modelo</button>
         <button class="btn btn-ghost btn-sm" onclick="openNewCustomModel('${a.id}')">+ Criar modelo customizado</button>
       </div>
+      <div class="detail-section-title" style="margin-top:18px">🏆 Meu desempenho</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:${noPolicy?'not-allowed':'pointer'};opacity:${noPolicy?.55:1}">
+        <input type="checkbox" style="margin-top:3px" ${a.bonifVisible&&!noPolicy?'checked':''} ${noPolicy?'disabled':''} onchange="setBonifVisible('${a.id}',this.checked)">
+        <span><strong>Liberar visualização da bonificação</strong><br><span class="text-muted text-sm">${noPolicy?'Atribua e aplique um modelo de bonificação para poder liberar.':'O parceiro passa a ver os valores em dinheiro na aba "Meu desempenho".'}</span></span>
+      </label>
+      <button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="previewDesempenho('${a.id}')">👁 Ver como o parceiro vê</button>
     </div>
   </div>`;
 }
@@ -1319,6 +1406,17 @@ function assignModel(affId){
   toast(modelId?`✅ Modelo "${model?.name||modelId}" aplicado a ${u.name}.`:`🔒 ${u.name} sem política — remuneração oculta para o afiliado.`);
   renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
 }
+function setBonifVisible(affId,on){
+  const users=getUsers(); const u=users.find(x=>x.id===affId); if(!u) return;
+  if(on&&!u.bonifModelId){ toast('Atribua um modelo de bonificação antes de liberar.'); renderAffRows(getUsers().filter(x=>x.role==='affiliate'&&x.status==='active')); return; }
+  u.bonifVisible=!!on;
+  saveUsers(users).then(r=>{ if(r&&r.failed){ u.bonifVisible=!on; renderAffRows(getUsers().filter(x=>x.role==='affiliate'&&x.status==='active')); } });
+  toast(on?`💵 Bonificação liberada para ${u.name} em "Meu desempenho".`:`🔒 Valores ocultos para ${u.name} em "Meu desempenho".`);
+}
+window.setBonifVisible=setBonifVisible;
+let desempenhoPreviewId=null;
+function previewDesempenho(affId){ desempenhoPreviewId=affId; navigate('admin-desempenho'); }
+window.previewDesempenho=previewDesempenho;
 function openNewCustomModel(affId){
   editingBonifModelId=null; editingAffiliateId=affId;
   const u=getUsers().find(x=>x.id===affId);
@@ -2277,6 +2375,123 @@ function renderAffDashboard(c){
     evoChart=new Chart(ctx,{type:'bar',data:{labels:evo.labels,datasets:[{data:evo.data,backgroundColor:'#3b82f6',borderRadius:5,borderSkipped:false,hoverBackgroundColor:'#1d4ed8'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} leads`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#94a3b8',maxRotation:45}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10},color:'#94a3b8'},beginAtZero:true,precision:0}}}});
   },50);
 }
+
+// ═══════════════════════════════════════════════════════
+// PAGE: Meu desempenho (parceiro) / prévia do admin
+// ═══════════════════════════════════════════════════════
+// Os números vêm prontos do servidor (/api/desempenho): o placar já chega
+// anonimizado e em faixas, e os valores em dinheiro só vêm quando o admin
+// liberou. Esta página só desenha.
+let desempenhoMes=null;
+const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const mesLabel=m=>{const[y,mm]=m.split('-');return`${MESES_PT[Number(mm)-1]} / ${y}`;};
+const mesCurto=m=>MESES_PT[Number(m.split('-')[1])-1].toLowerCase();
+const escH=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const usd=v=>'US$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pctBR=v=>`${Number(v||0).toFixed(1).replace('.',',')}%`;
+const ETAPA_CURTA={'Lead Recebido':'Lead Recebido','Em Atendimento':'Em Atendimento','Reunião Agendada':'Reunião Agendada','Oportunidade':'Oportunidade','Convertido':'Convertido'};
+
+async function renderDesempenho(c,previewId){
+  const titulo=previewId?'Prévia: Meu desempenho':'Meu desempenho';
+  setTopbar(titulo,'Resultado do mês no Partner Program');
+  c.innerHTML=`<div class="page-header"><div class="page-title">${titulo}</div><div class="page-sub">Calculando… na primeira abertura do mês pode levar até 30 segundos.</div></div><div class="panel"><div class="empty-state"><div class="icon">⏳</div><p>Buscando seus números no CRM.</p></div></div>`;
+  let d;
+  try{
+    const { data:{ session } }=await sb.auth.getSession();
+    const qs=new URLSearchParams(); if(desempenhoMes) qs.set('mes',desempenhoMes); if(previewId) qs.set('userId',previewId);
+    const r=await fetch('/api/desempenho?'+qs.toString(),{headers:{Authorization:`Bearer ${session?.access_token||''}`}});
+    d=await r.json();
+    if(!r.ok) throw new Error(d.error||`Erro ${r.status}`);
+  }catch(e){
+    c.innerHTML=`<div class="page-header"><div class="page-title">${titulo}</div></div><div class="panel"><div class="empty-state"><div class="icon">⚠️</div><p>${escH(e.message)}</p><button class="btn btn-outline-blue btn-sm" style="margin-top:10px" onclick="renderPage('${previewId?'admin-desempenho':'aff-desempenho'}')">Tentar de novo</button></div></div>`;
+    return;
+  }
+  // a página pode ter sido trocada enquanto carregava
+  if(!c.isConnected) return;
+  if(!desempenhoMes) desempenhoMes=d.mes;
+  const $=d.mostraValores, R=d.resumo, M=mesCurto(d.mes), fimBR=fmtDate(d.fim).slice(0,5);
+  const opcoes=(d.meses.length?d.meses:[d.mes]).map(m=>`<option value="${m}"${m===d.mes?' selected':''}>${mesLabel(m)}${m===d.padrao?' (último fechado)':''}${m>d.padrao?' (parcial)':''}</option>`).join('');
+  const sel=`<div class="dsp-mes"><label>Mês</label><select onchange="desempenhoMes=this.value;renderPage('${previewId?'admin-desempenho':'aff-desempenho'}')">${opcoes}</select></div>`;
+
+  const hero=`<div class="dsp-hero">
+    <div><div class="dsp-eyebrow">Partner Program · ${mesLabel(d.mes)}${d.parcial?' · parcial':''}</div>
+      ${$?`<div class="dsp-hero-lbl">Seus ganhos no mês</div><div class="dsp-hero-val">${usd(d.bonificacao.total)}</div>`:`<div class="dsp-hero-lbl">Seu resultado no mês</div><div class="dsp-hero-val">${R.leads} leads</div>`}
+      ${previewId?`<div class="dsp-hero-note">Prévia de ${escH(d.parceiro)} · ${$?'bonificação liberada':'sem valores (bonificação não liberada)'}</div>`:''}
+    </div>
+    <div class="dsp-hero-kpis"><div><b>${R.leads}</b><span>Leads</span></div><div><b>${R.emAtendimento}</b><span>Em Atendimento</span></div><div><b>${R.reuniao}</b><span>Reuniões</span></div></div>
+  </div>`;
+
+  const etapas=[['Lead Recebido',R.leads,`leads criados em ${M}`],['Em Atendimento',R.emAtendimento,`chegaram a Em Atendimento em ${M}`],['Reunião Agendada',R.reuniao,`chegaram a Reunião Agendada em ${M}`],['Oportunidade',R.oportunidade,`chegaram a Oportunidade em ${M}`]];
+  const resumo=`<div class="dsp-sec"><div class="dsp-kicker">Resumo do mês</div><div class="dsp-h">${mesLabel(d.mes).split(' /')[0]} em números</div>
+    <p class="dsp-p">Em ${M}, o seu link gerou ${R.leads} lead${R.leads!==1?'s':''} válido${R.leads!==1?'s':''}. Até ${fimBR}, ${R.emAtendimento} chegaram a Em Atendimento e ${R.reuniao} a Reunião Agendada.</p>
+    <div class="dsp-stages">${etapas.map(([n,v,t])=>`<div class="dsp-stage"><div class="dsp-stage-n">${n}</div><div class="dsp-stage-v">${v}</div><div class="dsp-stage-t">${t}</div></div>`).join('')}</div></div>`;
+
+  let remun='';
+  if($){
+    const B=d.bonificacao; let acc=0;
+    const visiveis=B.etapas.filter(e=>e.etapa!=='Convertido'||e.qtd>0);
+    remun=`<div class="dsp-sec"><div class="dsp-kicker">Remuneração</div><div class="dsp-h">Seus ganhos em ${M}</div>
+      <p class="dsp-p">Cada lead rende um valor a cada etapa que avança. Quanto mais longe ele chega, mais você ganha.</p>
+      <div class="dsp-card"><div class="dsp-total-lbl">Total do mês</div><div class="dsp-total">${usd(B.total)}</div>
+        ${visiveis.map(e=>`<div class="dsp-linha"><span>${e.etapa}</span><span class="dsp-mut">${e.qtd} × ${usd(e.valor).replace(',00','')}</span><b>${usd(e.subtotal)}</b></div>`).join('')}
+        <div class="dsp-linha dsp-linha-total"><span>Total</span><span></span><b>${usd(B.total)}</b></div></div>
+      <div class="dsp-trilha">${B.trilha.filter(t=>t.etapa!=='Convertido').map((t,i)=>{acc+=t.valor;return`<div class="dsp-passo"><div class="dsp-passo-n">${i+1}</div><div class="dsp-passo-t">${t.etapa}</div><div class="dsp-passo-v">+${usd(t.valor).replace(',00','')}</div><div class="dsp-mut" style="font-size:11px">acumulado ${usd(acc).replace(',00','')}</div></div>`;}).join('')}</div>
+      ${d.emAndamento?`<div class="dsp-nota">${d.emAndamento} lead${d.emAndamento>1?'s':''} segue${d.emAndamento>1?'m':''} em atendimento. Se avançar${d.emAndamento>1?'em':''} de etapa nos próximos meses, o valor de cada avanço entra no mês em que acontecer.</div>`:''}</div>`;
+  }
+
+  const P=d.placar;
+  const selo=pos=>pos?`<div class="dsp-pos">${pos}º</div><div class="dsp-top">TOP 10</div>`:`<div class="dsp-pos dsp-pos-fora">—</div><div class="dsp-top dsp-top-fora">FORA DO TOP 10</div>`;
+  const placar=`<div class="dsp-sec"><div class="dsp-kicker">Placar de ${M}</div><div class="dsp-h">Como você se saiu</div>
+    <p class="dsp-p">Comparação com os canais da casa e os outros parceiros no mesmo mês, pelo mesmo critério. Os demais aparecem sem nome e com valores aproximados.</p>
+    <div class="dsp-placar">
+      <div class="dsp-placa"><div class="dsp-placa-pos">${selo(P.volume.posicao)}</div><div><div class="dsp-placa-t">Volume de leads</div><div class="dsp-placa-d"><b>${P.volume.posParceiros}º lugar</b> entre os parceiros</div></div></div>
+      <div class="dsp-placa"><div class="dsp-placa-pos">${selo(P.qualif.posicao)}</div><div><div class="dsp-placa-t">Qualificação (Lead para Em Atendimento)</div><div class="dsp-placa-d">taxa de <b>${pctBR(P.qualif.voce)}</b> contra ${pctBR(P.qualif.media)} da média</div></div></div>
+      <div class="dsp-placa"><div class="dsp-placa-pos">${selo(P.avanco.posicao)}</div><div><div class="dsp-placa-t">Avanço até Reunião Agendada</div><div class="dsp-placa-d">taxa de <b>${pctBR(P.avanco.voce)}</b> contra ${pctBR(P.avanco.media)} da média</div></div></div>
+    </div></div>`;
+
+  const T=d.taxas;
+  const barraT=(rot,k)=>{const mx=Math.max(T.voce[k],T.media[k],1);return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>
+    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b></div>
+    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="media" style="width:${T.media[k]/mx*100}%"></i></div><span class="dsp-mut">${pctBR(T.media[k])}</span></div></div>`;};
+  const taxasHtml=`<div class="dsp-sec"><div class="dsp-kicker">Conversão</div><div class="dsp-h">Suas taxas x média de ${M}</div>
+    <div class="dsp-legenda"><span><i class="voce"></i>Você</span><span><i class="media"></i>Média de todos os leads de ${M}</span></div>
+    ${barraT('Lead Recebido para Em Atendimento','qualif')}${barraT('Em Atendimento para Reunião Agendada','mqlSql')}${barraT('Lead Recebido para Reunião Agendada','avanco')}${barraT('Reunião Agendada para Oportunidade','sqlOpp')}</div>`;
+
+  const nomeVoce=previewId?escH(d.parceiro):escH(currentUser?.name||'Você');
+  const rk=(tit,sub,r)=>`<div class="dsp-rk"><div class="dsp-rk-t">${tit}</div><div class="dsp-rk-s">${sub}</div>
+    ${r.linhas.map(l=>`<div class="dsp-rk-l${l.voce?' voce':''}"><div class="dsp-rk-pos p${l.pos}">${l.pos}</div><div class="dsp-rk-nome">${l.voce?`<b>${nomeVoce}</b> <span>Parceiro</span>`:`${escH(l.rotulo)} <span>${l.tipo==='canal'?'Canal':'Parceiro'}</span>`}</div><div class="dsp-rk-bar"><i style="width:${l.barra}%"></i></div><div class="dsp-rk-v${l.voce?'':' blur'}">${escH(l.valor)}</div></div>`).join('')}
+    ${r.voceForaDoTop?`<div class="dsp-rk-l voce"><div class="dsp-rk-pos">—</div><div class="dsp-rk-nome"><b>${nomeVoce}</b> <span>fora do Top 10</span></div><div class="dsp-rk-bar"></div><div class="dsp-rk-v">${escH(r.voceForaDoTop.valor)}</div></div>`:''}</div>`;
+  const rankings=`<div class="dsp-sec"><div class="dsp-kicker">Rankings</div><div class="dsp-h">Top 10 de ${M}</div>
+    <div class="dsp-rks">${rk('Volume de leads',`Leads criados em ${M}. Volumes dos demais em faixas.`,d.rankings.volume)}
+    ${rk('Qualificação','% dos leads que chegaram a Em Atendimento.',d.rankings.qualif)}
+    ${rk('Avanço até Reunião Agendada','% dos leads que chegaram a Reunião Agendada.',d.rankings.avanco)}</div></div>`;
+
+  const ICO={'lider-parceiros':'🥇','top5-volume':'🏅','primeira-reuniao':'📅','qualif-acima':'📈','primeira-oportunidade':'💼','base-em-movimento':'🔄'};
+  const conquistas=`<div class="dsp-sec"><div class="dsp-kicker">Conquistas</div><div class="dsp-h">Marcos do mês</div>
+    <div class="dsp-badges">${d.conquistas.map(b=>`<div class="dsp-badge${b.ok?' ok':''}"><div class="dsp-badge-i">${b.ok?ICO[b.id]||'⭐':'🔒'}</div><div><div class="dsp-badge-t">${escH(b.titulo)}</div><div class="dsp-badge-s">${b.ok?'Conquistada':'Bloqueada'}</div><div class="dsp-badge-d">${escH(b.detalhe)}</div></div></div>`).join('')}</div></div>`;
+
+  const L=d.leads;
+  const leadsHtml=`<div class="dsp-sec"><div class="dsp-kicker">Detalhamento</div><div class="dsp-h">Seus leads de ${M}</div>
+    <p class="dsp-p">Etapa mais alta que cada lead atingiu até ${fimBR}${$?' e o valor gerado no mês':''}. Inclui leads de meses anteriores que avançaram em ${M}.</p>
+    ${!L.length?`<div class="empty-state"><p>Nenhum lead neste mês.</p></div>`:`
+    <div class="only-desktop"><table class="table"><thead><tr><th>#</th><th>Data</th><th>Lead</th><th>Etapa em ${fimBR}</th>${$?'<th style="text-align:right">Valor</th>':''}</tr></thead><tbody>
+      ${L.map((l,i)=>`<tr><td class="text-muted text-sm">${i+1}</td><td class="text-muted text-sm">${fmtDate(l.data).slice(0,5)}</td><td>${escH(l.nome)}</td><td><span style="font-size:12px;font-weight:600;color:${STAGE_COLORS[l.etapa]||'var(--s500)'}">${escH(ETAPA_CURTA[l.etapa]||l.etapa||'—')}</span></td>${$?`<td style="text-align:right;font-weight:600">${usd(l.valor)}</td>`:''}</tr>`).join('')}
+      ${$?`<tr style="background:var(--s50);font-weight:700"><td colspan="4">Total</td><td style="text-align:right">${usd(d.bonificacao.total)}</td></tr>`:''}
+    </tbody></table></div>
+    <div class="only-mobile">${L.map(l=>`<div class="dsp-lead"><div><div style="font-weight:600;font-size:14px">${escH(l.nome)}</div><div class="dsp-mut" style="font-size:12px">${fmtDate(l.data).slice(0,5)} · <span style="color:${STAGE_COLORS[l.etapa]||'var(--s500)'};font-weight:600">${escH(l.etapa||'—')}</span></div></div>${$?`<b>${usd(l.valor)}</b>`:''}</div>`).join('')}
+      ${$?`<div class="dsp-lead" style="font-weight:700"><span>Total</span><b>${usd(d.bonificacao.total)}</b></div>`:''}</div>`}
+    ${d.foraDaContagem?`<div class="dsp-fora"><b>Leads fora da contagem</b><br>${d.foraDaContagem} lead${d.foraDaContagem>1?'s':''} criado${d.foraDaContagem>1?'s':''} com o seu link em ${M} não entra${d.foraDaContagem>1?'m':''} na contagem porque já ${d.foraDaContagem>1?'eram nossos contatos':'era nosso contato'} antes da indicação.</div>`:''}</div>`;
+
+  const como=`<div class="dsp-sec"><div class="dsp-kicker">Como apuramos</div>
+    <div class="dsp-como"><div><b>Lead Recebido</b><p>Lead registrado no nosso CRM entre ${fmtDate(d.inicio)} e ${fmtDate(d.fim)} com o seu link. Contatos que já estavam no CRM antes da indicação não contam.</p></div>
+    <div><b>Etapas seguintes</b><p>O lead conta na etapa no mês em que chegou a ela. Avanços nos meses seguintes entram no mês do avanço${$?', pagando só a diferença da nova etapa':''}.</p></div>
+    <div><b>Placar</b><p>Mesmo critério para todos. Seus números aparecem exatos; os demais participantes, sem nome e com valores aproximados.</p></div></div></div>`;
+
+  c.innerHTML=`<div class="page-header dsp-head"><div><div class="page-title">${titulo}</div><div class="page-sub">${mesLabel(d.mes)}${d.parcial?' · mês em andamento, números parciais':''}</div></div>${sel}</div>
+    ${previewId?`<button class="btn btn-ghost btn-sm" style="margin-bottom:12px" onclick="navigate('admin-affiliates')">← Voltar para Afiliados</button>`:''}
+    <div class="dsp">${hero}${resumo}${remun}${placar}${taxasHtml}${rankings}${conquistas}${leadsHtml}${como}</div>`;
+}
+window.renderDesempenho=renderDesempenho;
 
 // ═══════════════════════════════════════════════════════
 // PAGE: Affiliate Pipeline

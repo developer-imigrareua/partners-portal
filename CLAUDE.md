@@ -9,6 +9,7 @@ Portal de afiliados da ImigrarEUA / LIV Immigration Law. Single-page app (HTML +
 ```
 index.html      SPA completa — toda UI, lógica de frontend, autenticação Supabase
 server.js       Express — proxy seguro para HubSpot, Short.io e Supabase (chaves nunca no frontend)
+desempenho.js   Cálculo da aba "Meu desempenho" e do placar anonimizado (funções puras)
 .env            Variáveis de ambiente (não commitado)
 .env.example    Template das variáveis necessárias
 Dockerfile      Build para deploy no EasyPanel (VPS)
@@ -49,6 +50,7 @@ Colunas relevantes:
 - `links_config` — JSONB com controle de visibilidade dos links por afiliado (`{ "slug": { hidden: true, deleted: true } }`)
 - `affiliate_type` — `'internal'` | `'external'`
 - `bonif_model_id` — referência ao modelo de bonificação
+- `bonif_visible` — admin liberou os valores em dinheiro na aba "Meu desempenho" (`db/bonif-visivel.sql`; protegido no gatilho de colunas administrativas)
 
 ### Tabela `link_forms`
 Formulários configuráveis pelo admin. Colunas:
@@ -171,6 +173,7 @@ falha com retry. Rodar antes de mexer em persistência.
 | PATCH | `/api/link-forms/:id` | Atualiza formulário |
 | DELETE | `/api/link-forms/:id` | Desativa formulário (soft delete) |
 | GET | `/api/health` | Checa conectividade HubSpot + Short.io |
+| GET | `/api/desempenho?mes=AAAA-MM[&userId=X]` | Aba "Meu desempenho". **Exige token do Supabase Auth.** Placar de terceiros só anonimizado e em faixas |
 | GET | `*` | Serve `index.html` com `Cache-Control: no-store` |
 
 ## Short.io — regras críticas

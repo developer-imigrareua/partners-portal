@@ -201,6 +201,137 @@ app.get('/api/hubspot/sync', async (req, res) => {
   }
 });
 
+// ── Aba "Meu desempenho" ─────────────────────────────────
+//
+// Leads de TODAS as origens criados no mês, para o placar e a média. Volume
+// grande (~4 mil/mês): fica em cache de memória e nunca vai inteiro ao front.
+const { montarDesempenho, intervaloDoMes } = require('./desempenho');
+const cacheMes = new Map();   // 'AAAA-MM' -> { em, promessa }
+
+async function fetchLeadsDoMes(mes) {
+  const { inicio, fim } = intervaloDoMes(mes);
+  const raw = [];
+  let after;
+  do {
+    const body = {
+      filterGroups: [{ filters: [{ propertyName: 'hs_createdate', operator: 'BETWEEN', value: `${inicio}T00:00:00Z`, highValue: `${fim}T23:59:59.999Z` }] }],
+      properties: ['hs_createdate', 'last_utm_affiliatename', 'last_utm_affiliatetype'],
+      sorts: [{ propertyName: 'hs_createdate', direction: 'ASCENDING' }],
+      limit: 200,
+    };
+    if (after) body.after = after;
+    const page = await hsRequest('/crm/v3/objects/leads/search', { method: 'POST', body });
+    raw.push(...(page.results || []));
+    after = page.paging?.next?.after;
+    if (after) await sleep(250);
+  } while (after);
+
+  const leadToContact = {};
+  for (const part of chunk(raw.map(l => ({ id: l.id })), 1000)) {
+    const r = await hsRequest('/crm/v4/associations/leads/contacts/batch/read', { method: 'POST', body: { inputs: part } });
+    (r.results || []).forEach(a => { if (a.to?.length) leadToContact[a.from.id] = String(a.to[0].toObjectId); });
+  }
+  const contacts = {};
+  for (const part of chunk([...new Set(Object.values(leadToContact))], 100)) {
+    const r = await hsRequest('/crm/v3/objects/contacts/batch/read', {
+      method: 'POST',
+      body: { inputs: part.map(id => ({ id })), properties: ['createdate', 'original_utm_affiliatename', ...STAGE_DATE_PROPS.map(([, p]) => p)] },
+    });
+    (r.results || []).forEach(c => { contacts[c.id] = c; });
+    await sleep(120);
+  }
+  return raw.map(l => {
+    const aff = l.properties?.last_utm_affiliatename || '';
+    const ct = contacts[leadToContact[l.id]] || null;
+    const createdAt = (l.properties?.hs_createdate || '').slice(0, 10);
+    const reached = { 'Lead Recebido': createdAt };
+    STAGE_DATE_PROPS.forEach(([stage, prop]) => {
+      const d = (ct?.properties?.[prop] || '').slice(0, 10);
+      if (d) reached[stage] = d < createdAt ? createdAt : d;
+    });
+    return { aff, type: l.properties?.last_utm_affiliatetype || '', createdAt, reached,
+      eligible: checkEligibility(aff, l.properties?.hs_createdate, ct).eligible };
+  });
+}
+
+// Mês fechado: 6 h de cache; mês corrente: 30 min. Requisições simultâneas
+// do mesmo mês esperam a mesma busca.
+function leadsDoMes(mes) {
+  const { fim } = intervaloDoMes(mes);
+  const ttl = new Date().toISOString().slice(0, 10) > fim ? 6 * 3600e3 : 30 * 60e3;
+  const c = cacheMes.get(mes);
+  if (c && Date.now() - c.em < ttl) return c.promessa;
+  const promessa = fetchLeadsDoMes(mes);
+  cacheMes.set(mes, { em: Date.now(), promessa });
+  promessa.catch(() => cacheMes.delete(mes));
+  return promessa;
+}
+
+const ultimoMesFechado = () => {
+  const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 7);
+};
+
+// Quem está chamando: valida o token do Supabase Auth e lê a linha em users.
+async function usuarioDaRequisicao(req) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!token || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) return null;
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${token}` } });
+  if (!r.ok) return null;
+  const authUser = await r.json();
+  if (!authUser?.id) return null;
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/users?auth_id=eq.${encodeURIComponent(authUser.id)}&select=*`,
+    { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } });
+  if (!q.ok) return null;
+  return (await q.json())[0] || null;
+}
+
+async function lerLinha(tabela, id) {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?id=eq.${encodeURIComponent(id)}&select=*`,
+    { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } });
+  if (!r.ok) throw new Error(`Supabase ${r.status} em ${tabela}`);
+  return (await r.json())[0] || null;
+}
+
+// GET /api/desempenho?mes=AAAA-MM            (parceiro logado: o próprio)
+// GET /api/desempenho?mes=AAAA-MM&userId=X   (admin: prévia de um parceiro)
+app.get('/api/desempenho', async (req, res) => {
+  try {
+    const eu = await usuarioDaRequisicao(req);
+    if (!eu) return res.status(401).json({ error: 'Faça login de novo.' });
+    let alvo = eu;
+    if (eu.role === 'admin') {
+      if (!req.query.userId) return res.status(400).json({ error: 'userId obrigatório para admin' });
+      alvo = await lerLinha('users', req.query.userId);
+      if (!alvo || alvo.role !== 'affiliate') return res.status(404).json({ error: 'Parceiro não encontrado' });
+    } else if (eu.status !== 'active') {
+      return res.status(403).json({ error: 'Conta não ativa' });
+    }
+    if (!alvo.hs_affiliate_id) return res.status(409).json({ error: 'Parceiro sem identificador do HubSpot' });
+
+    const mes = req.query.mes || ultimoMesFechado();
+    if (mes > new Date().toISOString().slice(0, 7)) return res.status(400).json({ error: 'Mês no futuro' });
+    const modelo = alvo.bonif_model_id ? await lerLinha('bonif_models', alvo.bonif_model_id).catch(() => null) : null;
+    const mostrarValores = alvo.bonif_visible === true && !!modelo;
+    const [leadsParceiro, leadsMes] = await Promise.all([fetchHubSpotLeads(alvo.hs_affiliate_id), leadsDoMes(mes)]);
+
+    const desempenho = montarDesempenho({ mes, hsId: alvo.hs_affiliate_id, leadsParceiro, leadsMes, modelo, mostrarValores });
+    // Meses com dado do parceiro, do primeiro lead até o mês corrente.
+    const primeiro = leadsParceiro.map(l => l.createdAt).filter(Boolean).sort()[0];
+    const meses = [];
+    if (primeiro) {
+      const d = new Date(primeiro.slice(0, 7) + '-01T00:00:00Z'), ate = new Date().toISOString().slice(0, 7);
+      while (d.toISOString().slice(0, 7) <= ate && meses.length < 36) { meses.push(d.toISOString().slice(0, 7)); d.setUTCMonth(d.getUTCMonth() + 1); }
+    }
+    res.json({ ...desempenho, parceiro: alvo.name || '', meses: meses.reverse(), padrao: ultimoMesFechado() });
+  } catch (err) {
+    console.error('desempenho error:', err.message);
+    res.status(500).json({ error: 'Não foi possível montar o desempenho agora. Tente de novo em instantes.' });
+  }
+});
+
 // ── Daily auto-sync (7AM BRT = 10AM UTC) ────────────────
 
 async function runDailySync() {
@@ -244,6 +375,7 @@ async function runDailySync() {
     }
   }
   console.log('[daily-sync] Done.');
+  leadsDoMes(ultimoMesFechado()).catch(e => console.warn('[daily-sync] cache do mês:', e.message));
 }
 
 // Schedule: every day at 10:00 UTC (07:00 BRT)
@@ -613,4 +745,8 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Partner Portal running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Partner Portal running on port ${PORT}`);
+  // Aquece o cache do último mês fechado para a primeira abertura da aba não esperar.
+  if (process.env.HUBSPOT_API_KEY) setTimeout(() => leadsDoMes(ultimoMesFechado()).catch(e => console.warn('cache do mês:', e.message)), 15000);
+});

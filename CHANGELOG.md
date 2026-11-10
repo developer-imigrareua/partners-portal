@@ -6,6 +6,42 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-11-10
+
+Aba **Meu desempenho** para o parceiro, no formato do Relatório de Partner
+Program. Exige **uma migração no Supabase**: `db/bonif-visivel.sql`.
+
+### Adicionado
+
+- **Meu desempenho** (menu do afiliado e aba "Desempenho" no celular): resumo
+  do mês, placar com selo Top 10 e posição entre os parceiros, taxas do funil
+  contra a média do mês, rankings Top 10 de volume, qualificação e avanço,
+  seis conquistas, lista de leads (primeiro nome e inicial), leads fora da
+  contagem (só a quantidade) e "Como apuramos". Seletor de mês, padrão no
+  último mês fechado.
+- **Liberar visualização da bonificação** (Afiliados › Configurar): com o check
+  ligado, o parceiro vê os valores em dinheiro na aba. Sem modelo atribuído o
+  check fica desabilitado. Botão "Ver como o parceiro vê" para o admin conferir.
+- `GET /api/desempenho`: primeira rota da API que exige login (token do
+  Supabase Auth). O parceiro só recebe os próprios dados; o admin passa
+  `userId` para a prévia. Sem liberação, a resposta não traz nenhum campo de
+  dinheiro (não é só escondido na tela).
+
+### Regras do placar
+
+- Canal pelo lead no HubSpot (comercial, 10/11/2026): `last_utm_affiliatetype`
+  `external` = parceiro, `internal` = canal interno, cada
+  `last_utm_affiliatename` um canal. Lead sem afiliado entra só na média.
+- Privacidade: os números dos outros são calculados no servidor e saem sem
+  nome ("Canal interno A", "Parceiro B"), volume em faixas, taxas com "≈",
+  barra pela posição, só o Top 10 e, fora dele, sem número de posição. Quem tem
+  menos de 5 leads no mês entra em "Demais canais internos" / "Demais
+  parceiros".
+- Leads de todas as origens do mês ficam em cache de memória (mês fechado 6 h,
+  mês corrente 30 min), aquecido na subida do servidor e no sync diário.
+
+---
+
 ## [1.2.0] — 2026-11-06
 
 O portal passa a mostrar a **base de leads** do parceiro, e não mais contatos,
