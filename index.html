@@ -342,8 +342,8 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 }
 
 /* ── Meu desempenho ─────────────────────────────────── */
-.dsp-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.dsp-mes{display:flex;flex-direction:column;gap:4px}.dsp-mes label{font-size:10px;font-weight:600;color:var(--s400);text-transform:uppercase;letter-spacing:.06em}
+.dsp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.dsp-mes{display:flex;align-items:center;gap:8px}.dsp-mes label{font-size:10px;font-weight:600;color:var(--s400);text-transform:uppercase;letter-spacing:.06em}
 .dsp-mes select{border:1px solid var(--s200);border-radius:10px;padding:8px 12px;font-family:inherit;font-size:13px;background:#fff;min-width:210px}
 .dsp{max-width:980px}
 .dsp-hero{background:radial-gradient(circle at 92% 0%,rgba(249,13,91,.55),transparent 42%),#0b1430;color:#fff;border-radius:20px;padding:26px 28px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
@@ -414,7 +414,7 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
   .dsp-placa{gap:14px;padding:14px}.dsp-placa-pos{min-width:64px}.dsp-pos{font-size:28px}
   .dsp-rk-l{grid-template-columns:28px 1fr auto;gap:8px}.dsp-rk-bar{display:none}
   .dsp-linha{grid-template-columns:1fr auto 90px;font-size:12px}
-  .dsp-mes,.dsp-mes select{width:100%}
+  .dsp-mes{width:100%}.dsp-mes select{flex:1;min-width:0}
 }
 
 /* ── Ver como parceiro ─────────────────────────────── */
@@ -2557,8 +2557,8 @@ async function renderDesempenho(c,userId){
     <div><b>Etapas seguintes</b><p>O lead conta na etapa no mês em que chegou a ela. Avanços nos meses seguintes entram no mês do avanço${$?', pagando só a diferença da nova etapa':''}.</p></div>
     <div><b>Placar</b><p>Mesmo critério para todos. Seus números aparecem exatos; os demais participantes, sem nome e com valores aproximados.</p></div></div></div>`;
 
-  c.innerHTML=`<div class="page-header dsp-head"><div><div class="page-title">${titulo}</div><div class="page-sub">${mesLabel(d.mes)}${d.parcial?' · mês em andamento, números parciais':''}</div></div>${sel}</div>
-    <div class="dsp">${hero}${resumo}${remun}${placar}${taxasHtml}${rankings}${conquistas}${leadsHtml}${como}</div>`;
+  c.innerHTML=`<div class="dsp"><div class="page-header dsp-head"><div><div class="page-title">${titulo}</div><div class="page-sub">${mesLabel(d.mes)}${d.parcial?' · mês em andamento, números parciais':''}</div></div>${sel}</div>
+    ${hero}${resumo}${remun}${placar}${taxasHtml}${rankings}${conquistas}${leadsHtml}${como}</div>`;
 }
 window.renderDesempenho=renderDesempenho;
 
