@@ -2735,14 +2735,16 @@ async function renderDesempenho(c,userId){
   const T=d.taxas;
   // Contagem só do próprio parceiro, em frase. A média segue só em %.
   const K=T.contagem;
-  const chegou=(n,de,base,etapa)=>`${n} ${n===1?'chegou':'chegaram'} a ${etapa}, de ${de} ${base}`;
+  // Só o número do mês: quantos dos leads do mês chegaram à etapa.
+  const chegou=(n,etapa)=>`${n} lead${n===1?'':'s'} ${n===1?'chegou':'chegaram'} a ${etapa} em ${M}`;
   const FRASE=K?{
-    qualif:chegou(K.emAtendimento,K.leads,K.leads===1?'lead seu':'leads seus','Em Atendimento'),
-    mqlSql:chegou(K.reuniao,K.emAtendimento,K.emAtendimento===1?'lead em Em Atendimento':'leads em Em Atendimento','Reunião Agendada'),
-    avanco:chegou(K.reuniao,K.leads,K.leads===1?'lead seu':'leads seus','Reunião Agendada'),
-    sqlOpp:chegou(K.oportunidade,K.reuniao,K.reuniao===1?'lead com Reunião Agendada':'leads com Reunião Agendada','Oportunidade'),
+    qualif:chegou(K.emAtendimento,'Em Atendimento'),
+    mqlSql:chegou(K.reuniao,'Reunião Agendada'),
+    avanco:chegou(K.reuniao,'Reunião Agendada'),
+    sqlOpp:chegou(K.oportunidade,'Oportunidade'),
   }:{};
-  const barraT=(rot,k)=>{const mx=Math.max(T.voce[k],T.media[k],1);return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>${FRASE[k]?`<div class="dsp-taxa-q">Você: ${FRASE[k]}</div>`:''}
+  // Barra na escala de 0 a 100%: 25% ocupa um quarto, não a barra inteira.
+  const barraT=(rot,k)=>{const mx=100;return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>${FRASE[k]?`<div class="dsp-taxa-q">Você: ${FRASE[k]}</div>`:''}
     <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b></div>
     <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="media" style="width:${T.media[k]/mx*100}%"></i></div><span class="dsp-mut">${pctBR(T.media[k])}</span></div></div>`;};
   const taxasHtml=`<div class="dsp-sec"><div class="dsp-kicker">Conversão</div><div class="dsp-h">Suas taxas x média de ${M}</div>
