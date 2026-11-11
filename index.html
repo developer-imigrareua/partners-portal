@@ -425,6 +425,13 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 .dsp-badge-s{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--s400);margin:2px 0}.dsp-badge.ok .dsp-badge-s{color:var(--emerald)}
 .dsp-badge-d{font-size:12px;color:var(--s500)}
 .dsp-lead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--s100)}
+.dsp-q{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;border:0;background:var(--s200);color:var(--s600);font-size:11px;font-weight:700;cursor:pointer;vertical-align:middle;margin-left:4px;padding:0;font-family:inherit}
+.dsp-q:hover{background:var(--s300)}
+.dsp-q-static{cursor:default;margin:0 4px 0 0}
+.dsp-linha-fora td,.dsp-linha-fora{color:var(--s400)}
+.dsp-etapas-mes{display:flex;flex-wrap:wrap;gap:4px}
+.dsp-chip{font-size:11px;font-weight:600;background:var(--s50);border:1px solid var(--s100);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.dsp-chip b{color:#059669;font-weight:700}
 .dsp-fora{margin-top:16px;background:var(--s50);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--s600);line-height:1.5}
 .dsp-como{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}.dsp-como b{font-size:13px}.dsp-como p{font-size:12px;color:var(--s500);margin:4px 0 0;line-height:1.5}
 @media (max-width:900px){
@@ -2753,16 +2760,27 @@ async function renderDesempenho(c,userId){
   const L=d.leads;
   // Lead de mês anterior que só mudou de etapa neste mês.
   const avisoEtapa=l=>l.capturadoEm?`<div class="dsp-aviso" title="Capturado em ${fmtDate(l.capturadoEm)}. Neste mês entra só ${$?'o valor d':''}a nova etapa (${escH((l.etapasNoMes||[]).join(', '))}).">ⓘ Mudança de etapa · capturado em ${mesCurto(l.capturadoEm.slice(0,7)).slice(0,3)}/${l.capturadoEm.slice(2,4)}</div>`:'';
+  // Lead fora da contagem: "?" que leva ao aviso logo abaixo da lista.
+  const marcaFora=l=>l.fora?` <button type="button" class="dsp-q" title="${escH(l.motivo||'Já era nosso contato')}. Não conta e não gera valor. Ver “Leads fora da contagem” abaixo." onclick="document.getElementById('dsp-fora')?.scrollIntoView({behavior:'smooth',block:'center'})">?</button>`:'';
+  // Etapas atingidas NO MÊS, com o valor de cada uma quando liberado.
+  const etapasMes=l=>{
+    if(l.fora) return `<span class="dsp-mut" style="font-size:12px">Não conta</span>`;
+    const lista=$?(l.etapasValor||[]):(l.etapasNoMes||[]).map(e=>({etapa:e}));
+    if(!lista.length) return '<span class="dsp-mut">—</span>';
+    return `<div class="dsp-etapas-mes">${lista.map(e=>`<span class="dsp-chip" style="color:${STAGE_COLORS[e.etapa]||'var(--s500)'}">${escH(e.etapa)}${$?` <b>+${usd(e.valor).replace(',00','')}</b>`:''}</span>`).join('')}</div>`;
+  };
+  let n=0; const numero=l=>l.fora?'—':String(++n);
+  const linhasL=L.map(l=>({l,num:numero(l)}));
   const leadsHtml=`<div class="dsp-sec"><div class="dsp-kicker">Detalhamento</div><div class="dsp-h">Seus leads de ${M}</div>
-    <p class="dsp-p">Etapa mais alta que cada lead atingiu até ${fimBR}${$?' e o valor gerado no mês':''}. Inclui leads de meses anteriores que avançaram em ${M}.</p>
+    <p class="dsp-p">Etapa mais alta que cada lead atingiu até ${fimBR} e as etapas que ele atingiu em ${M}${$?', com o valor de cada uma':''}. ${$?`O valor é só do que aconteceu em ${M}: etapas de outros meses entram no mês em que aconteceram. `:''}Inclui leads de meses anteriores que avançaram em ${M}${d.foraDaContagem?' e, marcados com <b>?</b>, os que não contam':''}.</p>
     ${!L.length?`<div class="empty-state"><p>Nenhum lead neste mês.</p></div>`:`
-    <div class="only-desktop"><table class="table"><thead><tr><th>#</th><th>Data</th><th>Lead</th><th>Etapa em ${fimBR}</th>${$?'<th style="text-align:right">Valor</th>':''}</tr></thead><tbody>
-      ${L.map((l,i)=>`<tr><td class="text-muted text-sm">${i+1}</td><td class="text-muted text-sm">${fmtDate(l.data).slice(0,5)}</td><td>${escH(l.nome)}${avisoEtapa(l)}</td><td><span style="font-size:12px;font-weight:600;color:${STAGE_COLORS[l.etapa]||'var(--s500)'}">${escH(ETAPA_CURTA[l.etapa]||l.etapa||'—')}</span></td>${$?`<td style="text-align:right;font-weight:600">${usd(l.valor)}</td>`:''}</tr>`).join('')}
-      ${$?`<tr style="background:var(--s50);font-weight:700"><td colspan="4">Total</td><td style="text-align:right">${usd(d.bonificacao.total)}</td></tr>`:''}
+    <div class="only-desktop"><table class="table"><thead><tr><th>#</th><th>Data</th><th>Lead</th><th>Etapa em ${fimBR}</th><th>Etapas em ${M}</th>${$?`<th style="text-align:right">Valor em ${M}</th>`:''}</tr></thead><tbody>
+      ${linhasL.map(({l,num})=>`<tr${l.fora?' class="dsp-linha-fora"':''}><td class="text-muted text-sm">${num}</td><td class="text-muted text-sm">${fmtDate(l.data).slice(0,5)}</td><td>${escH(l.nome)}${marcaFora(l)}${avisoEtapa(l)}</td><td><span style="font-size:12px;font-weight:600;color:${l.fora?'var(--s400)':STAGE_COLORS[l.etapa]||'var(--s500)'}">${escH(ETAPA_CURTA[l.etapa]||l.etapa||'—')}</span></td><td>${etapasMes(l)}</td>${$?`<td style="text-align:right;font-weight:600">${usd(l.valor)}</td>`:''}</tr>`).join('')}
+      ${$?`<tr style="background:var(--s50);font-weight:700"><td colspan="5">Total de ${M}</td><td style="text-align:right">${usd(d.bonificacao.total)}</td></tr>`:''}
     </tbody></table></div>
-    <div class="only-mobile">${L.map(l=>`<div class="dsp-lead"><div><div style="font-weight:600;font-size:14px">${escH(l.nome)}</div>${avisoEtapa(l)}<div class="dsp-mut" style="font-size:12px">${fmtDate(l.data).slice(0,5)} · <span style="color:${STAGE_COLORS[l.etapa]||'var(--s500)'};font-weight:600">${escH(l.etapa||'—')}</span></div></div>${$?`<b>${usd(l.valor)}</b>`:''}</div>`).join('')}
-      ${$?`<div class="dsp-lead" style="font-weight:700"><span>Total</span><b>${usd(d.bonificacao.total)}</b></div>`:''}</div>`}
-    ${d.foraDaContagem?`<div class="dsp-fora"><b>Leads fora da contagem</b><br>${d.foraDaContagem} lead${d.foraDaContagem>1?'s':''} criado${d.foraDaContagem>1?'s':''} com o seu link em ${M} não entra${d.foraDaContagem>1?'m':''} na contagem porque já ${d.foraDaContagem>1?'eram nossos contatos':'era nosso contato'} antes da indicação.</div>`:''}</div>`;
+    <div class="only-mobile">${linhasL.map(({l})=>`<div class="dsp-lead${l.fora?' dsp-linha-fora':''}"><div style="min-width:0"><div style="font-weight:600;font-size:14px">${escH(l.nome)}${marcaFora(l)}</div>${avisoEtapa(l)}<div class="dsp-mut" style="font-size:12px">${fmtDate(l.data).slice(0,5)} · <span style="color:${l.fora?'var(--s400)':STAGE_COLORS[l.etapa]||'var(--s500)'};font-weight:600">${escH(l.etapa||'—')}</span></div>${l.fora?'':`<div style="margin-top:4px">${etapasMes(l)}</div>`}</div>${$?`<b>${usd(l.valor)}</b>`:''}</div>`).join('')}
+      ${$?`<div class="dsp-lead" style="font-weight:700"><span>Total de ${M}</span><b>${usd(d.bonificacao.total)}</b></div>`:''}</div>`}
+    ${d.foraDaContagem?`<div class="dsp-fora" id="dsp-fora"><b><span class="dsp-q dsp-q-static">?</span> Leads fora da contagem</b><br>${d.foraDaContagem} lead${d.foraDaContagem>1?'s':''} criado${d.foraDaContagem>1?'s':''} com o seu link em ${M} não entra${d.foraDaContagem>1?'m':''} na contagem nem ${d.foraDaContagem>1?'geram':'gera'} valor, porque o contato já ${d.foraDaContagem>1?'era':'era'} nosso antes da indicação (já estava no CRM ou já tinha entrado como lead). ${d.foraDaContagem>1?'Eles aparecem':'Ele aparece'} na lista acima marcado${d.foraDaContagem>1?'s':''} com <b>?</b>.</div>`:''}</div>`;
 
   const como=`<div class="dsp-sec"><div class="dsp-kicker">Como apuramos</div>
     <div class="dsp-como"><div><b>Lead Recebido</b><p>Lead registrado no nosso CRM entre ${fmtDate(d.inicio)} e ${fmtDate(d.fim)} com o seu link. Contatos que já estavam no CRM antes da indicação não contam.</p></div>

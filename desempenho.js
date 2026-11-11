@@ -190,11 +190,26 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, politica
       // Lead de mês anterior que só avançou de etapa agora: paga só a etapa nova.
       if (l.createdAt && l.createdAt < inicio) item.capturadoEm = l.createdAt;
       item.etapasNoMes = FLOW.filter(st => noMes(l.reached[st]));
-      if (dinheiro) item.valor = item.etapasNoMes.reduce((s, st) => s + valorEm(st, l.reached[st]), 0);
+      // Valor de cada etapa atingida NESTE mês (o que entra no pagamento do mês).
+      if (dinheiro) {
+        item.etapasValor = item.etapasNoMes.map(st => ({ etapa: st, valor: valorEm(st, l.reached[st]) }));
+        item.valor = item.etapasValor.reduce((s, e) => s + e.valor, 0);
+      }
       return item;
     });
 
-  const foraDaContagem = (leadsParceiro || []).filter(l => l.eligible === false && noMes(l.createdAt)).length;
+  // Leads fora da contagem criados no mês: entram na lista marcados, com valor
+  // zero (pedido do comercial, 11/11/2026). Só primeiro nome e inicial e um
+  // motivo genérico; nada de ID ou data de quando o contato entrou no CRM.
+  const fora = (leadsParceiro || []).filter(l => l.eligible === false && noMes(l.createdAt));
+  const foraDaContagem = fora.length;
+  fora.forEach(l => {
+    const item = { nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(preencherEtapas(l.reached), fim), fora: true,
+      motivo: l.recaptura ? 'O contato já tinha entrado como lead antes desta indicação' : 'O contato já era nosso antes da indicação', etapasNoMes: [] };
+    if (dinheiro) { item.etapasValor = []; item.valor = 0; }
+    lista.push(item);
+  });
+  lista.sort((a, b) => (a.data || '').localeCompare(b.data || '') || (a.fora ? 1 : 0) - (b.fora ? 1 : 0));
   const emAndamento = (leadsParceiro || []).filter(l => l.eligible !== false && noMes(l.createdAt)
     && ['Em Atendimento', 'Reunião Agendada', 'Oportunidade'].includes(l.stage)).length;
 
