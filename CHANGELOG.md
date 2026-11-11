@@ -38,6 +38,10 @@ Exige **uma migração no Supabase**: `db/v1.4.sql`.
 - **Lead recapturado**: só o primeiro lead de cada contato conta, de qualquer
   origem. Os seguintes ficam fora da contagem com o motivo "Recaptura".
 - "Já na base" passou a se chamar "fora da contagem" (inclui as recapturas).
+- **Sem janela de 7 dias**: o lead só conta para o parceiro se a primeira origem
+  do contato (`original_utm_affiliatename`) for o próprio parceiro. Contato que
+  chegou antes por nós é nosso, mesmo que vire lead do parceiro um minuto depois.
+  Origem vazia não conta. Cintia, outubro: 56 / 11 / 1 / US$ 243.
 
 ### Corrigido
 

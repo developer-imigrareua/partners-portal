@@ -60,18 +60,17 @@ const STAGE_DATE_PROPS = [
   ['Convertido',       'hs_v2_date_entered_customer'],
 ];
 
-// Regra: contato que já existia no CRM antes da indicação não conta.
-// O lead é elegível se a primeira origem do contato é o próprio parceiro, ou
-// se o contato foi criado no máximo JANELA_DIAS antes do lead (fluxo normal do
-// Visa Match / formulários, em que o contato nasce pouco antes do lead).
-const JANELA_DIAS = 7;
+// Regra (comercial, 11/11/2026): vale a PRIMEIRA interação do contato, sem
+// janela de tempo. O lead conta para o parceiro só se a primeira origem do
+// contato (original_utm_affiliatename) é o próprio parceiro. Se o contato
+// chegou antes por nós (ou por outro parceiro), é nosso, mesmo que vire lead
+// do parceiro um minuto depois. Origem vazia = não veio por link de parceiro.
+// (Até 11/11/2026 havia uma janela de 7 dias; foi removida.)
 function checkEligibility(hsId, leadCreatedAt, contact) {
   const p = contact?.properties || {};
   if (!contact) return { eligible: false, reason: 'Lead sem contato associado' };
   if ((p.original_utm_affiliatename || '').toLowerCase() === hsId.toLowerCase()) return { eligible: true, reason: null };
-  const created = new Date(p.createdate), lead = new Date(leadCreatedAt);
-  if (!isNaN(created) && !isNaN(lead) && (lead - created) <= JANELA_DIAS * 864e5) return { eligible: true, reason: null };
-  return { eligible: false, reason: 'Contato já existia no CRM antes da indicação' };
+  return { eligible: false, reason: 'Primeira origem do contato não é o parceiro (contato já era nosso)' };
 }
 
 // Lead recapturado (comercial, 11/11/2026): o mesmo contato pode ganhar um
