@@ -186,7 +186,8 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, politica
     .filter(l => FLOW.some(st => noMes(l.reached[st])))
     .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
     .map(l => {
-      const item = { nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(l.reached, fim) };
+      // id do lead no HubSpot: para auditoria (pedido do comercial, 11/11/2026)
+      const item = { id: l.id || null, nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(l.reached, fim) };
       // Lead de mês anterior que só avançou de etapa agora: paga só a etapa nova.
       if (l.createdAt && l.createdAt < inicio) item.capturadoEm = l.createdAt;
       item.etapasNoMes = FLOW.filter(st => noMes(l.reached[st]));
@@ -199,12 +200,12 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, politica
     });
 
   // Leads fora da contagem criados no mês: entram na lista marcados, com valor
-  // zero (pedido do comercial, 11/11/2026). Só primeiro nome e inicial e um
-  // motivo genérico; nada de ID ou data de quando o contato entrou no CRM.
+  // zero (pedido do comercial, 11/11/2026). Primeiro nome e inicial, o id do
+  // lead e um motivo genérico; nada da data em que o contato entrou no CRM.
   const fora = (leadsParceiro || []).filter(l => l.eligible === false && noMes(l.createdAt));
   const foraDaContagem = fora.length;
   fora.forEach(l => {
-    const item = { nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(preencherEtapas(l.reached), fim), fora: true,
+    const item = { id: l.id || null, nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(preencherEtapas(l.reached), fim), fora: true,
       motivo: l.recaptura ? 'O contato já tinha entrado como lead antes desta indicação' : 'O contato já era nosso antes da indicação', etapasNoMes: [] };
     if (dinheiro) { item.etapasValor = []; item.valor = 0; }
     lista.push(item);

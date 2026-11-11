@@ -38,7 +38,8 @@ check('Em Atendimento inclui avanço de lead de mês anterior e SQL sem MQL', co
 check('bonificação: 3×3 + 3×5 + 1×20 = 44', com.bonificacao.total === 44, com.bonificacao.total);
 check('lista mostra o valor gerado no mês por lead', com.leads.find(l => l.nome === 'Carlos C.').valor === 28);
 check('lead de setembro que avançou em outubro rende só +5', com.leads.find(l => l.nome === 'Velho C.').valor === 5);
-check('fora da contagem: na lista marcado, valor zero, sem ID nem nome completo', com.foraDaContagem === 1 && com.leads.filter(l => l.fora).length === 1 && com.leads.find(l => l.fora).valor === 0 && com.leads.find(l => l.fora).motivo && !JSON.stringify(com).includes('Fora D.**'));
+check('fora da contagem: na lista marcado, valor zero, sem nome completo', com.foraDaContagem === 1 && com.leads.filter(l => l.fora).length === 1 && com.leads.find(l => l.fora).valor === 0 && com.leads.find(l => l.fora).motivo && !JSON.stringify(com).includes('Fora D.**'));
+check('lista traz o id do lead para auditoria', com.leads.every(l => l.id));
 check('total do mês não muda com os leads fora da contagem', com.bonificacao.total === com.leads.filter(l => !l.fora).reduce((t, l) => t + l.valor, 0));
 check('valor por etapa só das etapas atingidas no mês', com.leads.find(l => l.nome === 'Velho C.').etapasValor.map(e => e.etapa).join() === 'Em Atendimento');
 check('sem liberação: nenhum valor em dinheiro', !('bonificacao' in sem) && sem.leads.every(l => !('valor' in l)) && sem.mostraValores === false);
