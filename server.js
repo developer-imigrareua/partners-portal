@@ -66,11 +66,55 @@ const STAGE_DATE_PROPS = [
 // chegou antes por nós (ou por outro parceiro), é nosso, mesmo que vire lead
 // do parceiro um minuto depois. Origem vazia = não veio por link de parceiro.
 // (Até 11/11/2026 havia uma janela de 7 dias; foi removida.)
-function checkEligibility(hsId, leadCreatedAt, contact) {
+//
+// "Primeira origem" gravada depois (comercial, 11/11/2026): um workflow do
+// HubSpot preenche original_utm_affiliatename quando ele está vazio. Contato
+// antigo nosso (Pipedrive, importação, formulário) sem UTM ganha o parceiro
+// como "primeira origem" no dia em que passa pelo link dele. Por isso, quando
+// a origem é o parceiro, o histórico do campo decide: só conta se o parceiro
+// foi gravado junto com a criação do contato (até ORIGEM_TOLERANCIA_H depois).
+// Exceção: a carga inicial do workflow, em 24/04/2025, gravou retroativamente
+// a origem dos contatos que já existiam; essa gravação vale como da criação.
+const ORIGEM_TOLERANCIA_H = 24;
+const ORIGEM_CARGA_INICIAL_ATE = '2025-04-25';
+function origemTardia(contact, gravadaEm) {
+  const criado = contact?.properties?.createdate;
+  if (!gravadaEm || !criado) return false;                    // sem histórico: não penaliza
+  if (gravadaEm < ORIGEM_CARGA_INICIAL_ATE) return false;     // carga inicial do workflow
+  return new Date(gravadaEm) - new Date(criado) > ORIGEM_TOLERANCIA_H * 3600e3;
+}
+function checkEligibility(hsId, leadCreatedAt, contact, gravadaEm) {
   const p = contact?.properties || {};
   if (!contact) return { eligible: false, reason: 'Lead sem contato associado' };
-  if ((p.original_utm_affiliatename || '').toLowerCase() === hsId.toLowerCase()) return { eligible: true, reason: null };
+  if ((p.original_utm_affiliatename || '').toLowerCase() === hsId.toLowerCase()) {
+    if (origemTardia(contact, gravadaEm)) return { eligible: false, reason: `Contato já era nosso desde ${(p.createdate || '').slice(0, 10).split('-').reverse().join('/')}; o parceiro só foi gravado como origem em ${gravadaEm.slice(0, 10).split('-').reverse().join('/')}` };
+    return { eligible: true, reason: null };
+  }
   return { eligible: false, reason: 'Primeira origem do contato não é o parceiro (contato já era nosso)' };
+}
+
+// Quando o parceiro foi gravado pela primeira vez em original_utm_affiliatename.
+// Só para os contatos cuja origem atual é o próprio parceiro (os demais já não
+// contam). Lotes de 50: limite do batch read com histórico.
+async function origemGravadaEm(pares) {   // pares: [{ contactId, aff }]
+  const ids = [...new Set(pares.map(x => x.contactId))];
+  const out = {};
+  for (const part of chunk(ids, 50)) {
+    const r = await hsRequest('/crm/v3/objects/contacts/batch/read', {
+      method: 'POST', body: { inputs: part.map(id => ({ id })), properties: ['createdate'], propertiesWithHistory: ['original_utm_affiliatename'] },
+    });
+    (r.results || []).forEach(c => {
+      const ts = (c.propertiesWithHistory?.original_utm_affiliatename || []).filter(h => h.value).map(h => h.timestamp).sort()[0];
+      if (ts) out[c.id] = ts;
+    });
+    await sleep(120);
+  }
+  return out;
+}
+async function origemGravadaSegura(pares) {
+  if (!pares.length) return {};
+  try { return await origemGravadaEm(pares); }
+  catch (e) { console.warn('HubSpot histórico de origem:', e.message); return {}; }
 }
 
 // Lead recapturado (comercial, 11/11/2026): o mesmo contato pode ganhar um
@@ -104,10 +148,10 @@ async function primeiroLeadSeguro(contactIds, conhecidos) {
 }
 const dataBR = d => (d ? d.slice(0, 10).split('-').reverse().join('/') : '');
 // Elegibilidade final: recaptura primeiro, depois a regra de contato pré-existente.
-function elegibilidade(hsId, lead, contactId, contato, primeiro) {
+function elegibilidade(hsId, lead, contactId, contato, primeiro, gravada = {}) {
   const p = contactId && primeiro[contactId];
   if (p && p.id !== String(lead.id)) return { eligible: false, recaptura: true, reason: `Recaptura: o contato já tinha entrado como lead em ${dataBR(p.createdAt)}` };
-  return { ...checkEligibility(hsId, lead.properties?.hs_createdate, contato), recaptura: false };
+  return { ...checkEligibility(hsId, lead.properties?.hs_createdate, contato, gravada[contactId]), recaptura: false };
 }
 
 async function fetchHubSpotLeads(hsId) {
@@ -151,6 +195,7 @@ async function fetchHubSpotLeads(hsId) {
     (r.results || []).forEach(c => { contacts[c.id] = c; });
   }
   const primeiro = await primeiroLeadSeguro(contactIds, Object.fromEntries(raw.map(l => [String(l.id), l.properties?.hs_createdate || ''])));
+  const gravada = await origemGravadaSegura(contactIds.filter(id => (contacts[id]?.properties?.original_utm_affiliatename || '').toLowerCase() === hsId.toLowerCase()).map(contactId => ({ contactId })));
 
   // 4. donos (contato e deal)
   let ownerMap = {};
@@ -187,7 +232,7 @@ async function fetchHubSpotLeads(hsId) {
       const d = (p[prop] || '').slice(0, 10);
       if (d) reached[stage] = d < createdAt ? createdAt : d;
     });
-    const { eligible, reason, recaptura } = elegibilidade(hsId, l, contactId, ct, primeiro);
+    const { eligible, reason, recaptura } = elegibilidade(hsId, l, contactId, ct, primeiro, gravada);
     const ls = (p.lifecyclestage || '').toLowerCase();
     return {
       id: l.id,
@@ -281,6 +326,11 @@ async function fetchLeadsDoMes(mes) {
   }
   const primeiro = await primeiroLeadSeguro([...new Set(Object.values(leadToContact))],
     Object.fromEntries(raw.map(l => [String(l.id), l.properties?.hs_createdate || ''])));
+  // Histórico de origem só para leads de parceiro (externos) com origem = o próprio parceiro.
+  const gravada = await origemGravadaSegura(raw.filter(l => {
+    const aff = (l.properties?.last_utm_affiliatename || '').toLowerCase(), ct = contacts[leadToContact[l.id]];
+    return aff && (l.properties?.last_utm_affiliatetype || '').toLowerCase() === 'external' && (ct?.properties?.original_utm_affiliatename || '').toLowerCase() === aff;
+  }).map(l => ({ contactId: leadToContact[l.id] })));
   return raw.map(l => {
     const aff = l.properties?.last_utm_affiliatename || '';
     const ct = contacts[leadToContact[l.id]] || null;
@@ -291,7 +341,7 @@ async function fetchLeadsDoMes(mes) {
       if (d) reached[stage] = d < createdAt ? createdAt : d;
     });
     return { aff, type: l.properties?.last_utm_affiliatetype || '', createdAt, reached,
-      eligible: elegibilidade(aff, l, leadToContact[l.id], ct, primeiro).eligible };
+      eligible: elegibilidade(aff, l, leadToContact[l.id], ct, primeiro, gravada).eligible };
   });
 }
 

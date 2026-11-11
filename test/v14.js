@@ -81,6 +81,19 @@ const tiers = (lr, mql, sql) => ({ 'Padrão': { stages: { 'Lead Recebido': lr, '
   check('só busca a data dos leads que ainda não conhecia', lidos.length === 1 && lidos[0] === 'X9', lidos.join(','));
   check('sync segue se a consulta de recaptura falhar', /async function primeiroLeadSeguro[\s\S]{0,200}catch/.test(srv));
 
+  // ── origem gravada depois (histórico do campo) ────────
+  console.log('Primeira origem gravada depois da criação do contato');
+  const regra = trecho(srv, '// Regra (comercial, 11/11/2026): vale a PRIMEIRA', '// Quando o parceiro foi gravado');
+  const E = new Function(regra + '\nreturn { checkEligibility };')();
+  const ct = criado => ({ properties: { createdate: criado, original_utm_affiliatename: 'cintia-souza' } });
+  check('contato do Pipedrive (2024) com o parceiro gravado em 2026 não conta', E.checkEligibility('cintia-souza', '2026-11-02T00:49:00Z', ct('2024-07-03T05:41:41Z'), '2026-11-02T00:35:37Z').eligible === false);
+  check('parceiro gravado segundos após a criação conta (VisaMatch)', E.checkEligibility('cintia-souza', '2026-11-02T10:00:00Z', ct('2026-10-15T18:59:20Z'), '2026-10-15T18:59:38Z').eligible === true);
+  check('gravado algumas horas depois ainda conta (tolerância de 24 h)', E.checkEligibility('cintia-souza', '2026-06-09T10:00:00Z', ct('2026-06-08T17:35:00Z'), '2026-06-08T21:18:00Z').eligible === true);
+  check('carga inicial do workflow (24/04/2025) vale como da criação', E.checkEligibility('cintia-souza', '2025-04-22T10:00:00Z', ct('2025-04-21T20:56:00Z'), '2025-04-24T15:21:39Z').eligible === true);
+  check('sem histórico não penaliza', E.checkEligibility('cintia-souza', '2026-11-02T10:00:00Z', ct('2024-07-03T05:41:41Z'), undefined).eligible === true);
+  check('motivo explica desde quando o contato era nosso', /desde 03\/07\/2024/.test(E.checkEligibility('cintia-souza', '2026-11-02T00:49:00Z', ct('2024-07-03T05:41:41Z'), '2026-11-02T00:35:37Z').reason));
+  check('sync segue se o histórico falhar', /async function origemGravadaSegura[\s\S]{0,200}catch/.test(srv));
+
   // ── desempenho com política ───────────────────────────
   console.log('Meu desempenho com a política');
   const meus = [

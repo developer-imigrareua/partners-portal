@@ -42,6 +42,12 @@ Exige **uma migração no Supabase**: `db/v1.4.sql`.
   do contato (`original_utm_affiliatename`) for o próprio parceiro. Contato que
   chegou antes por nós é nosso, mesmo que vire lead do parceiro um minuto depois.
   Origem vazia não conta. Cintia, outubro: 56 / 11 / 1 / US$ 243.
+- **Origem gravada depois não conta**: um workflow preenche a "primeira origem"
+  quando o campo está vazio, então contato antigo nosso (Pipedrive,
+  importação, formulário) ganhava o parceiro como origem. Agora o histórico do
+  campo decide: só conta se o parceiro foi gravado até 24 h após a criação do
+  contato. A carga inicial do workflow (24/04/2025) vale como da criação.
+  Cintia, novembro: saem 2 contatos do Pipedrive (de 03/07/2024).
 
 ### Corrigido
 
