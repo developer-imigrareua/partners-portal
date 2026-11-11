@@ -962,31 +962,23 @@ const TERMO_HTML=`
 <p>1.2. Não conta o lead cujo contato já estava na nossa base antes da sua indicação. Na prática, ele não conta quando o contato foi criado mais de 7 dias antes do lead e a primeira origem dele não é você.</p>
 <p>1.3. Um mesmo contato conta uma única vez. Se ele sair e voltar a se cadastrar, não vira um lead novo.</p>
 <p>1.4. Leads de teste, duplicados ou com dados claramente falsos podem ser excluídos.</p>
-<h4>2. Como a comissão é calculada</h4>
-<p>2.1. A comissão segue a política comercial atribuída a você no portal: um valor por etapa que o lead atinge (Lead recebido, Em atendimento, Reunião agendada, Oportunidade).</p>
-<p>2.2. Cada etapa é paga uma única vez por contato, no mês em que foi atingida. Se o lead vira MQL em outubro e SQL em dezembro, outubro paga a etapa MQL, e dezembro paga só o valor da etapa SQL.</p>
-<p>2.3. Uma mudança de política ou de valores vale só daqui para a frente. Etapas já atingidas mantêm o valor vigente na data em que foram atingidas.</p>
-<p>2.4. Enquanto não houver política atribuída a você, os valores não aparecem no portal e não há comissão a receber.</p>
-<h4>3. Apuração e pagamento</h4>
-<p>3.1. A apuração é mensal, do dia 1 ao último dia do mês, pela data em que cada etapa foi atingida no CRM.</p>
-<p>3.2. O ponto de corte é o último dia de cada mês. Etapas registradas no CRM até esse dia entram na apuração do mês; as registradas depois entram no mês seguinte.</p>
-<p>3.3. O pagamento é feito por transferência para a conta indicada por você, no dia 10 ou no dia 20 do mês seguinte ao fechamento, conforme a data combinada com você.</p>
-<p>3.4. Não há valor mínimo para pagamento. Eventuais impostos e tarifas bancárias da transferência podem ser descontados do valor, quando houver.</p>
-<p>3.5. Divergências devem ser apontadas em até 30 dias após o pagamento, pelo e-mail contato@imigrareua.com.</p>
-<p>3.6. O portal está em evolução contínua, e os números exibidos nele são informativos. Eventualmente, os valores podem ser atualizados após conferência. Para fins de pagamento, vale a apuração final feita pela equipe do programa.</p>
-<h4>4. Uso da marca e divulgação</h4>
-<p>4.1. Você pode divulgar a ImigrarEUA e a LIV com os materiais e links fornecidos no portal.</p>
-<p>4.2. É proibido:</p>
+<h4>2. Remuneração</h4>
+<p>2.1. As condições de remuneração das indicações seguem a política comercial do programa, informada a você pela equipe do Programa de Parceiros.</p>
+<p>2.2. O portal está em evolução contínua, e os números exibidos nele são informativos. Eventualmente, podem ser atualizados após conferência. Vale a apuração final feita pela equipe do programa.</p>
+<p>2.3. Dúvidas ou divergências podem ser enviadas para contato@imigrareua.com.</p>
+<h4>3. Uso da marca e divulgação</h4>
+<p>3.1. Você pode divulgar a ImigrarEUA e a LIV com os materiais e links fornecidos no portal.</p>
+<p>3.2. É proibido:</p>
 <ul><li>prometer resultado de processo imigratório, prazo ou aprovação de visto;</li><li>se apresentar como advogado, funcionário ou representante oficial;</li><li>fazer spam ou comprar listas;</li><li>anunciar em mídia paga usando as nossas marcas sem autorização por escrito.</li></ul>
-<h4>5. Confidencialidade e dados</h4>
-<p>5.1. Os dados de leads, os rankings e os números do programa que você vê no portal são confidenciais e não podem ser compartilhados.</p>
-<p>5.2. Você não deve coletar nem repassar dados de clientes fora dos formulários oficiais.</p>
-<h4>6. Vigência e encerramento</h4>
-<p>6.1. Qualquer parte pode encerrar a parceria a qualquer momento, por aviso no portal ou por e-mail.</p>
-<p>6.2. As etapas atingidas até a data do encerramento são pagas normalmente no ciclo seguinte.</p>
-<p>6.3. O descumprimento das regras dos itens 4 e 5 permite o encerramento imediato e a suspensão dos valores ligados à infração.</p>
-<h4>7. Alterações deste termo</h4>
-<p>7.1. Quando houver uma nova versão, você será avisado no próximo acesso e precisará aceitar de novo para continuar usando o portal.</p>`;
+<h4>4. Confidencialidade e dados</h4>
+<p>4.1. Os dados de leads, os rankings e os números do programa que você vê no portal são confidenciais e não podem ser compartilhados.</p>
+<p>4.2. Você não deve coletar nem repassar dados de clientes fora dos formulários oficiais.</p>
+<h4>5. Vigência e encerramento</h4>
+<p>5.1. Qualquer parte pode encerrar a parceria a qualquer momento, por aviso no portal ou por e-mail.</p>
+<p>5.2. As indicações feitas até a data do encerramento seguem as condições vigentes na época.</p>
+<p>5.3. O descumprimento das regras dos itens 3 e 4 permite o encerramento imediato da parceria.</p>
+<h4>6. Alterações deste termo</h4>
+<p>6.1. Quando houver uma nova versão, você será avisado no próximo acesso e precisará aceitar de novo para continuar usando o portal.</p>`;
 // Parceiro ativo que ainda não aceitou a versão atual. Sem a coluna no banco
 // (termsVersion undefined), não exige.
 const precisaAceitarTermo=u=>!!u&&u.role==='affiliate'&&u.status==='active'&&u.termsVersion!==undefined&&u.termsVersion!==TERMO_VERSAO;
