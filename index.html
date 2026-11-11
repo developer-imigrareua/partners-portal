@@ -404,8 +404,8 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .dsp-legenda i{width:10px;height:10px;margin-right:6px;vertical-align:-1px}
 i.voce{background:var(--pink)}i.media{background:var(--s300)}
 .dsp-taxa{margin-bottom:14px}.dsp-taxa-t{font-size:13px;font-weight:600;margin-bottom:6px}
-.dsp-taxa-l{display:grid;grid-template-columns:1fr 52px 84px;gap:10px;align-items:center;font-size:12px;margin-bottom:4px}
-.dsp-taxa-q{font-size:11px;color:var(--s500);white-space:nowrap}
+.dsp-taxa-l{display:grid;grid-template-columns:1fr 60px;gap:10px;align-items:center;font-size:12px;margin-bottom:4px}
+.dsp-taxa-q{font-size:11px;color:var(--s500);margin:-2px 0 6px}
 .dsp-aviso{font-size:10px;font-weight:600;color:#1d4ed8;background:#eff6ff;border-radius:999px;padding:2px 7px;display:inline-block;margin-top:3px;cursor:help}
 .dsp-taxa-bar{height:8px;background:var(--s100);border-radius:999px;overflow:hidden}.dsp-taxa-bar i{height:100%;display:block}
 .dsp-rks{display:grid;grid-template-columns:1fr;gap:18px}
@@ -2733,11 +2733,17 @@ async function renderDesempenho(c,userId){
     </div></div>`;
 
   const T=d.taxas;
-  // Contagem só do próprio parceiro: "13 de 60". A média segue só em %.
-  const K=T.contagem, DE={qualif:['emAtendimento','leads'],mqlSql:['reuniao','emAtendimento'],avanco:['reuniao','leads'],sqlOpp:['oportunidade','reuniao']};
-  const qtdT=k=>K?`<span class="dsp-taxa-q">${K[DE[k][0]]} de ${K[DE[k][1]]}</span>`:'';
-  const barraT=(rot,k)=>{const mx=Math.max(T.voce[k],T.media[k],1);return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>
-    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b>${qtdT(k)}</div>
+  // Contagem só do próprio parceiro, em frase. A média segue só em %.
+  const K=T.contagem;
+  const chegou=(n,de,base,etapa)=>`${n} ${n===1?'chegou':'chegaram'} a ${etapa}, de ${de} ${base}`;
+  const FRASE=K?{
+    qualif:chegou(K.emAtendimento,K.leads,K.leads===1?'lead seu':'leads seus','Em Atendimento'),
+    mqlSql:chegou(K.reuniao,K.emAtendimento,K.emAtendimento===1?'lead em Em Atendimento':'leads em Em Atendimento','Reunião Agendada'),
+    avanco:chegou(K.reuniao,K.leads,K.leads===1?'lead seu':'leads seus','Reunião Agendada'),
+    sqlOpp:chegou(K.oportunidade,K.reuniao,K.reuniao===1?'lead com Reunião Agendada':'leads com Reunião Agendada','Oportunidade'),
+  }:{};
+  const barraT=(rot,k)=>{const mx=Math.max(T.voce[k],T.media[k],1);return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>${FRASE[k]?`<div class="dsp-taxa-q">Você: ${FRASE[k]}</div>`:''}
+    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b></div>
     <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="media" style="width:${T.media[k]/mx*100}%"></i></div><span class="dsp-mut">${pctBR(T.media[k])}</span></div></div>`;};
   const taxasHtml=`<div class="dsp-sec"><div class="dsp-kicker">Conversão</div><div class="dsp-h">Suas taxas x média de ${M}</div>
     <div class="dsp-legenda"><span><i class="voce"></i>Você</span><span><i class="media"></i>Média de todos os leads de ${M}</span></div>
