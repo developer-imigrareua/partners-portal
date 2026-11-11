@@ -74,6 +74,43 @@ function checkEligibility(hsId, leadCreatedAt, contact) {
   return { eligible: false, reason: 'Contato já existia no CRM antes da indicação' };
 }
 
+// Lead recapturado (comercial, 11/11/2026): o mesmo contato pode ganhar um
+// lead novo cada vez que volta a se cadastrar. Só o PRIMEIRO lead do contato
+// conta, de qualquer origem; os seguintes saem da soma e não pagam de novo.
+// conhecidos: { leadId: hs_createdate } já lidos, para não buscar de novo.
+async function primeiroLeadDosContatos(contactIds, conhecidos = {}) {
+  const leadsDoContato = {};
+  for (const part of chunk(contactIds.map(id => ({ id })), 1000)) {
+    const r = await hsRequest('/crm/v4/associations/contacts/leads/batch/read', { method: 'POST', body: { inputs: part } });
+    (r.results || []).forEach(a => { leadsDoContato[a.from.id] = (a.to || []).map(t => String(t.toObjectId)); });
+  }
+  const criado = { ...conhecidos };
+  const faltam = [...new Set(Object.values(leadsDoContato).filter(ids => ids.length > 1).flat())].filter(id => !criado[id]);
+  for (const part of chunk(faltam, 100)) {
+    const r = await hsRequest('/crm/v3/objects/leads/batch/read', { method: 'POST', body: { inputs: part.map(id => ({ id })), properties: ['hs_createdate'] } });
+    (r.results || []).forEach(l => { criado[l.id] = l.properties?.hs_createdate || ''; });
+    await sleep(120);
+  }
+  const primeiro = {};
+  for (const [cid, ids] of Object.entries(leadsDoContato)) {
+    const ord = ids.filter(id => criado[id]).sort((a, b) => criado[a].localeCompare(criado[b]) || Number(a) - Number(b));
+    if (ord.length) primeiro[cid] = { id: ord[0], createdAt: criado[ord[0]].slice(0, 10) };
+  }
+  return primeiro;
+}
+// Falha na consulta de recaptura não derruba o sync: conta como antes.
+async function primeiroLeadSeguro(contactIds, conhecidos) {
+  try { return await primeiroLeadDosContatos(contactIds, conhecidos); }
+  catch (e) { console.warn('HubSpot recaptura:', e.message); return {}; }
+}
+const dataBR = d => (d ? d.slice(0, 10).split('-').reverse().join('/') : '');
+// Elegibilidade final: recaptura primeiro, depois a regra de contato pré-existente.
+function elegibilidade(hsId, lead, contactId, contato, primeiro) {
+  const p = contactId && primeiro[contactId];
+  if (p && p.id !== String(lead.id)) return { eligible: false, recaptura: true, reason: `Recaptura: o contato já tinha entrado como lead em ${dataBR(p.createdAt)}` };
+  return { ...checkEligibility(hsId, lead.properties?.hs_createdate, contato), recaptura: false };
+}
+
 async function fetchHubSpotLeads(hsId) {
   // 1. leads do parceiro, paginado (o limite de 200 por página é da API)
   const raw = [];
@@ -114,6 +151,7 @@ async function fetchHubSpotLeads(hsId) {
     });
     (r.results || []).forEach(c => { contacts[c.id] = c; });
   }
+  const primeiro = await primeiroLeadSeguro(contactIds, Object.fromEntries(raw.map(l => [String(l.id), l.properties?.hs_createdate || ''])));
 
   // 4. donos (contato e deal)
   let ownerMap = {};
@@ -150,7 +188,7 @@ async function fetchHubSpotLeads(hsId) {
       const d = (p[prop] || '').slice(0, 10);
       if (d) reached[stage] = d < createdAt ? createdAt : d;
     });
-    const { eligible, reason } = checkEligibility(hsId, l.properties?.hs_createdate, ct);
+    const { eligible, reason, recaptura } = elegibilidade(hsId, l, contactId, ct, primeiro);
     const ls = (p.lifecyclestage || '').toLowerCase();
     return {
       id: l.id,
@@ -160,6 +198,7 @@ async function fetchHubSpotLeads(hsId) {
       reached,
       eligible,
       ineligibleReason: reason,
+      ...(recaptura ? { recaptura: true } : {}),
       product: null,
       createdAt,
       contactCreatedAt: (p.createdate || '').slice(0, 10),
@@ -206,6 +245,7 @@ app.get('/api/hubspot/sync', exigirAdmin, async (req, res) => {
 // Leads de TODAS as origens criados no mês, para o placar e a média. Volume
 // grande (~4 mil/mês): fica em cache de memória e nunca vai inteiro ao front.
 const { montarDesempenho, intervaloDoMes } = require('./desempenho');
+const Politica = require('./politica');
 const cacheMes = new Map();   // 'AAAA-MM' -> { em, promessa }
 
 async function fetchLeadsDoMes(mes) {
@@ -240,6 +280,8 @@ async function fetchLeadsDoMes(mes) {
     (r.results || []).forEach(c => { contacts[c.id] = c; });
     await sleep(120);
   }
+  const primeiro = await primeiroLeadSeguro([...new Set(Object.values(leadToContact))],
+    Object.fromEntries(raw.map(l => [String(l.id), l.properties?.hs_createdate || ''])));
   return raw.map(l => {
     const aff = l.properties?.last_utm_affiliatename || '';
     const ct = contacts[leadToContact[l.id]] || null;
@@ -250,7 +292,7 @@ async function fetchLeadsDoMes(mes) {
       if (d) reached[stage] = d < createdAt ? createdAt : d;
     });
     return { aff, type: l.properties?.last_utm_affiliatetype || '', createdAt, reached,
-      eligible: checkEligibility(aff, l.properties?.hs_createdate, ct).eligible };
+      eligible: elegibilidade(aff, l, leadToContact[l.id], ct, primeiro).eligible };
   });
 }
 
@@ -316,6 +358,13 @@ function exigirAdmin(req, res, next) {
   });
 }
 
+async function lerTabela(tabela) {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?select=*`,
+    { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } });
+  if (!r.ok) throw new Error(`Supabase ${r.status} em ${tabela}`);
+  return r.json();
+}
 async function lerLinha(tabela, id) {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?id=eq.${encodeURIComponent(id)}&select=*`,
@@ -352,6 +401,41 @@ app.post('/api/admin/ver-como', exigirAdmin, async (req, res) => {
   }
 });
 
+// POST /api/termo/aceite { versao }
+// O parceiro aceita o Termo de Adesão. Só o servidor grava (as colunas estão
+// no gatilho de colunas administrativas): o aceite não pode ser forjado pelo
+// console. Cada aceite também vai para terms_acceptance (histórico).
+const TERMO_VERSAO = '1.0';   // igual à do index.html
+app.post('/api/termo/aceite', exigirLogin, async (req, res) => {
+  try {
+    const u = req.usuario;
+    if (u.role !== 'affiliate') return res.status(400).json({ error: 'Só parceiros aceitam o termo' });
+    if (req.body?.versao !== TERMO_VERSAO) return res.status(409).json({ error: 'Versão do termo desatualizada. Recarregue a página.' });
+    const aceitoEm = new Date().toISOString();
+    const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(u.id)}`, {
+      method: 'PATCH', headers: { ...supabaseHeaders(), Prefer: 'return=minimal' },
+      body: JSON.stringify({ terms_version: TERMO_VERSAO, terms_accepted_at: aceitoEm }),
+    });
+    if (!r.ok) throw new Error(`Supabase ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    cacheToken.clear();   // o próximo request lê a linha atualizada
+    let registrado = false;
+    try {
+      const h = await fetch(`${process.env.SUPABASE_URL}/rest/v1/terms_acceptance`, {
+        method: 'POST', headers: { ...supabaseHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({ user_id: String(u.id), user_name: u.name || null, user_email: u.email || null, version: TERMO_VERSAO,
+          accepted_at: aceitoEm, user_agent: (req.headers['user-agent'] || '').slice(0, 300) || null }),
+      });
+      registrado = h.ok;
+      if (!h.ok) console.warn('[termo] histórico indisponível:', h.status);
+    } catch (e) { console.warn('[termo] falha no histórico:', e.message); }
+    console.log(`[termo] ${aceitoEm} ${u.name || u.id} aceitou a versão ${TERMO_VERSAO}`);
+    res.json({ ok: true, versao: TERMO_VERSAO, aceitoEm, registrado });
+  } catch (err) {
+    console.error('termo error:', err.message);
+    res.status(500).json({ error: 'Não foi possível gravar o aceite agora.' });
+  }
+});
+
 // GET /api/desempenho?mes=AAAA-MM            (parceiro logado: o próprio)
 // GET /api/desempenho?mes=AAAA-MM&userId=X   (admin: prévia de um parceiro)
 app.get('/api/desempenho', async (req, res) => {
@@ -370,11 +454,15 @@ app.get('/api/desempenho', async (req, res) => {
 
     const mes = req.query.mes || ultimoMesFechado();
     if (mes > new Date().toISOString().slice(0, 7)) return res.status(400).json({ error: 'Mês no futuro' });
-    const modelo = alvo.bonif_model_id ? await lerLinha('bonif_models', alvo.bonif_model_id).catch(() => null) : null;
+    const modelos = await lerTabela('bonif_models').catch(() => []);
+    const modelo = modelos.find(m => m.id === alvo.bonif_model_id) || null;
     const mostrarValores = alvo.bonif_visible === true && !!modelo;
+    // Valores no tempo: cada etapa paga o valor vigente na data (politica.js).
+    const politica = Politica.criar({ modelos, historico: alvo.bonif_history, modeloAtual: alvo.bonif_model_id,
+      padrao: { id: 'standard', tiers: Politica.PRESETS.standard } });
     const [leadsParceiro, leadsMes] = await Promise.all([fetchHubSpotLeads(alvo.hs_affiliate_id), leadsDoMes(mes)]);
 
-    const desempenho = montarDesempenho({ mes, hsId: alvo.hs_affiliate_id, leadsParceiro, leadsMes, modelo, mostrarValores });
+    const desempenho = montarDesempenho({ mes, hsId: alvo.hs_affiliate_id, leadsParceiro, leadsMes, modelo, politica, mostrarValores });
     // Meses com dado do parceiro, do primeiro lead até o mês corrente.
     const primeiro = leadsParceiro.map(l => l.createdAt).filter(Boolean).sort()[0];
     const meses = [];
@@ -799,6 +887,13 @@ app.get('/api/health', async (req, res) => {
 });
 
 // SPA fallback — never cache index.html so deploys take effect immediately
+// Único arquivo servido além do index.html: o cálculo de política comercial,
+// compartilhado com o front. Rota explícita, NÃO express.static (ver topo).
+app.get('/politica.js', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('application/javascript').sendFile(path.join(__dirname, 'politica.js'));
+});
+
 app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'index.html'));

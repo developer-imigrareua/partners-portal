@@ -146,7 +146,7 @@ function ranking(entradas, valor, exibir) {
 }
 
 function valoresDoModelo(model) {
-  const p = model?.tiers || model?.products || {};
+  const p = model ? require('./politica').tiersDoModelo(model) || {} : {};
   return p['Padrão']?.stages || null;
 }
 
@@ -154,12 +154,18 @@ function valoresDoModelo(model) {
 // mes: 'AAAA-MM'; hsId: slug do parceiro
 // leadsParceiro: saída de fetchHubSpotLeads(hsId) (todos os meses)
 // leadsMes: leads de TODAS as origens criados no mês: {aff, type, createdAt, eligible, reached}
-// modelo: linha de bonif_models (ou null); mostrarValores: liberação do admin
-function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, mostrarValores, hoje }) {
+// politica: Politica.criar(...) do politica.js (valores vigentes por data);
+// modelo: linha de bonif_models, usada quando não vem política (valores fixos);
+// mostrarValores: liberação do admin
+function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, politica, mostrarValores, hoje }) {
   const { inicio, fim } = intervaloDoMes(mes);
   const hojeStr = (hoje || new Date().toISOString()).slice(0, 10);
-  const valores = mostrarValores ? valoresDoModelo(modelo) : null;
-  const dinheiro = !!valores;
+  const fixos = valoresDoModelo(modelo);
+  const pol = politica || (fixos ? { valoresEm: () => fixos } : null);
+  const dinheiro = !!(mostrarValores && pol);
+  // Valor de uma etapa: o vigente na data em que o lead a atingiu.
+  const valorEm = (st, data) => Number((pol.valoresEm(data) || {})[st]) || 0;
+  const valoresFim = dinheiro ? (pol.valoresEm(hojeStr < fim ? hojeStr : fim) || {}) : null;
 
   const meus = (leadsParceiro || []).filter(l => l.eligible !== false).map(l => ({ ...l, reached: preencherEtapas(l.reached) }));
   const noMes = d => d && d >= inicio && d <= fim;
@@ -181,7 +187,10 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, mostrarV
     .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
     .map(l => {
       const item = { nome: nomeCurto(l.name), data: l.createdAt, etapa: etapaMaisAlta(l.reached, fim) };
-      if (dinheiro) item.valor = FLOW.reduce((s, st) => s + (noMes(l.reached[st]) ? Number(valores[st]) || 0 : 0), 0);
+      // Lead de mês anterior que só avançou de etapa agora: paga só a etapa nova.
+      if (l.createdAt && l.createdAt < inicio) item.capturadoEm = l.createdAt;
+      item.etapasNoMes = FLOW.filter(st => noMes(l.reached[st]));
+      if (dinheiro) item.valor = item.etapasNoMes.reduce((s, st) => s + valorEm(st, l.reached[st]), 0);
       return item;
     });
 
@@ -227,6 +236,8 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, mostrarV
     },
     taxas: {
       voce: { qualif: r1(minhas.qualif), mqlSql: r1(minhas.mqlSql), avanco: r1(minhas.avanco), sqlOpp: r1(minhas.sqlOpp) },
+      // Contagem só do próprio parceiro (a média continua só em %).
+      contagem: { leads: meu.f.n, emAtendimento: meu.f.mql, reuniao: meu.f.sql, oportunidade: meu.f.opp },
       media: { qualif: r1(media.qualif), mqlSql: r1(media.mqlSql), avanco: r1(media.avanco), sqlOpp: r1(media.sqlOpp) },
     },
     rankings: { volume: rkVolume, qualif: rkQualif, avanco: rkAvanco },
@@ -241,10 +252,13 @@ function montarDesempenho({ mes, hsId, leadsParceiro, leadsMes, modelo, mostrarV
     const qtd = { 'Lead Recebido': criadosNoMes.length, 'Em Atendimento': resumo.emAtendimento, 'Reunião Agendada': resumo.reuniao, 'Oportunidade': resumo.oportunidade, 'Convertido': resumo.convertido };
     // Lead Recebido paga pela data de criação, que é o reached['Lead Recebido'].
     qtd['Lead Recebido'] = atingiu('Lead Recebido');
+    // Subtotal pela soma real (valor vigente em cada data); "valor" é o
+    // vigente no fim do mês, para a linha "qtd × valor".
+    const subtotal = st => meus.filter(l => noMes(l.reached[st])).reduce((s, l) => s + valorEm(st, l.reached[st]), 0);
     out.bonificacao = {
       total: lista.reduce((s, l) => s + l.valor, 0),
-      etapas: etapas.map(st => ({ etapa: st, qtd: qtd[st], valor: Number(valores[st]) || 0, subtotal: qtd[st] * (Number(valores[st]) || 0) })),
-      trilha: etapas.map(st => ({ etapa: st, valor: Number(valores[st]) || 0 })),
+      etapas: etapas.map(st => ({ etapa: st, qtd: qtd[st], valor: Number(valoresFim[st]) || 0, subtotal: subtotal(st) })),
+      trilha: etapas.map(st => ({ etapa: st, valor: Number(valoresFim[st]) || 0 })),
     };
   }
   return out;

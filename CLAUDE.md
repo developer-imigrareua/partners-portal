@@ -10,6 +10,7 @@ Portal de afiliados da ImigrarEUA / LIV Immigration Law. Single-page app (HTML +
 index.html      SPA completa — toda UI, lógica de frontend, autenticação Supabase
 server.js       Express — proxy seguro para HubSpot, Short.io e Supabase (chaves nunca no frontend)
 desempenho.js   Cálculo da aba "Meu desempenho" e do placar anonimizado (funções puras)
+politica.js     Valores da política no tempo (sem retroativo); usado pelo server e servido em /politica.js
 .env            Variáveis de ambiente (não commitado)
 .env.example    Template das variáveis necessárias
 Dockerfile      Build para deploy no EasyPanel (VPS)
@@ -51,6 +52,12 @@ Colunas relevantes:
 - `affiliate_type` — `'internal'` | `'external'`
 - `bonif_model_id` — referência ao modelo de bonificação
 - `bonif_visible` — admin liberou os valores em dinheiro na aba "Meu desempenho" (`db/bonif-visivel.sql`; protegido no gatilho de colunas administrativas)
+- `bonif_history` — histórico de modelo do parceiro `[{desde, modelo}]`; troca de modelo não é retroativa (`db/v1.4.sql`)
+- `terms_version`, `terms_accepted_at` — último Termo de Adesão aceito; só o servidor grava (`/api/termo/aceite`)
+
+`bonif_models.versions` guarda o histórico de valores `[{desde, tiers}]`. As linhas
+`standard`/`premium` do banco estão no formato antigo `{"rate": N}`: o `politica.js`
+troca pelos valores do preset.
 
 ### Tabela `link_forms`
 Formulários configuráveis pelo admin. Colunas:
@@ -177,6 +184,8 @@ Rota nova sem um dos dois middlewares quebra o `test/autenticacao.js`.
 | PATCH | `/api/link-forms/:id` | Atualiza formulário |
 | DELETE | `/api/link-forms/:id` | Desativa formulário (soft delete) |
 | GET | `/api/health` | Checa conectividade HubSpot + Short.io |
+| POST | `/api/termo/aceite` | Parceiro aceita o Termo de Adesão; grava em `users` e `terms_acceptance` |
+| GET | `/politica.js` | Único arquivo servido além do `index.html` (rota explícita, não `express.static`) |
 | POST | `/api/admin/ver-como` | Admin abre a visão de um parceiro; registra em `admin_view_log` |
 | GET | `/api/desempenho?mes=AAAA-MM[&userId=X]` | Aba "Meu desempenho". **Exige token do Supabase Auth.** Placar de terceiros só anonimizado e em faixas |
 | GET | `*` | Serve `index.html` com `Cache-Control: no-store` |

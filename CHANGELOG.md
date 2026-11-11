@@ -6,6 +6,47 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ---
 
+## [1.4.0] — 2026-11-11
+
+Política comercial sem efeito retroativo, lead recapturado fora da soma,
+pagamento separado por etapa na tela e termo de adesão no primeiro acesso.
+Exige **uma migração no Supabase**: `db/v1.4.sql`.
+
+### Adicionado
+
+- **Termo de Adesão** no primeiro acesso do parceiro (e de novo a cada versão
+  nova). O aceite é gravado pelo servidor (`POST /api/termo/aceite`) em
+  `users.terms_version` / `terms_accepted_at` e no histórico
+  `terms_acceptance`. Na visão "ver como parceiro" o admin vê o termo, mas o
+  aceite não é gravado.
+- **Pipeline**: cada lead expande e mostra a data de entrada em cada etapa, o
+  valor e o mês de competência. Lead de período anterior que mudou de etapa
+  entra na lista com o aviso "Mudança de etapa · capturado em out/26". Leads
+  fora da contagem aparecem na lista com valor zero e um filtro próprio.
+- **Resumo mensal da bonificação** no Dashboard do parceiro com política.
+- **Meu desempenho**: contagem do próprio parceiro nas taxas ("13 de 60") e o
+  aviso de mudança de etapa na lista de leads.
+- `politica.js`: cálculo de valores no tempo, compartilhado entre o servidor e
+  o front (servido em `/politica.js`, rota explícita).
+
+### Mudado
+
+- **Sem efeito retroativo**: editar os valores de um modelo ou trocar o modelo
+  de um parceiro só vale daqui para a frente. Cada etapa é paga pelo valor
+  vigente na data em que o lead a atingiu (`bonif_models.versions`,
+  `users.bonif_history`).
+- **Lead recapturado**: só o primeiro lead de cada contato conta, de qualquer
+  origem. Os seguintes ficam fora da contagem com o motivo "Recaptura".
+- "Já na base" passou a se chamar "fora da contagem" (inclui as recapturas).
+
+### Corrigido
+
+- Os modelos `standard` e `premium` do banco estavam num formato antigo
+  (`{"rate": 10}`), sem valor por etapa: atribuir o "Padrão" a um parceiro
+  mostrava US$ 0. Agora usam os valores do preset.
+
+---
+
 ## [1.3.0] — 2026-11-10
 
 Aba **Meu desempenho** para o parceiro, no formato do Relatório de Partner

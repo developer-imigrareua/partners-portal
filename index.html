@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/politica.js"></script>
 <style>
 :root{color-scheme:light;
   --blue:#1B75BC;--blue-dark:#0D255D;--pink:#F90D5B;--emerald:#059669;--amber:#f59e0b;--red:#ef4444;
@@ -182,6 +183,24 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .stage-dist-count{font-size:12px;font-weight:700;color:var(--s700);min-width:24px}
 /* ── Contact id chip ── */
 .contact-id{font-size:10px;color:var(--s400);font-family:monospace;margin-top:2px}
+.pl-selos{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pl-selo{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;cursor:help;white-space:nowrap}
+.pl-fora{background:var(--s100);color:var(--s500)}
+.pl-avanco{background:#eff6ff;color:#1d4ed8}
+.pl-linha{cursor:pointer}
+.pl-linha-fora td,.lead-card.pl-linha-fora{opacity:.75}
+.pl-seta{display:inline-block;color:var(--s400);font-size:14px;line-height:18px;transition:transform .15s}
+.pl-seta.aberto{transform:rotate(90deg)}
+.pl-detalhe td{background:var(--s50);padding:10px 16px 14px 36px}
+.pl-etapas{border-collapse:collapse;font-size:12px;min-width:320px}
+.pl-etapas th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--s400);text-align:left;padding:4px 14px 4px 0;font-weight:700}
+.pl-etapas td{padding:4px 14px 4px 0;color:var(--s700);background:transparent;border:0}
+.pl-etapas tr.pl-no-periodo td{font-weight:700;color:var(--s900)}
+.pl-nota{font-size:11px;color:var(--s500);margin-top:6px}
+.pl-card-det{margin-top:12px;border-top:1px solid var(--s100);padding-top:10px}
+.pl-card-det summary{font-size:12px;font-weight:600;color:var(--blue);cursor:pointer}
+.pl-card-det .pl-etapas{min-width:0;width:100%;margin-top:8px}
+.pl-rodape{font-size:12px;color:var(--s500);margin-top:10px;line-height:1.5}
 
 /* ── Helpers de visibilidade por viewport ── */
 .only-mobile{display:none}
@@ -385,7 +404,9 @@ body{font-family:'Poppins',system-ui,sans-serif;background:var(--s50);color:var(
 .dsp-legenda i{width:10px;height:10px;margin-right:6px;vertical-align:-1px}
 i.voce{background:var(--pink)}i.media{background:var(--s300)}
 .dsp-taxa{margin-bottom:14px}.dsp-taxa-t{font-size:13px;font-weight:600;margin-bottom:6px}
-.dsp-taxa-l{display:grid;grid-template-columns:1fr 60px;gap:10px;align-items:center;font-size:12px;margin-bottom:4px}
+.dsp-taxa-l{display:grid;grid-template-columns:1fr 52px 84px;gap:10px;align-items:center;font-size:12px;margin-bottom:4px}
+.dsp-taxa-q{font-size:11px;color:var(--s500);white-space:nowrap}
+.dsp-aviso{font-size:10px;font-weight:600;color:#1d4ed8;background:#eff6ff;border-radius:999px;padding:2px 7px;display:inline-block;margin-top:3px;cursor:help}
 .dsp-taxa-bar{height:8px;background:var(--s100);border-radius:999px;overflow:hidden}.dsp-taxa-bar i{height:100%;display:block}
 .dsp-rks{display:grid;grid-template-columns:1fr;gap:18px}
 .dsp-rk-t{font-size:15px;font-weight:800;color:var(--blue-dark)}.dsp-rk-s{font-size:12px;color:var(--s500);margin-bottom:8px}
@@ -418,6 +439,20 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 }
 
 /* ── Ver como parceiro ─────────────────────────────── */
+#termo-modal{display:none;position:fixed;inset:0;z-index:1100;background:rgba(15,23,42,.6);align-items:center;justify-content:center;padding:16px}
+#termo-modal.aberto{display:flex}
+.termo-box{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.termo-hd{padding:20px 24px 12px;border-bottom:1px solid var(--s100)}
+.termo-titulo{font-size:18px;font-weight:700;color:var(--s900)}
+.termo-sub{font-size:12px;color:var(--s500);margin-top:4px}
+.termo-corpo{padding:16px 24px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--s700)}
+.termo-corpo h4{font-size:13px;font-weight:700;color:var(--s900);margin:14px 0 4px}
+.termo-corpo p{margin:0 0 6px}
+.termo-corpo ul{margin:0 0 6px 18px;padding:0}
+.termo-pe{padding:14px 24px 18px;border-top:1px solid var(--s100);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.termo-check{font-size:13px;font-weight:600;color:var(--s800);display:flex;gap:8px;align-items:center;cursor:pointer}
+.termo-acoes{display:flex;gap:8px}
+@media (max-width:900px){ .termo-hd,.termo-corpo,.termo-pe{padding-left:16px;padding-right:16px} .termo-acoes{width:100%;justify-content:flex-end} }
 #vendo-como-bar{display:none;position:fixed;top:0;left:0;right:0;height:44px;z-index:1000;background:var(--pink);color:#fff;align-items:center;justify-content:center;gap:14px;font-size:13px;padding:0 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
 #vendo-como-bar button{background:#fff;color:var(--pink);border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
 body.vendo-como #vendo-como-bar{display:flex}
@@ -577,6 +612,17 @@ body.vendo-como #sidebar{top:44px}
   </div>
 </div>
 
+<div id="termo-modal" role="dialog" aria-modal="true" aria-labelledby="termo-titulo">
+  <div class="termo-box">
+    <div class="termo-hd"><div id="termo-titulo" class="termo-titulo">Termo de Adesão ao Programa de Parceiros</div><div class="termo-sub" id="termo-sub"></div></div>
+    <div class="termo-corpo" id="termo-corpo"></div>
+    <div class="termo-pe">
+      <label class="termo-check"><input type="checkbox" id="termo-ok" onchange="document.getElementById('termo-btn').disabled=!this.checked"> Li e aceito o Termo de Adesão</label>
+      <div class="termo-acoes"><button class="btn btn-ghost btn-sm" id="termo-sair" onclick="doLogout()">Sair</button><button class="btn btn-primary" id="termo-btn" disabled onclick="aceitarTermo()">Aceitar e continuar</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -666,6 +712,13 @@ function mapUser(row) {
     affiliateType: row.affiliate_type || 'external',
     linksConfig: row.links_config || {},
     bonifVisible: row.bonif_visible === true,
+    // undefined quando a coluna ainda não existe (db/v1.4.sql não rodado):
+    // userToRow só manda o campo se ele veio do banco.
+    bonifHistory: Array.isArray(row.bonif_history) ? row.bonif_history : undefined,
+    // undefined quando a coluna não existe (db/v1.4.sql não rodado): aí o
+    // termo não é exigido, para não travar ninguém fora do portal.
+    termsVersion: 'terms_version' in row ? (row.terms_version || null) : undefined,
+    termsAcceptedAt: row.terms_accepted_at || null,
   };
 }
 function mapModel(row) {
@@ -674,7 +727,9 @@ function mapModel(row) {
     name: row.name,
     description: row.description || '',
     isPreset: row.id === 'standard' || row.id === 'premium',
-    products: row.tiers || {},
+    // formato antigo ({"rate":10}) vira os valores do preset (politica.js)
+    products: Politica.tiersDoModelo(row) || row.tiers || {},
+    versions: Array.isArray(row.versions) ? row.versions : undefined,
   };
 }
 function userToRow(u) {
@@ -698,12 +753,17 @@ function userToRow(u) {
     affiliate_type: u.affiliateType || 'external',
     links_config: u.linksConfig || {},
     ...(u.bonifVisible !== undefined ? { bonif_visible: !!u.bonifVisible } : {}),
+    ...(u.bonifHistory !== undefined ? { bonif_history: u.bonifHistory } : {}),
+    // terms_version / terms_accepted_at: só o servidor grava (/api/termo/aceite).
   };
 }
 
 const getUsers      = () => usersCache;
 const getModels     = () => modelsCache;
 const hasPolicy     = u => !!(u && u.bonifModelId) && modelsCache.some(m => m.id === u.bonifModelId);
+// Valores no tempo (politica.js): cada etapa paga o valor vigente na data em
+// que foi atingida. Sem modelo atribuído, calcula pelo Padrão (como antes).
+const politicaDe    = u => Politica.criar({ modelos: modelsCache, historico: u && u.bonifHistory, modeloAtual: u && u.bonifModelId, padrao: DEFAULT_BONIF_MODEL });
 const getAffiliates = () => usersCache.filter(u => u.role === 'affiliate');
 const getPending    = () => getAffiliates().filter(u => u.status === 'pending');
 
@@ -772,7 +832,8 @@ function saveUsers(users) {
 let modelsBaseline = new Map();
 
 function modelToRow(m) {
-  return { id: m.id, name: m.name, description: m.description || null, tiers: m.products || {} };
+  return { id: m.id, name: m.name, description: m.description || null, tiers: m.products || {},
+    ...(m.versions !== undefined ? { versions: m.versions } : {}) };
 }
 function snapshotModels(models) {
   modelsBaseline = new Map((models || [])
@@ -870,6 +931,76 @@ let affSortCol='createdAt', affSortDir='desc';
 let adminPeriod='this-year', adminCustomStart='', adminCustomEnd='';
 
 // ═══════════════════════════════════════════════════════
+// TERMO DE ADESÃO (primeiro acesso do parceiro)
+// ═══════════════════════════════════════════════════════
+// Versão nova = todos os parceiros aceitam de novo no próximo acesso. A versão
+// precisa ser a mesma de TERMO_VERSAO no server.js (o teste confere).
+const TERMO_VERSAO='1.0';
+const TERMO_HTML=`
+<p>Versão ${TERMO_VERSAO} · novembro de 2026. Ao clicar em "Aceitar e continuar", você declara que leu e concorda com as regras abaixo. O aceite fica registrado com data, hora e versão do termo.</p>
+<h4>1. Como o lead é contado</h4>
+<p>1.1. Conta como indicação sua o lead que chega pelos seus links do portal, identificado pelo seu código de parceiro no nosso CRM.</p>
+<p>1.2. Não conta o lead cujo contato já estava na nossa base antes da sua indicação. Na prática, ele não conta quando o contato foi criado mais de 7 dias antes do lead e a primeira origem dele não é você.</p>
+<p>1.3. Um mesmo contato conta uma única vez. Se ele sair e voltar a se cadastrar, não vira um lead novo.</p>
+<p>1.4. Leads de teste, duplicados ou com dados claramente falsos podem ser excluídos.</p>
+<h4>2. Como a comissão é calculada</h4>
+<p>2.1. A comissão segue a política comercial atribuída a você no portal: um valor por etapa que o lead atinge (Lead recebido, Em atendimento, Reunião agendada, Oportunidade).</p>
+<p>2.2. Cada etapa é paga uma única vez por contato, no mês em que foi atingida. Se o lead vira MQL em outubro e SQL em dezembro, outubro paga a etapa MQL, e dezembro paga só o valor da etapa SQL.</p>
+<p>2.3. Uma mudança de política ou de valores vale só daqui para a frente. Etapas já atingidas mantêm o valor vigente na data em que foram atingidas.</p>
+<p>2.4. Enquanto não houver política atribuída a você, os valores não aparecem no portal e não há comissão a receber.</p>
+<h4>3. Apuração e pagamento</h4>
+<p>3.1. A apuração é mensal, do dia 1 ao último dia do mês, pela data em que cada etapa foi atingida no CRM.</p>
+<p>3.2. O ponto de corte é o último dia de cada mês. Etapas registradas no CRM até esse dia entram na apuração do mês; as registradas depois entram no mês seguinte.</p>
+<p>3.3. O pagamento é feito por transferência para a conta indicada por você, no dia 10 ou no dia 20 do mês seguinte ao fechamento, conforme a data combinada com você.</p>
+<p>3.4. Não há valor mínimo para pagamento. Eventuais impostos e tarifas bancárias da transferência podem ser descontados do valor, quando houver.</p>
+<p>3.5. Divergências devem ser apontadas em até 30 dias após o pagamento, pelo e-mail contato@imigrareua.com.</p>
+<p>3.6. O portal está em evolução contínua, e os números exibidos nele são informativos. Eventualmente, os valores podem ser atualizados após conferência. Para fins de pagamento, vale a apuração final feita pela equipe do programa.</p>
+<h4>4. Uso da marca e divulgação</h4>
+<p>4.1. Você pode divulgar a ImigrarEUA e a LIV com os materiais e links fornecidos no portal.</p>
+<p>4.2. É proibido:</p>
+<ul><li>prometer resultado de processo imigratório, prazo ou aprovação de visto;</li><li>se apresentar como advogado, funcionário ou representante oficial;</li><li>fazer spam ou comprar listas;</li><li>anunciar em mídia paga usando as nossas marcas sem autorização por escrito.</li></ul>
+<h4>5. Confidencialidade e dados</h4>
+<p>5.1. Os dados de leads, os rankings e os números do programa que você vê no portal são confidenciais e não podem ser compartilhados.</p>
+<p>5.2. Você não deve coletar nem repassar dados de clientes fora dos formulários oficiais.</p>
+<h4>6. Vigência e encerramento</h4>
+<p>6.1. Qualquer parte pode encerrar a parceria a qualquer momento, por aviso no portal ou por e-mail.</p>
+<p>6.2. As etapas atingidas até a data do encerramento são pagas normalmente no ciclo seguinte.</p>
+<p>6.3. O descumprimento das regras dos itens 4 e 5 permite o encerramento imediato e a suspensão dos valores ligados à infração.</p>
+<h4>7. Alterações deste termo</h4>
+<p>7.1. Quando houver uma nova versão, você será avisado no próximo acesso e precisará aceitar de novo para continuar usando o portal.</p>`;
+// Parceiro ativo que ainda não aceitou a versão atual. Sem a coluna no banco
+// (termsVersion undefined), não exige.
+const precisaAceitarTermo=u=>!!u&&u.role==='affiliate'&&u.status==='active'&&u.termsVersion!==undefined&&u.termsVersion!==TERMO_VERSAO;
+function abrirTermo(){
+  const m=document.getElementById('termo-modal');
+  document.getElementById('termo-corpo').innerHTML=TERMO_HTML;
+  document.getElementById('termo-ok').checked=false;
+  document.getElementById('termo-btn').disabled=true;
+  // Na visão do admin: mostra o que o parceiro vê, sem gravar aceite.
+  document.getElementById('termo-sub').textContent=vendoComo
+    ?`${currentUser.name} ainda não aceitou este termo. Na visualização, o aceite não é gravado.`
+    :(currentUser.termsVersion?'O termo foi atualizado. Para continuar usando o portal, leia e aceite a nova versão.':'Para começar a usar o portal, leia e aceite o termo abaixo.');
+  document.getElementById('termo-sair').textContent=vendoComo?'Fechar':'Sair';
+  document.getElementById('termo-sair').onclick=vendoComo?fecharTermo:doLogout;
+  m.classList.add('aberto');
+}
+function fecharTermo(){ document.getElementById('termo-modal')?.classList.remove('aberto'); }
+async function aceitarTermo(){
+  if(vendoComo){ somenteLeitura(); fecharTermo(); return; }
+  const btn=document.getElementById('termo-btn'); btn.disabled=true; btn.textContent='Gravando…';
+  try{
+    const r=await fetch('/api/termo/aceite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({versao:TERMO_VERSAO})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||`Erro ${r.status}`);
+    currentUser.termsVersion=d.versao; currentUser.termsAcceptedAt=d.aceitoEm;
+    const doCache=getUsers().find(x=>x.id===currentUser.id); if(doCache){ doCache.termsVersion=d.versao; doCache.termsAcceptedAt=d.aceitoEm; }
+    fecharTermo(); toast('✅ Termo aceito. Bem-vindo ao Programa de Parceiros!');
+  }catch(e){ toast('⚠️ Não foi possível gravar o aceite: '+e.message); btn.disabled=false; }
+  finally{ btn.textContent='Aceitar e continuar'; }
+}
+window.aceitarTermo=aceitarTermo; window.fecharTermo=fecharTermo;
+
+// ═══════════════════════════════════════════════════════
 // BOOT / AUTH
 // ═══════════════════════════════════════════════════════
 async function boot() {
@@ -904,6 +1035,7 @@ function enterApp() {
   buildTabbar();
   observarTabelas();
   navigate(currentUser.role === 'admin' ? 'admin-overview' : 'aff-dashboard');
+  if (precisaAceitarTermo(currentUser)) abrirTermo();
 }
 function showView(id) {
   document.querySelectorAll('#auth-shell .view').forEach(v => v.classList.remove('active'));
@@ -976,6 +1108,7 @@ async function doRegister() {
 
 async function doLogout() {
   vendoComo=null; globalThis.__vendoComo=false; document.body.classList.remove('vendo-como');
+  fecharTermo();
   await sb.auth.signOut();
   currentUser=null; usersCache=[]; modelsCache=[];
   if(leadsChart){leadsChart.destroy();leadsChart=null;}
@@ -1157,6 +1290,10 @@ function validLeads(list){ return (list||[]).filter(l=>l.eligible!==false); }
 // Leads que entraram pelo link mas o contato já era da casa: aparecem à parte,
 // fora da contagem e da bonificação.
 function leadsNaBase(list){ return (list||[]).filter(l=>l.eligible===false); }
+// Motivo para o parceiro: sem dados do contato (regra de privacidade).
+function motivoForaDaConta(l){
+  return l.recaptura?'O contato já tinha entrado como lead antes desta indicação':'O contato já estava na nossa base antes da indicação';
+}
 function motivoNaBase(l){
   const desde=l.contactCreatedAt?` (no CRM desde ${fmtDate(l.contactCreatedAt)})`:'';
   return (l.ineligibleReason||'Contato já existia no CRM antes da indicação')+desde;
@@ -1167,7 +1304,7 @@ function renderNaBasePanel(lista,titulo){
   const linhas=lista.slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
   return`<div class="panel" style="margin-top:16px">
     <div class="panel-hd"><div><div class="panel-title">🔁 ${titulo} (${lista.length})</div>
-    <div style="font-size:12px;color:var(--s500);margin-top:2px">Entraram pelo link, mas o contato já existia no CRM antes da indicação. Não entram na contagem de leads nem na bonificação.</div></div></div>
+    <div style="font-size:12px;color:var(--s500);margin-top:2px">Entraram pelo link, mas o contato já existia no CRM antes da indicação ou já tinha entrado como lead (recaptura). Não entram na contagem de leads nem na bonificação.</div></div></div>
     <div class="only-desktop"><table class="table"><thead><tr><th>Lead / ID</th><th>Entrou pelo link em</th><th>Motivo</th></tr></thead><tbody>${
       linhas.map(l=>`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td class="text-muted text-sm">${fmtDate(l.createdAt)}</td><td class="text-muted text-sm">${motivoNaBase(l)}</td></tr>`).join('')
     }</tbody></table></div>
@@ -1195,8 +1332,9 @@ function renderAdminOverview(c){
     const converted=hit('Convertido');
     const inProg=leads.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
     // Bonificação do período: inclui leads de meses anteriores que avançaram agora.
-    const bonif=allLeads.reduce((s,l)=>s+calcLeadBonifPeriod(l,model,pS,pE),0);
-    const bonifConv=allLeads.filter(l=>reachedInPeriod(l,'Convertido',pS,pE)).reduce((s,l)=>s+calcLeadBonifPeriod(l,model,pS,pE),0);
+    const pol=politicaDe(a);
+    const bonif=allLeads.reduce((s,l)=>s+calcLeadBonifPeriod(l,pol,pS,pE),0);
+    const bonifConv=allLeads.filter(l=>reachedInPeriod(l,'Convertido',pS,pE)).reduce((s,l)=>s+calcLeadBonifPeriod(l,pol,pS,pE),0);
     const mql=hit('Em Atendimento');
     const sql=hit('Reunião Agendada');
     const rate=leads.length>0?((converted/leads.length)*100).toFixed(1):'0.0';
@@ -1261,7 +1399,7 @@ function renderAdminOverview(c){
           const barW=affMetrics[0].leads.length>0?Math.round(leads.length/affMetrics[0].leads.length*100):0;
           return`<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">${a.name[0]}</div><div><div style="font-weight:600;font-size:13px">${a.name}</div><div style="height:4px;background:var(--s100);border-radius:2px;margin-top:4px;width:80px"><div style="height:100%;width:${barW}%;background:#1B75BC;border-radius:2px"></div></div></div></div></td>
           <td><span class="tag tag-blue" style="font-size:10px" title="${model?'':'Sem modelo atribuído: o cálculo usa o modelo Padrão'}">${model?.name||'Padrão (automático)'}</span></td>
-          <td style="text-align:right;font-weight:600">${leads.length}${naBase?`<div style="font-size:10px;font-weight:500;color:var(--s400);cursor:pointer;text-decoration:underline dotted" title="Entraram pelo link, mas o contato já era da casa. Não contam." onclick="showNaBasePopup('${a.id}')">+${naBase} já na base</div>`:''}</td>
+          <td style="text-align:right;font-weight:600">${leads.length}${naBase?`<div style="font-size:10px;font-weight:500;color:var(--s400);cursor:pointer;text-decoration:underline dotted" title="Entraram pelo link, mas o contato já era da casa ou é recaptura. Não contam." onclick="showNaBasePopup('${a.id}')">+${naBase} fora da contagem</div>`:''}</td>
           <td style="text-align:right;color:#7c3aed;font-weight:600">${mql||'—'}</td>
           <td style="text-align:right;color:#1B75BC;font-weight:600">${sql||'—'}</td>
           <td style="text-align:right;font-weight:600;color:#059669">${converted}</td>
@@ -1431,11 +1569,18 @@ async function syncHubSpot(affId){
     toast('❌ Falha na sincronização.');
   }
 }
+// Troca de modelo não é retroativa: o histórico guarda desde quando cada
+// modelo vale para o parceiro (politica.js). Sem a coluna, só troca.
+function trocarModelo(u,novo){
+  const anterior=u.bonifModelId||null;
+  if(anterior!==novo&&u.bonifHistory!==undefined) u.bonifHistory=Politica.registrar(u.bonifHistory,anterior,novo,'modelo');
+  u.bonifModelId=novo;
+}
 function assignModel(affId){
   const select=document.getElementById(`bonif-model-select-${affId}`); if(!select) return;
   const modelId=select.value;
   const users=getUsers(); const u=users.find(x=>x.id===affId); if(!u) return;
-  u.bonifModelId=modelId||null; saveUsers(users);
+  trocarModelo(u,modelId||null); saveUsers(users);
   const model=getModels().find(m=>m.id===modelId);
   toast(modelId?`✅ Modelo "${model?.name||modelId}" aplicado a ${u.name}.`:`🔒 ${u.name} sem política — remuneração oculta para o afiliado.`);
   renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
@@ -1475,12 +1620,14 @@ async function verComoParceiro(affId,pagina){
   document.body.classList.add('vendo-como');
   buildSidebar(); buildTabbar();
   navigate(pagina||'aff-dashboard');
+  if(precisaAceitarTermo(currentUser)) abrirTermo();
 }
 async function sairVerComo(){
   if(!vendoComo) return;
   const { admin, voltar }=vendoComo;
   vendoComo=null; globalThis.__vendoComo=false;
   document.body.classList.remove('vendo-como');
+  fecharTermo();
   currentUser=admin;
   try{ await loadData(); currentUser=getUsers().find(u=>u.id===admin.id)||admin; }catch(e){ /* mantém o cache atual */ }
   buildSidebar(); buildTabbar();
@@ -1544,11 +1691,16 @@ function saveBonifModel(){
   const models=getModels();
   if(editingBonifModelId){
     const idx=models.findIndex(m=>m.id===editingBonifModelId);
-    if(idx>-1){ models[idx].name=name; models[idx].products=products; }
+    if(idx>-1){
+      const m=models[idx];
+      // Valores novos só valem daqui para a frente (politica.js).
+      if(m.versions!==undefined&&JSON.stringify(m.products)!==JSON.stringify(products)) m.versions=Politica.registrar(m.versions,m.products,products,'tiers');
+      m.name=name; m.products=products;
+    }
   } else {
-    const newModel={id:'custom-'+Date.now(),name,isPreset:false,products};
+    const newModel={id:'custom-'+Date.now(),name,isPreset:false,products,...(models.some(m=>m.versions!==undefined)?{versions:[]}:{})};
     models.push(newModel);
-    if(editingAffiliateId){ const users=getUsers(); const u=users.find(x=>x.id===editingAffiliateId); if(u){ u.bonifModelId=newModel.id; saveUsers(users); } }
+    if(editingAffiliateId){ const users=getUsers(); const u=users.find(x=>x.id===editingAffiliateId); if(u){ trocarModelo(u,newModel.id); saveUsers(users); } }
   }
   saveModels(models); closeBonifModal(); toast(`✅ Modelo "${name}" salvo.`);
   if(openDetailId) renderAffRows(getUsers().filter(u=>u.role==='affiliate'&&u.status==='active'));
@@ -1570,6 +1722,12 @@ function stageValues(lead,model){
   const m=model||getModels().find(x=>x.id==='standard')||DEFAULT_BONIF_MODEL;
   const prod=lead.product&&m.products?.[lead.product]?lead.product:'Padrão';
   return m.products?.[prod]?.stages??m.products?.['Padrão']?.stages??{};
+}
+// Valor de uma etapa: com política (politicaDe), o vigente na data em que foi
+// atingida; com modelo fixo, o do modelo.
+function valorEtapa(lead,model,st,data){
+  const vals=model&&model.valoresEm?model.valoresEm(data,lead.product):stageValues(lead,model);
+  return Number(vals[st])||0;
 }
 function toDay(d){ if(!d) return null; return typeof d==='string'?d.slice(0,10):d.toISOString().slice(0,10); }
 // Etapa atingida (lead.reached) ou, em cache antigo, a etapa atual.
@@ -1594,12 +1752,11 @@ function reachedStages(lead){
 // atingida entre start e end. Sem período, soma tudo o que já foi atingido.
 function calcLeadBonifPeriod(lead,model,start,end){
   if(lead.eligible===false) return 0;
-  const vals=stageValues(lead,model), r=reachedStages(lead);
-  const s=toDay(start), e=toDay(end);
+  const r=reachedStages(lead), s=toDay(start), e=toDay(end);
   return BONIF_FLOW.reduce((acc,st)=>{
     const d=r[st]; if(!d) return acc;
     if(s&&d<s) return acc; if(e&&d>e) return acc;
-    return acc+(Number(vals[st])||0);
+    return acc+valorEtapa(lead,model,st,d);
   },0);
 }
 function reachedInPeriod(lead,stage,start,end){
@@ -1609,6 +1766,7 @@ function reachedInPeriod(lead,stage,start,end){
 }
 function calcLeadBonif(lead,model){
   if(lead.reached) return calcLeadBonifPeriod(lead,model,null,null);
+  if(model&&model.valoresEm) model={products:model.tiersEm(lead.createdAt)||{}};
   const m=model||getModels().find(x=>x.id==='standard')||DEFAULT_BONIF_MODEL;
   const prod=lead.product&&m.products?.[lead.product]?lead.product:'Padrão';
   const stages=m.products?.[prod]?.stages??m.products?.['Padrão']?.stages??{};
@@ -2391,6 +2549,26 @@ window.runHealthCheck=runHealthCheck;
 // ═══════════════════════════════════════════════════════
 // PAGE: Affiliate Dashboard
 // ═══════════════════════════════════════════════════════
+// Resumo mês a mês: etapas atingidas e valor apurado em cada competência,
+// pelo valor vigente na data de cada etapa (politica.js). Últimos 12 meses.
+function resumoMensalHTML(leads,pol){
+  const primeiro=leads.map(l=>l.createdAt).filter(Boolean).sort()[0];
+  if(!primeiro) return '';
+  const meses=[]; const d=new Date(primeiro.slice(0,7)+'-01T12:00:00Z'); const ate=new Date().toISOString().slice(0,7);
+  while(d.toISOString().slice(0,7)<=ate){ meses.push(d.toISOString().slice(0,7)); d.setUTCMonth(d.getUTCMonth()+1); }
+  const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const linhas=meses.slice(-12).reverse().map(m=>{
+    const[y,mm]=m.split('-').map(Number); const s=`${m}-01`, e=`${m}-${String(new Date(Date.UTC(y,mm,0)).getUTCDate()).padStart(2,'0')}`;
+    const hit=st=>leads.filter(l=>reachedInPeriod(l,st,s,e)).length;
+    const valor=leads.reduce((t,l)=>t+calcLeadBonifPeriod(l,pol,s,e),0);
+    return{m,n:hit('Lead Recebido'),mql:hit('Em Atendimento'),sql:hit('Reunião Agendada'),opp:hit('Oportunidade'),valor};
+  });
+  const nome=m=>`${MESES_PT[Number(m.split('-')[1])-1]} / ${m.slice(0,4)}`;
+  return`<div class="panel" style="margin-top:14px"><div class="panel-hd"><div><div class="panel-title">📅 Resumo mensal da bonificação</div>
+    <div style="font-size:12px;color:var(--s500);margin-top:2px">Cada etapa conta no mês em que o lead chegou a ela, pelo valor da política vigente naquela data.</div></div></div>
+    <table class="table"><thead><tr><th>Mês</th><th style="text-align:right">Leads</th><th style="text-align:right">Em Atendimento</th><th style="text-align:right">Reunião</th><th style="text-align:right">Oportunidade</th><th style="text-align:right">Valor</th></tr></thead>
+    <tbody>${linhas.map(r=>`<tr><td>${nome(r.m)}${r.m===new Date().toISOString().slice(0,7)?' <span class="text-muted text-sm">(parcial)</span>':''}</td><td style="text-align:right">${r.n}</td><td style="text-align:right">${r.mql}</td><td style="text-align:right">${r.sql}</td><td style="text-align:right">${r.opp}</td><td style="text-align:right;font-weight:700;color:#059669">${fmt(r.valor)}</td></tr>`).join('')}</tbody></table></div>`;
+}
 function renderAffDashboard(c){
   const u=currentUser;
   setTopbar('Dashboard',`Afiliado: ${u.email}`);
@@ -2415,10 +2593,12 @@ function renderAffDashboard(c){
   const inProgress=filtered.filter(l=>['Em Atendimento','Reunião Agendada','Oportunidade'].includes(l.stage)).length;
   const convRate=filtered.length>0?((converted/filtered.length)*100).toFixed(1):'0.0';
   const{start:aS,end:aE}=getDateRange(affPeriod);
-  const commTotal=leads.reduce((s,l)=>s+calcLeadBonifPeriod(l,model,aS,aE),0);
-  const commConv=filtered.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
-  const commNC=filtered.filter(l=>l.stage==='Não Convertido').reduce((s,l)=>s+calcLeadBonif(l,model),0);
+  const pol=politicaDe(u);
+  const commTotal=leads.reduce((s,l)=>s+calcLeadBonifPeriod(l,pol,aS,aE),0);
+  const commConv=filtered.filter(l=>l.stage==='Convertido').reduce((s,l)=>s+calcLeadBonif(l,pol),0);
+  const commNC=filtered.filter(l=>l.stage==='Não Convertido').reduce((s,l)=>s+calcLeadBonif(l,pol),0);
   const evo=buildEvolutionBuckets(filtered);
+  const resumoMes=showBonif?resumoMensalHTML(leads,pol):'';
   const stageCounts={};
   STAGES.concat(['Não Convertido']).forEach(s=>stageCounts[s]=0);
   filtered.forEach(l=>{if(stageCounts[l.stage]!==undefined) stageCounts[l.stage]++;});
@@ -2429,7 +2609,7 @@ function renderAffDashboard(c){
     <div class="page-header" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="page-title">Dashboard</div><div class="page-sub">Afiliado: <code>${u.email}</code>${showBonif?` · Modelo: <strong>${model.name}</strong>`:''} · Sync: ${u.syncData?.lastSync?fmtDate(u.syncData.lastSync):'—'}</div></div></div></div>
     ${renderPeriodBar('aff-dashboard')}
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div>${naBaseDash?`<div class="kpi-note" title="Entraram pelo seu link, mas o contato já era da casa. Detalhes no Pipeline.">+${naBaseDash} já na base (não contam)</div>`:''}</div>
+      <div class="kpi-card"><div class="kpi-icon" style="background:#eff6ff">👥</div><div class="kpi-label">Leads no Período</div><div class="kpi-value">${filtered.length}</div>${naBaseDash?`<div class="kpi-note" title="Entraram pelo seu link, mas o contato já estava na nossa base ou já tinha entrado como lead. Detalhes no Pipeline.">+${naBaseDash} fora da contagem</div>`:''}</div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#ecfdf5">✅</div><div class="kpi-label">Convertidos</div><div class="kpi-value">${converted}</div></div>
       <div class="kpi-card"><div class="kpi-icon" style="background:#fffbeb">📈</div><div class="kpi-label">Em Andamento</div><div class="kpi-value">${inProgress}</div></div>
       ${showBonif?`<div class="kpi-card"><div class="kpi-icon" style="background:#fefce8">💵</div><div class="kpi-label">Bonificação Simulada</div><div class="kpi-value sm">${fmt(commTotal)}</div><div class="kpi-note">Modelo: ${model.name}</div></div>`:`<div class="kpi-card"><div class="kpi-icon" style="background:#eef2ff">🎯</div><div class="kpi-label">Taxa de Conversão</div><div class="kpi-value">${convRate}%</div></div>`}
@@ -2439,7 +2619,8 @@ function renderAffDashboard(c){
       <div class="panel" style="margin-bottom:0"><div class="panel-hd"><div class="panel-title">🎯 Estágio dos Leads</div></div><div class="panel-bd"><div class="stage-dist">${stageDistRows}</div></div></div>
     </div>
     <div class="banner" style="margin-top:14px"><div class="banner-left"><div class="banner-icon">🏆</div><div><div style="font-size:12px;color:#94a3b8;font-weight:500">Taxa de Conversão</div><div class="banner-rate">${convRate}%</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">${converted} convertidos de ${filtered.length} leads</div></div></div>
-    ${showBonif?`<div class="banner-box"><div class="banner-box-title">Bonificação Simulada</div><div class="brow"><span class="brow-lbl">💰 Convertidos (×${converted})</span><span class="brow-val">${fmt(commConv)}</span></div><div class="brow"><span class="brow-lbl">❌ Não Conv. (×${notConv})</span><span class="brow-val nc">${fmt(commNC)}</span></div><hr class="bdiv"><div class="brow"><span class="btotal-lbl">Total</span><span class="btotal-val">${fmt(commTotal)}</span></div></div>`:''}</div>`;
+    ${showBonif?`<div class="banner-box"><div class="banner-box-title">Bonificação Simulada</div><div class="brow"><span class="brow-lbl">💰 Convertidos (×${converted})</span><span class="brow-val">${fmt(commConv)}</span></div><div class="brow"><span class="brow-lbl">❌ Não Conv. (×${notConv})</span><span class="brow-val nc">${fmt(commNC)}</span></div><hr class="bdiv"><div class="brow"><span class="btotal-lbl">Total</span><span class="btotal-val">${fmt(commTotal)}</span></div></div>`:''}</div>
+    ${resumoMes}`;
   setTimeout(()=>{
     if(evoChart){evoChart.destroy();evoChart=null;}
     const ctx=document.getElementById('evoChart')?.getContext('2d'); if(!ctx) return;
@@ -2521,8 +2702,11 @@ async function renderDesempenho(c,userId){
     </div></div>`;
 
   const T=d.taxas;
+  // Contagem só do próprio parceiro: "13 de 60". A média segue só em %.
+  const K=T.contagem, DE={qualif:['emAtendimento','leads'],mqlSql:['reuniao','emAtendimento'],avanco:['reuniao','leads'],sqlOpp:['oportunidade','reuniao']};
+  const qtdT=k=>K?`<span class="dsp-taxa-q">${K[DE[k][0]]} de ${K[DE[k][1]]}</span>`:'';
   const barraT=(rot,k)=>{const mx=Math.max(T.voce[k],T.media[k],1);return`<div class="dsp-taxa"><div class="dsp-taxa-t">${rot}</div>
-    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b></div>
+    <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="voce" style="width:${T.voce[k]/mx*100}%"></i></div><b>${pctBR(T.voce[k])}</b>${qtdT(k)}</div>
     <div class="dsp-taxa-l"><div class="dsp-taxa-bar"><i class="media" style="width:${T.media[k]/mx*100}%"></i></div><span class="dsp-mut">${pctBR(T.media[k])}</span></div></div>`;};
   const taxasHtml=`<div class="dsp-sec"><div class="dsp-kicker">Conversão</div><div class="dsp-h">Suas taxas x média de ${M}</div>
     <div class="dsp-legenda"><span><i class="voce"></i>Você</span><span><i class="media"></i>Média de todos os leads de ${M}</span></div>
@@ -2542,14 +2726,16 @@ async function renderDesempenho(c,userId){
     <div class="dsp-badges">${d.conquistas.map(b=>`<div class="dsp-badge${b.ok?' ok':''}"><div class="dsp-badge-i">${b.ok?ICO[b.id]||'⭐':'🔒'}</div><div><div class="dsp-badge-t">${escH(b.titulo)}</div><div class="dsp-badge-s">${b.ok?'Conquistada':'Bloqueada'}</div><div class="dsp-badge-d">${escH(b.detalhe)}</div></div></div>`).join('')}</div></div>`;
 
   const L=d.leads;
+  // Lead de mês anterior que só mudou de etapa neste mês.
+  const avisoEtapa=l=>l.capturadoEm?`<div class="dsp-aviso" title="Capturado em ${fmtDate(l.capturadoEm)}. Neste mês entra só ${$?'o valor d':''}a nova etapa (${escH((l.etapasNoMes||[]).join(', '))}).">ⓘ Mudança de etapa · capturado em ${mesCurto(l.capturadoEm.slice(0,7)).slice(0,3)}/${l.capturadoEm.slice(2,4)}</div>`:'';
   const leadsHtml=`<div class="dsp-sec"><div class="dsp-kicker">Detalhamento</div><div class="dsp-h">Seus leads de ${M}</div>
     <p class="dsp-p">Etapa mais alta que cada lead atingiu até ${fimBR}${$?' e o valor gerado no mês':''}. Inclui leads de meses anteriores que avançaram em ${M}.</p>
     ${!L.length?`<div class="empty-state"><p>Nenhum lead neste mês.</p></div>`:`
     <div class="only-desktop"><table class="table"><thead><tr><th>#</th><th>Data</th><th>Lead</th><th>Etapa em ${fimBR}</th>${$?'<th style="text-align:right">Valor</th>':''}</tr></thead><tbody>
-      ${L.map((l,i)=>`<tr><td class="text-muted text-sm">${i+1}</td><td class="text-muted text-sm">${fmtDate(l.data).slice(0,5)}</td><td>${escH(l.nome)}</td><td><span style="font-size:12px;font-weight:600;color:${STAGE_COLORS[l.etapa]||'var(--s500)'}">${escH(ETAPA_CURTA[l.etapa]||l.etapa||'—')}</span></td>${$?`<td style="text-align:right;font-weight:600">${usd(l.valor)}</td>`:''}</tr>`).join('')}
+      ${L.map((l,i)=>`<tr><td class="text-muted text-sm">${i+1}</td><td class="text-muted text-sm">${fmtDate(l.data).slice(0,5)}</td><td>${escH(l.nome)}${avisoEtapa(l)}</td><td><span style="font-size:12px;font-weight:600;color:${STAGE_COLORS[l.etapa]||'var(--s500)'}">${escH(ETAPA_CURTA[l.etapa]||l.etapa||'—')}</span></td>${$?`<td style="text-align:right;font-weight:600">${usd(l.valor)}</td>`:''}</tr>`).join('')}
       ${$?`<tr style="background:var(--s50);font-weight:700"><td colspan="4">Total</td><td style="text-align:right">${usd(d.bonificacao.total)}</td></tr>`:''}
     </tbody></table></div>
-    <div class="only-mobile">${L.map(l=>`<div class="dsp-lead"><div><div style="font-weight:600;font-size:14px">${escH(l.nome)}</div><div class="dsp-mut" style="font-size:12px">${fmtDate(l.data).slice(0,5)} · <span style="color:${STAGE_COLORS[l.etapa]||'var(--s500)'};font-weight:600">${escH(l.etapa||'—')}</span></div></div>${$?`<b>${usd(l.valor)}</b>`:''}</div>`).join('')}
+    <div class="only-mobile">${L.map(l=>`<div class="dsp-lead"><div><div style="font-weight:600;font-size:14px">${escH(l.nome)}</div>${avisoEtapa(l)}<div class="dsp-mut" style="font-size:12px">${fmtDate(l.data).slice(0,5)} · <span style="color:${STAGE_COLORS[l.etapa]||'var(--s500)'};font-weight:600">${escH(l.etapa||'—')}</span></div></div>${$?`<b>${usd(l.valor)}</b>`:''}</div>`).join('')}
       ${$?`<div class="dsp-lead" style="font-weight:700"><span>Total</span><b>${usd(d.bonificacao.total)}</b></div>`:''}</div>`}
     ${d.foraDaContagem?`<div class="dsp-fora"><b>Leads fora da contagem</b><br>${d.foraDaContagem} lead${d.foraDaContagem>1?'s':''} criado${d.foraDaContagem>1?'s':''} com o seu link em ${M} não entra${d.foraDaContagem>1?'m':''} na contagem porque já ${d.foraDaContagem>1?'eram nossos contatos':'era nosso contato'} antes da indicação.</div>`:''}</div>`;
 
@@ -2570,12 +2756,24 @@ function renderAffPipeline(c){
   const u=currentUser;
   setTopbar('Pipeline de Leads','Todos os seus leads e estágios do funil');
   const model=getModels().find(m=>m.id===u.bonifModelId)||DEFAULT_BONIF_MODEL;
+  const pol=politicaDe(u);
   const showBonif=hasPolicy(u);
-  const allLeads=validLeads(u.syncData?.leads);
+  // Todos os leads do link: os que contam e os fora da contagem (já eram
+  // nossos contatos ou recaptura), estes com valor zerado.
+  const todos=u.syncData?.leads||[];
   const fmt=v=>'$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const{start:pS,end:pE}=getDateRange(affPeriod);
+  const temPeriodo=!!(pS||pE);
+  const noPeriodo=d=>{ if(!d) return false; const s=toDay(pS), e=toDay(pE); return !(s&&d<s)&&!(e&&d>e); };
+  // Lead capturado antes do período que mudou de etapa dentro dele: entra na
+  // lista com o aviso, pagando só a etapa nova.
+  const avancouNoPeriodo=l=>temPeriodo&&l.eligible!==false&&!noPeriodo(l.createdAt)&&BONIF_FLOW.some(st=>noPeriodo(reachedStages(l)[st]));
+  const doPeriodo=todos.filter(l=>!temPeriodo||noPeriodo(l.createdAt)||avancouNoPeriodo(l));
+  const foraDaConta=l=>l.eligible===false;
   function getFiltered(){
-    let leads=filterByPeriod(allLeads,affPeriod);
-    if(affStageFilter!=='Todos') leads=leads.filter(l=>l.stage===affStageFilter);
+    let leads=doPeriodo;
+    if(affStageFilter==='Fora da contagem') leads=leads.filter(foraDaConta);
+    else if(affStageFilter!=='Todos') leads=leads.filter(l=>!foraDaConta(l)&&l.stage===affStageFilter);
     if(affSearch.trim()){ const q=affSearch.toLowerCase(); leads=leads.filter(l=>(l.name||'').toLowerCase().includes(q)||(l.id||'').toLowerCase().includes(q)); }
     return leads.slice().sort((a,b)=>{
       let va='',vb='';
@@ -2585,28 +2783,56 @@ function renderAffPipeline(c){
       va=a.createdAt||'';vb=b.createdAt||'';return affSortDir==='asc'?va.localeCompare(vb):vb.localeCompare(va);
     });
   }
-  function sortIcon(col){if(affSortCol!==col) return`<span style="color:var(--s300);margin-left:3px">⇅</span>`;return affSortDir==='asc'?`<span style="color:var(--blue);margin-left:3px">↑</span>`:`<span style="color:var(--blue);margin-left:3px">↓</span>`;}
-  function thSort(col,label,extra=''){return`<th style="cursor:pointer;user-select:none${extra?';'+extra:''}" onclick="setPipelineSort('${col}')">${label}${sortIcon(col)}</th>`;}
+  const valorLead=l=>foraDaConta(l)?0:temPeriodo?calcLeadBonifPeriod(l,pol,pS,pE):calcLeadBonif(l,pol);
+  const mesAno=d=>{ if(!d) return '—'; const[y,m]=d.split('-'); return `${MESES_PT[Number(m)-1].slice(0,3).toLowerCase()}/${y.slice(2)}`; };
+  // Selos ao lado do nome
+  function selos(l){
+    let h='';
+    if(foraDaConta(l)) h+=`<span class="pl-selo pl-fora" title="${esc(motivoForaDaConta(l))}">Fora da contagem</span>`;
+    if(avancouNoPeriodo(l)) h+=`<span class="pl-selo pl-avanco" title="Lead capturado em ${fmtDate(l.createdAt)}. Neste período entra só o valor da nova etapa, não o lead inteiro.">ⓘ Mudança de etapa · capturado em ${mesAno(l.createdAt)}</span>`;
+    return h?`<div class="pl-selos">${h}</div>`:'';
+  }
+  // Detalhe: data de entrada em cada etapa, valor e mês de competência.
+  function detalhe(l){
+    const r=reachedStages(l);
+    const etapas=BONIF_FLOW.filter(st=>r[st]);
+    if(!etapas.length) return '<div class="text-muted text-sm">Sem datas de etapa.</div>';
+    const fora=foraDaConta(l);
+    const linhas=etapas.map(st=>{
+      const d=r[st], v=fora?0:valorEtapa(l,pol,st,d);
+      const destaque=temPeriodo&&noPeriodo(d);
+      return`<tr${destaque?' class="pl-no-periodo"':''}><td>${STAGE_EMOJI[st]||''} ${st}</td><td>${fmtDate(d)}</td>${showBonif?`<td style="text-align:right">${fmt(v)}</td><td>${mesAno(d)}</td>`:''}</tr>`;
+    }).join('');
+    return`<table class="pl-etapas"><thead><tr><th>Etapa</th><th>Entrou em</th>${showBonif?'<th style="text-align:right">Valor</th><th>Competência</th>':''}</tr></thead><tbody>${linhas}</tbody></table>
+      ${fora?`<div class="pl-nota">${esc(motivoForaDaConta(l))}. Por isso o valor é zero.</div>`:showBonif?`<div class="pl-nota">Cada etapa é paga uma única vez, no mês em que foi atingida (competência).${temPeriodo?' Em destaque, as etapas deste período.':''}</div>`:''}`;
+  }
   function renderTable(){
     const leads=getFiltered();
     if(!leads.length) return`<div class="empty-state"><div class="icon">🎯</div><p>Nenhum lead encontrado.</p></div>`;
+    const ncol=5+(showBonif?1:0);
     const linhas=leads.map(l=>{
-      const bonif=calcLeadBonif(l,model);
-      const sc=STAGE_COLORS[l.stage]||'var(--s400)';
+      const bonif=valorLead(l);
+      const fora=foraDaConta(l);
+      const sc=fora?'var(--s400)':(STAGE_COLORS[l.stage]||'var(--s400)');
       const lastUpdate=l.stageDate||l.createdAt;
       const responsavel=l.dealOwnerName||l.ownerName||(l.owner&&isNaN(Number(l.owner))?l.owner:null);
       const responsavelDisplay=(()=>{if(responsavel==='Marketing LIV'){if(l.stage==='Não Convertido')return'<span class="text-muted text-sm">—</span>';if(l.stage==='Lead Recebido')return'<span class="text-muted text-sm" style="font-style:italic">Aguardando distribuição</span>';}return responsavel?`<div style="font-size:12px;font-weight:500;color:var(--s700)">${responsavel}</div>`:'<span class="text-muted text-sm">—</span>';})();
       const nmtFmt=(()=>{const r=l.nextMeetingTime;if(!r)return null;return fmtDate(/^\d{10,}$/.test(r)?new Date(parseInt(r)).toISOString().slice(0,10):r.slice(0,10));})();
       const scBg=sc.charAt(0)==='#'?sc+'1a':'var(--s100)';
-      const tr=`<tr><td><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td>${nmtFmt&&l.stage==='Reunião Agendada'?`<td><div style="font-size:12px;font-weight:500;color:#8b5cf6">📅 Próxima Reunião marcada para ${nmtFmt}</div></td>`:`<td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td>`}<td>${responsavelDisplay}</td>${showBonif?`<td style="text-align:right;font-weight:700;color:#059669;font-size:13px">${fmt(bonif)}</td>`:''}</tr>`;
+      const aberto=leadsAbertos.has(String(l.id));
+      const seta=`<span class="pl-seta${aberto?' aberto':''}">›</span>`;
+      const valorCel=`<td style="text-align:right;font-weight:700;color:${fora?'var(--s400)':'#059669'};font-size:13px">${fmt(bonif)}</td>`;
+      const tr=`<tr class="pl-linha${fora?' pl-linha-fora':''}" onclick="toggleLeadDetalhe('${esc(String(l.id))}')"><td><div style="display:flex;gap:6px;align-items:flex-start">${seta}<div><div style="font-size:13px;font-weight:500">${l.name}</div><div class="contact-id">#${l.id||'—'}</div>${selos(l)}</div></div></td><td><span style="font-size:12px;font-weight:600;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span></td><td class="text-muted text-sm">${l.createdAt?fmtDate(l.createdAt):'—'}</td>${nmtFmt&&l.stage==='Reunião Agendada'?`<td><div style="font-size:12px;font-weight:500;color:#8b5cf6">📅 Próxima Reunião marcada para ${nmtFmt}</div></td>`:`<td><div style="font-size:12px;font-weight:600;color:var(--s700)">${fmtDate(lastUpdate)}</div><div style="font-size:10px;color:${sc}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</div></td>`}<td>${responsavelDisplay}</td>${showBonif?valorCel:''}</tr>`
+        +(aberto?`<tr class="pl-detalhe"><td colspan="${ncol}">${detalhe(l)}</td></tr>`:'');
       const ultMov=nmtFmt&&l.stage==='Reunião Agendada'
         ? `<span style="color:#8b5cf6">📅 ${nmtFmt}</span>`
         : fmtDate(lastUpdate);
-      const card=`<div class="lead-card">
+      const card=`<div class="lead-card${fora?' pl-linha-fora':''}">
         <div class="lead-card-top">
           <div style="min-width:0">
             <div class="lead-card-name">${l.name}</div>
             <div class="contact-id">#${l.id||'—'}</div>
+            ${selos(l)}
           </div>
           <span class="lead-badge" style="color:${sc};background:${scBg}">${STAGE_EMOJI[l.stage]||''} ${l.stage}</span>
         </div>
@@ -2616,34 +2842,47 @@ function renderAffPipeline(c){
         </div>
         <div class="lead-card-grid">
           <div><div class="lead-card-lbl">Responsável</div><div class="lead-card-val">${responsavelDisplay}</div></div>
-          ${showBonif?`<div><div class="lead-card-lbl">Bonificação</div><div class="lead-card-val" style="color:#059669;font-weight:700">${fmt(bonif)}</div></div>`:''}
+          ${showBonif?`<div><div class="lead-card-lbl">Bonificação${temPeriodo?' no período':''}</div><div class="lead-card-val" style="color:${fora?'var(--s400)':'#059669'};font-weight:700">${fmt(bonif)}</div></div>`:''}
         </div>
+        <details class="pl-card-det"><summary>Etapas${showBonif?' e competência':''}</summary>${detalhe(l)}</details>
       </div>`;
       return{tr,card};
     });
-    return`<div class="only-desktop"><table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?'<th style="text-align:right">Bonificação</th>':''}</tr></thead><tbody>${linhas.map(x=>x.tr).join('')}</tbody></table></div>`
+    return`<div class="only-desktop"><table class="table"><thead><tr>${thSort('name','Lead / ID')}${thSort('stage','Etapa Atual')}${thSort('createdAt','Criado em')}${thSort('lastUpdate','Últ. Movimentação')}<th>Responsável</th>${showBonif?`<th style="text-align:right">Bonificação${temPeriodo?' no período':''}</th>`:''}</tr></thead><tbody>${linhas.map(x=>x.tr).join('')}</tbody></table></div>`
          + `<div class="only-mobile lead-cards">${linhas.map(x=>x.card).join('')}</div>`;
   }
-  const periodLeads=filterByPeriod(allLeads,affPeriod);
-  const periodNaBase=filterByPeriod(leadsNaBase(u.syncData?.leads),affPeriod);
-  const counts={'Todos':periodLeads.length};
-  periodLeads.forEach(l=>{counts[l.stage]=(counts[l.stage]||0)+1;});
+  function sortIcon(col){if(affSortCol!==col) return`<span style="color:var(--s300);margin-left:3px">⇅</span>`;return affSortDir==='asc'?`<span style="color:var(--blue);margin-left:3px">↑</span>`:`<span style="color:var(--blue);margin-left:3px">↓</span>`;}
+  function thSort(col,label,extra=''){return`<th style="cursor:pointer;user-select:none${extra?';'+extra:''}" onclick="setPipelineSort('${col}')">${label}${sortIcon(col)}</th>`;}
+  const periodLeads=validLeads(doPeriodo).filter(l=>!temPeriodo||noPeriodo(l.createdAt));
+  const periodFora=doPeriodo.filter(foraDaConta);
+  const avancos=doPeriodo.filter(avancouNoPeriodo).length;
+  const FILTROS=['Todos',...STAGES,'Não Convertido','Fora da contagem'];
+  const counts={'Todos':doPeriodo.length,'Fora da contagem':periodFora.length};
+  doPeriodo.filter(l=>!foraDaConta(l)).forEach(l=>{counts[l.stage]=(counts[l.stage]||0)+1;});
   const camposMobile=
     `<div class="filtro-campo"><label>Etapa</label><select onchange="setStageFilter(this.value)">${
-      ['Todos',...STAGES,'Não Convertido'].map(st=>`<option value="${st}"${affStageFilter===st?' selected':''}>${st} (${counts[st]||0})</option>`).join('')
+      FILTROS.map(st=>`<option value="${st}"${affStageFilter===st?' selected':''}>${st} (${counts[st]||0})</option>`).join('')
     }</select></div>`
   + `<div class="filtro-campo largo"><label>Ordenar</label><select onchange="setPipelineSortValue(this.value)">${
       [['createdAt:desc','Mais recentes'],['createdAt:asc','Mais antigos'],['lastUpdate:desc','Movimentação recente'],['name:asc','Nome (A–Z)'],['stage:asc','Etapa']]
         .map(([v,t])=>`<option value="${v}"${v===`${affSortCol}:${affSortDir}`?' selected':''}>${t}</option>`).join('')
     }</select></div>`;
   const searchHtml=`<div class="search-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="search-input" id="pipeline-search" placeholder="Buscar por nome ou ID…" value="${esc(affSearch)}" oninput="setPipelineSearch(this.value)"></div>`;
-  c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período${periodNaBase.length?` · ${periodNaBase.length} já na base (não contam)`:''} · Modelo: ${model.name}</div></div>
+  const emoji=s=>s==='Fora da contagem'?'🔁':(STAGE_EMOJI[s]||'🔵');
+  c.innerHTML=`<div class="page-header" style="margin-bottom:12px"><div class="page-title">Pipeline de Leads</div><div class="page-sub">${periodLeads.length} leads no período${periodFora.length?` · ${periodFora.length} fora da contagem`:''}${avancos?` · ${avancos} de períodos anteriores mudaram de etapa`:''}${showBonif?` · Modelo: ${model.name}`:''}</div></div>
   ${renderPeriodBar('aff-pipeline',searchHtml,camposMobile)}
-  <div class="pipeline-filters only-desktop" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${['Todos',...STAGES,'Não Convertido'].map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${STAGE_EMOJI[s]||'🔵'} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
+  <div class="pipeline-filters only-desktop" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${FILTROS.map(s=>`<button class="btn btn-sm pipeline-filter${affStageFilter===s?' btn-primary':' btn-ghost'}" data-stage="${s}" onclick="setStageFilter('${s}')">${emoji(s)} ${s} <span style="opacity:.7">(${counts[s]||0})</span></button>`).join('')}</div>
   <div class="panel" id="pipeline-table-wrap">${renderTable()}</div>
-  ${renderNaBasePanel(periodNaBase,'Leads que já estavam na nossa base')}`;
+  ${periodFora.length?`<div class="pl-rodape">🔁 <b>Fora da contagem</b>: leads que entraram pelo seu link, mas o contato já estava na nossa base ou já tinha entrado como lead antes. Aparecem na lista com valor zero e não somam no total. Clique em um lead para ver as etapas.</div>`:''}`;
   window._pipelineRenderTable=renderTable;
 }
+// Leads com o detalhe aberto (por id), preservado entre filtros e ordenação.
+const leadsAbertos=new Set();
+window.toggleLeadDetalhe=function(id){
+  if(leadsAbertos.has(id)) leadsAbertos.delete(id); else leadsAbertos.add(id);
+  const wrap=document.getElementById('pipeline-table-wrap');
+  if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();
+};
 window.setStageFilter=function(stage){affStageFilter=stage;document.querySelectorAll('.pipeline-filter').forEach(b=>{b.classList.toggle('btn-primary',b.dataset.stage===stage);b.classList.toggle('btn-ghost',b.dataset.stage!==stage);});const wrap=document.getElementById('pipeline-table-wrap');if(wrap&&window._pipelineRenderTable) wrap.innerHTML=window._pipelineRenderTable();};
 window.setPipelineSortValue=function(v){
   const[c,d]=v.split(':'); affSortCol=c; affSortDir=d;
@@ -2863,9 +3102,9 @@ function showLeadsPopup(title,leads){
 function showNaBasePopup(affId){
   const a=getAffiliates().find(x=>String(x.id)===String(affId)); if(!a) return;
   const lista=filterAdminPeriod(leadsNaBase(a.syncData?.leads));
-  document.getElementById('leads-popup-title').textContent=`🔁 ${a.name}: leads já na base`;
+  document.getElementById('leads-popup-title').textContent=`🔁 ${a.name}: leads fora da contagem`;
   document.getElementById('leads-popup-sub').textContent=`${lista.length} lead${lista.length!==1?'s':''} no período, fora da contagem e da bonificação`;
-  document.getElementById('leads-popup-body').innerHTML=renderNaBasePanel(lista,'Leads já na base');
+  document.getElementById('leads-popup-body').innerHTML=renderNaBasePanel(lista,'Leads fora da contagem');
   document.getElementById('leads-popup').style.display='flex';
 }
 window.showNaBasePopup=showNaBasePopup;
