@@ -105,7 +105,13 @@ const tiers = (lr, mql, sql) => ({ 'Padrão': { stages: { 'Lead Recebido': lr, '
   check('colunas do termo e do histórico protegidas no gatilho', ['bonif_history', 'terms_version', 'terms_accepted_at'].every(c => new RegExp(`new\\.${c}\\s+is distinct from old\\.${c}`).test(sql)));
   check('sem a coluna no banco o termo não trava ninguém', /termsVersion!==undefined/.test(web) && /'terms_version' in row/.test(web));
   check('termo sem colchetes por preencher', !/\[[^\]`$]*\]/.test(trecho(web, 'const TERMO_HTML=`', '`;')));
-  check('na visualização o aceite não é gravado', /async function aceitarTermo\(\)\{\n  if\(vendoComo\)\{ somenteLeitura\(\)/.test(web));
+  const aceitar = trecho(web, 'async function aceitarTermo(){', 'window.aceitarTermo=');
+  check('na visualização o aceite não é gravado', aceitar.indexOf('if(vendoComo){ somenteLeitura()') > 0 && aceitar.indexOf('if(vendoComo){ somenteLeitura()') < aceitar.indexOf("fetch('/api/termo/aceite'"));
+  check('sem marcar o check, Continuar só destaca o campo (não grava)', aceitar.indexOf("classList.add('erro')") > 0 && aceitar.indexOf("classList.add('erro')") < aceitar.indexOf("fetch('/api/termo/aceite'"));
+  check('na visão do admin o termo é só prévia (sem check nem Continuar)', /m\.classList\.toggle\('previa',!!vendoComo\)/.test(web) && /#termo-modal\.previa \.termo-check,#termo-modal\.previa \.termo-erro,#termo-modal\.previa #termo-btn\{display:none!important\}/.test(web));
+  check('servidor recusa aceite de quem não é parceiro', /if \(u\.role !== 'affiliate'\) return res\.status\(400\)/.test(srv));
+  check('termo não fecha sozinho: só Sair (desloga) ou aceite', !/termo-modal[^\n]*onclick/.test(web) && !/keydown[\s\S]{0,80}fecharTermo/.test(web));
+  check('volta a cada login enquanto não aceitar', /if \(precisaAceitarTermo\(currentUser\)\) abrirTermo\(\);/.test(trecho(web, 'function enterApp()', 'function showView(')));
 
   // ── ver como parceiro = visão do parceiro ─────────────
   console.log('Visão do admin idêntica à do parceiro');

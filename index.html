@@ -441,6 +441,8 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 /* ── Ver como parceiro ─────────────────────────────── */
 #termo-modal{display:none;position:fixed;inset:0;z-index:1100;background:rgba(15,23,42,.6);align-items:center;justify-content:center;padding:16px}
 #termo-modal.aberto{display:flex}
+body.vendo-como #termo-modal{top:44px}   /* faixa "vendo como" continua visível */
+body.vendo-como .termo-box{max-height:calc(100vh - 76px)}
 .termo-box{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 .termo-hd{padding:20px 24px 12px;border-bottom:1px solid var(--s100)}
 .termo-titulo{font-size:18px;font-weight:700;color:var(--s900)}
@@ -452,6 +454,15 @@ i.voce{background:var(--pink)}i.media{background:var(--s300)}
 .termo-pe{padding:14px 24px 18px;border-top:1px solid var(--s100);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .termo-check{font-size:13px;font-weight:600;color:var(--s800);display:flex;gap:8px;align-items:center;cursor:pointer}
 .termo-acoes{display:flex;gap:8px}
+.termo-check input{width:18px;height:18px;accent-color:var(--blue)}
+.termo-check.erro{color:#dc2626;background:#fef2f2;outline:2px solid #fca5a5;border-radius:8px;padding:6px 10px;margin:-6px -10px;animation:termo-treme .35s}
+.termo-check.erro input{outline:2px solid #dc2626;outline-offset:1px}
+#termo-modal.previa .termo-check,#termo-modal.previa .termo-erro,#termo-modal.previa #termo-btn{display:none!important}
+.termo-previa{display:none;font-size:12px;font-weight:600;color:var(--s600)}
+#termo-modal.previa .termo-previa{display:block}
+.termo-erro{display:none;font-size:12px;color:#dc2626;margin-top:8px}
+.termo-check.erro + .termo-erro{display:block}
+@keyframes termo-treme{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 @media (max-width:900px){ .termo-hd,.termo-corpo,.termo-pe{padding-left:16px;padding-right:16px} .termo-acoes{width:100%;justify-content:flex-end} }
 #vendo-como-bar{display:none;position:fixed;top:0;left:0;right:0;height:44px;z-index:1000;background:var(--pink);color:#fff;align-items:center;justify-content:center;gap:14px;font-size:13px;padding:0 12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
 #vendo-como-bar button{background:#fff;color:var(--pink);border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -617,8 +628,10 @@ body.vendo-como #sidebar{top:44px}
     <div class="termo-hd"><div id="termo-titulo" class="termo-titulo">Termo de Adesão ao Programa de Parceiros</div><div class="termo-sub" id="termo-sub"></div></div>
     <div class="termo-corpo" id="termo-corpo"></div>
     <div class="termo-pe">
-      <label class="termo-check"><input type="checkbox" id="termo-ok" onchange="document.getElementById('termo-btn').disabled=!this.checked"> Li e aceito o Termo de Adesão</label>
-      <div class="termo-acoes"><button class="btn btn-ghost btn-sm" id="termo-sair" onclick="doLogout()">Sair</button><button class="btn btn-primary" id="termo-btn" disabled onclick="aceitarTermo()">Aceitar e continuar</button></div>
+      <div><label class="termo-check" id="termo-check"><input type="checkbox" id="termo-ok" onchange="if(this.checked) document.getElementById('termo-check').classList.remove('erro')"> Li e aceito o Termo de Adesão</label>
+        <div class="termo-erro" id="termo-erro">Marque "Li e aceito" para continuar.</div>
+        <div class="termo-previa">👁 Prévia: só o parceiro pode aceitar. Nada é gravado nesta visualização.</div></div>
+      <div class="termo-acoes"><button class="btn btn-ghost btn-sm" id="termo-sair" onclick="doLogout()">Sair</button><button class="btn btn-primary" id="termo-btn" onclick="aceitarTermo()">Continuar</button></div>
     </div>
   </div>
 </div>
@@ -937,7 +950,7 @@ let adminPeriod='this-year', adminCustomStart='', adminCustomEnd='';
 // precisa ser a mesma de TERMO_VERSAO no server.js (o teste confere).
 const TERMO_VERSAO='1.0';
 const TERMO_HTML=`
-<p>Versão ${TERMO_VERSAO} · novembro de 2026. Ao clicar em "Aceitar e continuar", você declara que leu e concorda com as regras abaixo. O aceite fica registrado com data, hora e versão do termo.</p>
+<p>Versão ${TERMO_VERSAO} · novembro de 2026. Ao marcar "Li e aceito" e clicar em "Continuar", você declara que leu e concorda com as regras abaixo. O aceite fica registrado com data, hora e versão do termo.</p>
 <h4>1. Como o lead é contado</h4>
 <p>1.1. Conta como indicação sua o lead que chega pelos seus links do portal, identificado pelo seu código de parceiro no nosso CRM.</p>
 <p>1.2. Não conta o lead cujo contato já estava na nossa base antes da sua indicação. Na prática, ele não conta quando o contato foi criado mais de 7 dias antes do lead e a primeira origem dele não é você.</p>
@@ -975,17 +988,29 @@ function abrirTermo(){
   const m=document.getElementById('termo-modal');
   document.getElementById('termo-corpo').innerHTML=TERMO_HTML;
   document.getElementById('termo-ok').checked=false;
-  document.getElementById('termo-btn').disabled=true;
+  document.getElementById('termo-check').classList.remove('erro');
+  document.getElementById('termo-btn').disabled=false;
   // Na visão do admin: mostra o que o parceiro vê, sem gravar aceite.
   document.getElementById('termo-sub').textContent=vendoComo
     ?`${currentUser.name} ainda não aceitou este termo. Na visualização, o aceite não é gravado.`
     :(currentUser.termsVersion?'O termo foi atualizado. Para continuar usando o portal, leia e aceite a nova versão.':'Para começar a usar o portal, leia e aceite o termo abaixo.');
-  document.getElementById('termo-sair').textContent=vendoComo?'Fechar':'Sair';
+  // Na visão do admin é só prévia: sem check e sem "Continuar".
+  m.classList.toggle('previa',!!vendoComo);
+  document.getElementById('termo-sair').textContent=vendoComo?'Fechar prévia':'Sair';
   document.getElementById('termo-sair').onclick=vendoComo?fecharTermo:doLogout;
   m.classList.add('aberto');
 }
 function fecharTermo(){ document.getElementById('termo-modal')?.classList.remove('aberto'); }
+// Não dá para pular: sem o check, "Continuar" só destaca o campo. O modal não
+// fecha por Esc nem por clique fora; "Sair" desloga, e no próximo login (ou
+// recarregando a página) ele volta enquanto a versão atual não for aceita.
 async function aceitarTermo(){
+  const check=document.getElementById('termo-check');
+  if(!document.getElementById('termo-ok').checked){
+    check.classList.remove('erro'); void check.offsetWidth; check.classList.add('erro');   // reinicia a animação
+    document.getElementById('termo-ok').focus();
+    return;
+  }
   if(vendoComo){ somenteLeitura(); fecharTermo(); return; }
   const btn=document.getElementById('termo-btn'); btn.disabled=true; btn.textContent='Gravando…';
   try{
@@ -996,7 +1021,7 @@ async function aceitarTermo(){
     const doCache=getUsers().find(x=>x.id===currentUser.id); if(doCache){ doCache.termsVersion=d.versao; doCache.termsAcceptedAt=d.aceitoEm; }
     fecharTermo(); toast('✅ Termo aceito. Bem-vindo ao Programa de Parceiros!');
   }catch(e){ toast('⚠️ Não foi possível gravar o aceite: '+e.message); btn.disabled=false; }
-  finally{ btn.textContent='Aceitar e continuar'; }
+  finally{ btn.textContent='Continuar'; }
 }
 window.aceitarTermo=aceitarTermo; window.fecharTermo=fecharTermo;
 
